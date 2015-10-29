@@ -1,3 +1,5 @@
+# TODO log hash for convinience
+
 import base64
 import binascii
 import copy
@@ -10,8 +12,8 @@ import time
 import zlib
 from collections import defaultdict
 
-from .keys import Key
-from .exceptions import ValidationError
+from keys import Key
+from exceptions import ValidationError
 
 
 class Log(object):
@@ -36,14 +38,13 @@ class Log(object):
         return ' '.join(map(str, (entry.time, entry.parent_hash, entry.fingerprint, entry.action, entry.path, content, signature)))
     
     def decode(self, line):
-        hash = hashlib.md5(line.encode()).digest()
         time, parent_hash, fingerprint, action, path, content, signature = line.split(' ')
         content = binascii.a2b_base64(content.encode())
         content = zlib.decompress(content).decode()
         signature = binascii.a2b_base64(signature.encode()).decode()
         time = int(time)
         return LogEntry(parent_hash, action, path, content,
-            time=time, hash=hash, fingerprint=fingerprint, signature=signature)
+            time=time, fingerprint=fingerprint, signature=signature)
     
     def load(self):
         """ loads logfile """
@@ -147,6 +148,8 @@ class LogEntry(object):
         self.signature = kwargs.get('signature')
         self.content = '' if not content else content[0]
         self.childs = []
+        if not self.hash and self.signature:
+            self.hash = self.get_hash()
     
     def clean(self):
         """ cleans log entry """
