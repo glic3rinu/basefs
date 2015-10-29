@@ -1,5 +1,5 @@
 # basefs
-Basically Available, Soft state, Eventual consistent File System
+Basically Available, Soft state, Eventually consistent File System
 
 
 **Work in progress**
