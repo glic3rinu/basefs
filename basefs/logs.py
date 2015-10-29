@@ -1,19 +1,17 @@
-# TODO log hash for convinience
-
 import base64
 import binascii
 import copy
 import hashlib
 import itertools
-#import lzma
+#import lzma vs zlib
 import os
 import re
 import time
 import zlib
 from collections import defaultdict
 
-from keys import Key
-from exceptions import ValidationError
+from .keys import Key
+from .exceptions import ValidationError
 
 
 class Log(object):
@@ -39,9 +37,10 @@ class Log(object):
     
     def decode(self, line):
         time, parent_hash, fingerprint, action, path, content, signature = line.split(' ')
-        content = binascii.a2b_base64(content.encode())
-        content = zlib.decompress(content).decode()
-        signature = binascii.a2b_base64(signature.encode()).decode()
+        if content:
+            content = binascii.a2b_base64(content.encode())
+            content = zlib.decompress(content).decode()
+        signature = binascii.a2b_base64(signature.encode())
         time = int(time)
         return LogEntry(parent_hash, action, path, content,
             time=time, fingerprint=fingerprint, signature=signature)
@@ -74,7 +73,7 @@ class Log(object):
                 self.entries_by_parent[entry.parent_hash].append(entry)
         # Build FS hierarchy
         for parent_hash, childs in self.entries_by_parent.items():
-            if parent_hash == self.root.hash:
+            if parent_hash == LogEntry.ROOT_PARENT_HASH:
                 continue
             parent = self.entries[parent_hash]
             for child in childs:

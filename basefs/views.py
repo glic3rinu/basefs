@@ -1,3 +1,7 @@
+import copy
+import os
+from collections import defaultdict
+
 from basefs.exceptions import IntegrityError
 
 
@@ -53,7 +57,7 @@ class View(object):
         if entry.action != entry.MKDIR:
             raise entry.IntegrityError("WTF are you calling rec_build on?")
         # Lookup for delete+mkdir pattern
-        score, state = entry.find_branch_state(keys)
+        score, state = entry.get_branch_state(keys)
         if state == [None]*4:
             return
         node = ViewNode(state)
@@ -69,7 +73,7 @@ class View(object):
         key_entries = childs.pop(keys_path, None)
         if key_entries:
             # lookup for keys
-            key_score, key_state = entry.find_branch_state(copy.deepcopy(keys), *key_entries)
+            key_score, key_state = entry.get_branch_state(copy.deepcopy(keys), *key_entries)
             if key_state:
                 score += key_score
                 key_node = ViewNode(key_state)
@@ -82,7 +86,7 @@ class View(object):
             for child in childs:
                 # MKDIR /hola, MKDIR /hola, WRITE /hola
                 if action == entry.WRITE:
-                    child_score, child_state = entry.find_branch_state(copy.deepcopy(keys), *childs)
+                    child_score, child_state = entry.get_branch_state(copy.deepcopy(keys), *childs)
                     child_node = ViewNode(child_state)
                     child_paths = {
                         path: child_node

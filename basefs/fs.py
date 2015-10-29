@@ -1,11 +1,3 @@
-# TODO tests
-# TODO stat times and permissions
-# TODO refine blockchain choosing strategy
-
-# TODO fs.create should generate a WRITE log line (touch hola)
-
-# TODO verify fucking keys
-# TODO lzma.compress before sending
 import os
 import sys
 import errno
@@ -20,10 +12,10 @@ from .views import View
 
 class FileSystem(Operations):
     def __init__(self, logpath, keypath):
+        self.logpath = logpath
         self.log = Log(logpath)
-        self.log.load()
         self.view = View(self.log)
-        self.view.build()
+        self.load()
         self.serf = SerfClient()
         node = self.get_node('/.cluster')
         type(self.log).serf = self.serf
@@ -38,15 +30,15 @@ class FileSystem(Operations):
     
     def load(self):
         print('load')
-        self.mtime = os.stat(self.logpath).st_mtime
-        self.log = LogEntry.load(self.logpath)
+        self.log_mtime = os.stat(self.logpath).st_mtime
+        self.log.load()
+        self.view.build()
         self.log.set_key(Key.load(self.keypath))
-        self.view = View.build(self.log)
     
     def get_node(self, path):
         # check if logfile has been modified
         mtime = os.stat(self.logpath).st_mtime
-        if mtime != self.mtime:
+        if mtime != self.log_mtime:
             self.load()
         path = os.path.normpath(path)
         return self.view.paths[path]

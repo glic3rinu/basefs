@@ -1,5 +1,4 @@
-#!/usr/bin/env python3.4
-
+#!/usr/bin/env python3
 
 import argparse
 import atexit
@@ -7,6 +6,7 @@ import ipaddress
 import os
 import subprocess
 import sys
+import textwrap
 from collections import OrderedDict
 
 from fuse import FUSE
@@ -16,19 +16,19 @@ from basefs.keys import Key
 from basefs.logs import Log
 
 
+mount_parser = argparse.ArgumentParser(description='Mount an existing filesystem', prog='basefs mount')
+mount_parser.add_argument('logpath')
+mount_parser.add_argument('mountpoint')
+mount_parser.add_argument('-k', '--key', dest='keypath', nargs=1,
+    help='Path to the EC private key. use genkey for creating one')
+mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
+    help='Custom handler script for filesystem update notifications')
+mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
+    help='Enables debugging information.')
+
+
 def mount():
-    parser = argparse.ArgumentParser(description='Mount BASE-DS filesystem.', prog='fs.py mount')
-    parser.add_argument('logpath',
-                       help='an integer for the accumulator')
-    parser.add_argument('mountpoint',
-                       help='an integer for the accumulator')
-    parser.add_argument('-k', '--key', dest='keypath', nargs=1,
-                       help='sum the integers (default: find the max)')
-    parser.add_argument('--fs-handler', dest='handler', nargs=1,
-                       help='Custom handler script for filesystem update notifications')
-    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
-                       help='Custom handler script for filesystem update notifications')
-    args = parser.parse_args()
+    args = mount_parser.parse_args()
     logpath = args.logpath
     key = args.keypath[0]
     mountpoint = args.mountpoint
@@ -49,17 +49,20 @@ def mount():
     FUSE(FileSystem(logpath, key), mountpoint, nothreads=True, foreground=True)
 
 
+bootstrap_parser = argparse.ArgumentParser(
+    description='Creates a new filesystem by generating a log file containing all the necessary information',
+    prog='basefs bootstrap')
+bootstrap_parser.add_argument('logpath')
+bootstrap_parser.add_argument('-k', '--keys', dest='keypaths', nargs=1,
+    help='Comma separated list of paths containing the root keys.')
+bootstrap_parser.add_argument('-i', '--ips', dest='ips', nargs=1,
+    help='comma separated ips used as boostrapping nodes.')
+bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
+    help='Rewrite log file if present')
+
+
 def bootstrap():
-    parser = argparse.ArgumentParser(description='Bootstrap BASE-DS filesystem.', prog='fs.py bootstrap')
-    parser.add_argument('logpath',
-                       help='an integer for the accumulator')
-    parser.add_argument('-k', '--keys', dest='keypaths', nargs=1,
-                       help='sum the integers (default: find the max)')
-    parser.add_argument('-i', '--ips', dest='ips', nargs=1,
-                       help='comma separated ips')
-    parser.add_argument('-f', '--force', dest='force', action='store_true',
-                       help='sum the integers (default: find the max)')
-    args = parser.parse_args()
+    args = bootstrap_parser.parse_args()
     logpath = args.logpath
     if os.path.exists(logpath):
         if not args.force:
@@ -80,13 +83,14 @@ def bootstrap():
     sys.exit(0)
 
 
+handler_parser = argparse.ArgumentParser(description='Run as Serf handler', prog='basefs handler')
+handler_parser.add_argument('logpath')
+handler_parser.add_argument('--fs-handler', dest='handler', nargs=1,
+    help='custom handler, used for executing custom actions when a path is updated.')
+
+
 def handler():
-    parser = argparse.ArgumentParser(description='handle BASE-DS filesystem.', prog='fs.py handler')
-    parser.add_argument('logpath',
-                       help='an integer for the accumulator')
-    parser.add_argument('--fs-handler', dest='handler', nargs=1,
-                       help='custom handler')
-    args = parser.parse_args()
+    args = handler_parser.parse_args()
     handler = args.handler[0] if args.handler else None
     if handler:
         if not os.path.isfile(handler):
@@ -125,35 +129,51 @@ def handler():
     sys.exit()
 
 
-def help():
-    sys.stdout.write('\n    ' + '\n\n    '.join(methods.keys()) + '\n\n')
-    sys.exit()
-
+genkey_parser = argparse.ArgumentParser(description='Generate a new EC private key', prog='basefs genkey')
+genkey_parser.add_argument('keypath')
 
 def genkey():
-    parser = argparse.ArgumentParser(description='Genkey.', prog='fs.py genkey')
-    parser.add_argument('keypath',
-                       help='an integer for the accumulator')
-    args = parser.parse_args()
+    args = genkey_parser.parse_args()
     key = Key.generate()
     key.save(args.keypath)
     sys.exit()
 
 
-methods = OrderedDict(
-    mount=mount,
-    handler=handler,
-    bootstrap=bootstrap,
-    genkey=genkey,
-    help=help,
-)
+def help():
+    commands = []
+    for key, value in methods.items():
+        method, parser = value
+        commands.append('    '+key + ('\t' + parser.description if parser else ''))
+    sys.stdout.write(textwrap.dedent("""\
+        Usage: basefs COMMAND [arg...]
+               basefs [ --help | -v | --version ]
+        
+        Basically Available, Soft state, Eventually consistent File System.
+        
+        Commands:
+        %s
+        
+        Run 'basefs COMMAND --help' for more information on a command
+        """) % '\n'.join(commands))
+    sys.exit()
+
+
+methods = OrderedDict([
+    ('mount', (mount, mount_parser)),
+    ('handler', (handler, handler_parser)),
+    ('bootstrap', (bootstrap, bootstrap_parser)),
+    ('genkey', (genkey, genkey_parser)),
+    ('help', (help, None)),
+])
 
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         method = sys.argv.pop(1)
+        if method == '--help':
+            method = 'help'
         try:
-            method = methods[method]
+            method = methods[method][0]
         except KeyError:
             sys.stdout.write("Error: not recognized argument %s\n" % method)
             help()
