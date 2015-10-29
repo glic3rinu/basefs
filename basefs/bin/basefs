@@ -1,0 +1,165 @@
+#!/usr/bin/env python3.4
+
+
+import argparse
+import atexit
+import ipaddress
+import os
+import subprocess
+import sys
+from collections import OrderedDict
+
+from fuse import FUSE
+
+from basefs.fs import FileSystem
+from basefs.keys import Key
+from basefs.logs import Log
+
+
+def mount():
+    parser = argparse.ArgumentParser(description='Mount BASE-DS filesystem.', prog='fs.py mount')
+    parser.add_argument('logpath',
+                       help='an integer for the accumulator')
+    parser.add_argument('mountpoint',
+                       help='an integer for the accumulator')
+    parser.add_argument('-k', '--key', dest='keypath', nargs=1,
+                       help='sum the integers (default: find the max)')
+    parser.add_argument('--fs-handler', dest='handler', nargs=1,
+                       help='Custom handler script for filesystem update notifications')
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
+                       help='Custom handler script for filesystem update notifications')
+    args = parser.parse_args()
+    logpath = args.logpath
+    key = args.keypath[0]
+    mountpoint = args.mountpoint
+    if not os.path.exists(mountpoint):
+        sys.stderr.write("Error: mountpoint %s does not exist.\n" % mountpoint)
+        sys.exit(4)
+    context = {
+        'script': os.path.realpath(__file__),
+        'log': logpath,
+        'handler': '--fs-handler'+args.handler[0] if args.handler else '',
+        'debug': '--log-level=debug' if args.debug else ''
+    }
+    cmd = "serf agent --event-handler='%(script)s handler %(log)s %(handler)s' %(debug)s" % context
+    sys.stdout.write(cmd + '\n')
+    serf_agent = subprocess.Popen(cmd, shell=True)
+    
+    atexit.register(lambda: serf_agent.kill())
+    FUSE(FileSystem(logpath, key), mountpoint, nothreads=True, foreground=True)
+
+
+def bootstrap():
+    parser = argparse.ArgumentParser(description='Bootstrap BASE-DS filesystem.', prog='fs.py bootstrap')
+    parser.add_argument('logpath',
+                       help='an integer for the accumulator')
+    parser.add_argument('-k', '--keys', dest='keypaths', nargs=1,
+                       help='sum the integers (default: find the max)')
+    parser.add_argument('-i', '--ips', dest='ips', nargs=1,
+                       help='comma separated ips')
+    parser.add_argument('-f', '--force', dest='force', action='store_true',
+                       help='sum the integers (default: find the max)')
+    args = parser.parse_args()
+    logpath = args.logpath
+    if os.path.exists(logpath):
+        if not args.force:
+            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
+            sys.exit(1)
+        else:
+            os.remove(logpath)
+    if not args.keypaths:
+        sys.stderr.write("Error: missing bootstraping keypath\n")
+        sys.exit(1)
+    if not args.ips:
+        sys.stderr.write("Error: missing bootstraping ip\n")
+        sys.exit(1)
+    keys = [Key.load(keypath) for keypath in args.keypaths[0].split(',')]
+    ips = [str(ipaddress.ip_address(ip)) for ip in args.ips[0].split(',')]
+    log = Log(logpath)
+    log.bootstrap(keys, ips)
+    sys.exit(0)
+
+
+def handler():
+    parser = argparse.ArgumentParser(description='handle BASE-DS filesystem.', prog='fs.py handler')
+    parser.add_argument('logpath',
+                       help='an integer for the accumulator')
+    parser.add_argument('--fs-handler', dest='handler', nargs=1,
+                       help='custom handler')
+    args = parser.parse_args()
+    handler = args.handler[0] if args.handler else None
+    if handler:
+        if not os.path.isfile(handler):
+            sys.stderr.write("Error: fs handler %s does not exist or is not a file\n" % handler)
+            sys.exit(2)
+        elif not os.access(handler, os.X_OK):
+            sys.stderr.write("Error: fs handler %s has no execution permissions\n" % handler)
+            sys.exit(3)
+    event = os.environ.get('SERF_EVENT')
+    user_event = os.environ.get('SERF_USER_EVENT')
+    if event == 'user' and user_event == 'logentry':
+        # TODO while read line: zlib.decompres(lines)
+        line = sys.stdin.readline().strip()
+        try:
+            entry = LogEntry.read_line(line)
+            entry.clean()
+        except Exception as err:
+            sys.stdout.write("Invalid log entry '%s', %s\n" % (line, err))
+            sys.exit(2)
+        context = {
+            'id': line.split()[0],
+            'logpath': args.logpath,
+            'line': line,
+            'handler': handler,
+            'path': entry.path,
+        }
+        exit_code = os.system("grep '^%(id)s ' %(logpath)s > /dev/null && exit 99 || echo '%(line)s' >> %(logpath)s;" % context)
+        if exit_code == 99:
+            sys.stdout.write('%(id)s already present\n' % context)
+        elif exit_code == 0:
+            sys.stdout.write('OK: %(id)s not present\n' % context)
+            if args.handler:
+                os.system("%(handler)s %(path)s")
+        else:
+            sys.stdout.write('%(id)s shell error writing to log\n' % context)
+    sys.exit()
+
+
+def help():
+    sys.stdout.write('\n    ' + '\n\n    '.join(methods.keys()) + '\n\n')
+    sys.exit()
+
+
+def genkey():
+    parser = argparse.ArgumentParser(description='Genkey.', prog='fs.py genkey')
+    parser.add_argument('keypath',
+                       help='an integer for the accumulator')
+    args = parser.parse_args()
+    key = Key.generate()
+    key.save(args.keypath)
+    sys.exit()
+
+
+methods = OrderedDict(
+    mount=mount,
+    handler=handler,
+    bootstrap=bootstrap,
+    genkey=genkey,
+    help=help,
+)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        method = sys.argv.pop(1)
+        try:
+            method = methods[method]
+        except KeyError:
+            sys.stdout.write("Error: not recognized argument %s\n" % method)
+            help()
+            sys.exit(1)
+    else:
+        sys.stdout.write("Error: missing arguments\n")
+        help()
+        sys.exit(1)
+    method()
