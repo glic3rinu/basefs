@@ -9,6 +9,8 @@ git clone https://github.com/glic3rinu/basefs.git
 cd basefs
 docker build -t serf .
 
+export PYTHONPATH=$(pwd)
+# python3 -m unittest basefs.tests.test_view
 BASEFS_PATH=$(pwd)/basefs
 
 sudo ln -s $BASEFS_PATH/BIN/basefs /usr/local/bin/

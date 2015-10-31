@@ -12,6 +12,7 @@ from collections import defaultdict
 
 from .keys import Key
 from .exceptions import ValidationError
+from .utils import Candidate
 
 
 class Log(object):
@@ -112,7 +113,7 @@ class Log(object):
     def mkdir(self, parent, path, key):
         return self.do_action(parent, LogEntry.MKDIR, path, key)
     
-    def write(self, parent, path, key, content):
+    def write(self, parent, path, content, key):
         return self.do_action(parent, LogEntry.WRITE, path, key, content)
     
     def delete(self, parent, path, key):
@@ -163,21 +164,6 @@ class LogEntry(object):
                 self.read_keys()
         if not re.match(r'^[0-9a-f]{32}$', self.parent_hash):
             raise ValidationError("%s not a valid md5 hash" % self.parent_hash)
-    
-    def has_permission(self):
-        """ self.fingerprint has permission on self.path """
-        try:
-            key = self.keys[self.fingerprint]
-        except KeyError:
-            return False
-        # Key.path contains lower path
-        if key.is_valid:
-            for path_id in key.paths:
-                # TODO get path from self.path.id
-                entry = self.entries[path_id]
-                if entry.path + os.sep in self.path + os.sep:
-                    return True
-        return False
     
     def get_valid_key(self, keys, last_keys):
         for fingerprint, key in itertools.chain(keys.items(), last_keys.items()):

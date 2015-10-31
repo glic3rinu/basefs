@@ -4,6 +4,7 @@ import argparse
 import atexit
 import ipaddress
 import os
+import pwd
 import subprocess
 import sys
 import textwrap
@@ -14,54 +15,69 @@ from fuse import FUSE
 from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log
+from basefs.views import View
 
+
+default_keypath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'id_ec')
+default_logpath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'log')
 
 mount_parser = argparse.ArgumentParser(description='Mount an existing filesystem', prog='basefs mount')
-mount_parser.add_argument('logpath')
-mount_parser.add_argument('mountpoint')
-mount_parser.add_argument('-k', '--key', dest='keypath', nargs=1,
-    help='Path to the EC private key. use genkey for creating one')
-mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
-    help='Custom handler script for filesystem update notifications')
-mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
-    help='Enables debugging information.')
 
 
 def mount():
+    mount_parser.add_argument('logpath', nargs='?', default=default_logpath)
+    mount_parser.add_argument('mountpoint')
+    mount_parser.add_argument('-k', '--keys', dest='keypath',
+        default=default_keypath,
+        help='Path to the EC private key. %s by default. use genkey for creating one.' % default_keypath)
+    mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
+        help='Custom handler script for filesystem update notifications')
+    mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
+        help='Enables debugging information.')
+    mount_parser.add_argument('-n', '--no-serf', dest='serf', action='store_false',
+        help='Disables Serf agent (testing purposes).')
+    
     args = mount_parser.parse_args()
     logpath = args.logpath
-    key = args.keypath[0]
+    keypath = args.keypath
     mountpoint = args.mountpoint
     if not os.path.exists(mountpoint):
         sys.stderr.write("Error: mountpoint %s does not exist.\n" % mountpoint)
         sys.exit(4)
-    context = {
-        'script': os.path.realpath(__file__),
-        'log': logpath,
-        'handler': '--fs-handler'+args.handler[0] if args.handler else '',
-        'debug': '--log-level=debug' if args.debug else ''
-    }
-    cmd = "serf agent --event-handler='%(script)s handler %(log)s %(handler)s' %(debug)s" % context
-    sys.stdout.write(cmd + '\n')
-    serf_agent = subprocess.Popen(cmd, shell=True)
-    
-    atexit.register(lambda: serf_agent.kill())
-    FUSE(FileSystem(logpath, key), mountpoint, nothreads=True, foreground=True)
+    if not os.path.isfile(keypath):
+        sys.stderr.write("Error: keypath %s does not exist.\n" % keypath)
+        sys.exit(2)
+    if args.serf:
+        context = {
+            'script': os.path.realpath(__file__),
+            'log': logpath,
+            'handler': '--fs-handler'+args.handler[0] if args.handler else '',
+            'debug': '--log-level=debug' if args.debug else ''
+        }
+        cmd = "serf agent --event-handler='%(script)s handler %(log)s %(handler)s' %(debug)s" % context
+        sys.stdout.write(cmd + '\n')
+        serf_agent = subprocess.Popen(cmd, shell=True)
+        atexit.register(lambda: serf_agent.kill())
+    sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
+    FUSE(FileSystem(logpath, keypath), mountpoint, nothreads=True, foreground=True)
 
 
 bootstrap_parser = argparse.ArgumentParser(
     description='Creates a new filesystem by generating a log file containing all the necessary information',
     prog='basefs bootstrap')
-bootstrap_parser.add_argument('logpath')
-bootstrap_parser.add_argument('-k', '--keys', dest='keypaths', nargs=1,
-    help='Comma separated list of paths containing the root keys.')
-bootstrap_parser.add_argument('-i', '--ips', dest='ips', nargs=1,
-    help='comma separated ips used as boostrapping nodes.')
-bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
-    help='Rewrite log file if present')
 
 
 def bootstrap():
+    bootstrap_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        help='Path to the basefs log file, uses %s by default.' % default_logpath)
+    bootstrap_parser.add_argument('-k', '--keys', dest='keypaths',
+        default=default_keypath,
+        help='Comma separated list of paths containing the root keys. %s by default.' % default_keypath)
+    bootstrap_parser.add_argument('-i', '--ips', dest='ips', required=True,
+        help='comma separated ips used as boostrapping nodes.')
+    bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
+        help='Rewrite log file if present')
+    
     args = bootstrap_parser.parse_args()
     logpath = args.logpath
     if os.path.exists(logpath):
@@ -70,26 +86,27 @@ def bootstrap():
             sys.exit(1)
         else:
             os.remove(logpath)
-    if not args.keypaths:
-        sys.stderr.write("Error: missing bootstraping keypath\n")
-        sys.exit(1)
-    if not args.ips:
-        sys.stderr.write("Error: missing bootstraping ip\n")
-        sys.exit(1)
-    keys = [Key.load(keypath) for keypath in args.keypaths[0].split(',')]
-    ips = [str(ipaddress.ip_address(ip)) for ip in args.ips[0].split(',')]
+    keys = []
+    for keypath in args.keypaths.split(','):
+        if not os.path.isfile(keypath):
+            sys.stderr.write("Error: bootsraping keypath %s does not exist.\n" % keypath)
+            sys.exit(2)
+        keys.append(Key.load(keypath))
+    ips = [str(ipaddress.ip_address(ip)) for ip in args.ips.split(',')]
     log = Log(logpath)
     log.bootstrap(keys, ips)
+    sys.stdout.write('Created log file %s\n' % logpath)
     sys.exit(0)
 
 
 handler_parser = argparse.ArgumentParser(description='Run as Serf handler', prog='basefs handler')
-handler_parser.add_argument('logpath')
-handler_parser.add_argument('--fs-handler', dest='handler', nargs=1,
-    help='custom handler, used for executing custom actions when a path is updated.')
 
 
 def handler():
+    handler_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        help='Path to the basefs log file, uses %s by default.' % default_logpath)
+    handler_parser.add_argument('--fs-handler', dest='handler', nargs=1,
+        help='custom handler, used for executing custom actions when a path is updated.')
     args = handler_parser.parse_args()
     handler = args.handler[0] if args.handler else None
     if handler:
@@ -130,13 +147,51 @@ def handler():
 
 
 genkey_parser = argparse.ArgumentParser(description='Generate a new EC private key', prog='basefs genkey')
-genkey_parser.add_argument('keypath')
 
 def genkey():
+    genkey_parser.add_argument('keypath', nargs='?',
+        default=default_keypath,
+        help='Path to the EC private key. %s by default.' % default_keypath)
+    genkey_parser.add_argument('-f', '--force', dest='force', action='store_true',
+        help='Rewrite key file if present.')
     args = genkey_parser.parse_args()
+    keypath = args.keypath
+    keydir = os.path.dirname(keypath)
+    if not os.path.exists(keydir):
+        if keypath == default_keypath:
+            os.mkdir(keydir)
+        else:
+            sys.stderr.write("Error: %s keypath directory doesn't exist, create it first.\n" % keydir)
+            sys.exit(2)
+    elif not args.force and os.path.exists(keypath):
+        sys.stderr.write('Error: %s key already exists, use --force to override it.\n' % keypath)
+        sys.exit(2)
     key = Key.generate()
-    key.save(args.keypath)
+    key.save(keypath)
+    sys.stdout.write("Generate EC key on %s\n" % keypath)
     sys.exit()
+
+
+lskeys_parser = argparse.ArgumentParser(description='List keys and their directories.', prog='basefs lskeys')
+
+
+def lskeys():
+    lskeys_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        help='Path to the basefs log file, uses %s by default.' % default_logpath)
+    lskeys_parser.add_argument('-p', '--path', dest='path', default='/',
+        help='Base path.')
+    lskeys_parser.add_argument('-d', '--by-dir', dest='by_dir', action='store_true',
+        help='List keys by dir instead of by key.')
+    args = lskeys_parser.parse_args()
+    log = Log(args.logpath)
+    log.load()
+    view = View(log)
+    view.build()
+    keys = view.get_keys(path=args.path, by_dir=args.by_dir)
+    for key, values in keys.items():
+        sys.stdout.write(key + '\n')
+        for value in values:
+            sys.stdout.write('    ' + value + '\n')
 
 
 def help():
@@ -163,6 +218,7 @@ methods = OrderedDict([
     ('handler', (handler, handler_parser)),
     ('bootstrap', (bootstrap, bootstrap_parser)),
     ('genkey', (genkey, genkey_parser)),
+    ('lskeys', (lskeys, lskeys_parser)),
     ('help', (help, None)),
 ])
 

@@ -1,11 +1,13 @@
 import os
 import sys
 import errno
+import itertools
 import stat
 
 from fuse import FuseOSError, Operations
 from serfclient.client import SerfClient
 
+from .keys import Key
 from .logs import Log
 from .views import View
 
@@ -14,12 +16,13 @@ class FileSystem(Operations):
     def __init__(self, logpath, keypath):
         self.logpath = logpath
         self.log = Log(logpath)
-        self.view = View(self.log)
+        self.key = Key.load(keypath)
+        self.view = View(self.log, self.key)
         self.load()
         self.serf = SerfClient()
         node = self.get_node('/.cluster')
         type(self.log).serf = self.serf
-        for line in node.entry.decode().splitlines():
+        for line in node.entry.content.splitlines():
             ip = line.strip()
             if ip:
                 result = self.serf.join(line.strip())
@@ -33,7 +36,6 @@ class FileSystem(Operations):
         self.log_mtime = os.stat(self.logpath).st_mtime
         self.log.load()
         self.view.build()
-        self.log.set_key(Key.load(self.keypath))
     
     def get_node(self, path):
         # check if logfile has been modified
@@ -54,7 +56,8 @@ class FileSystem(Operations):
 #        full_path = self._full_path(path)
 #        return os.chmod(full_path, mode)
 
-#    def chown(self, path, uid, gid):
+    def chown(self, path, uid, gid):
+        print('chown', path, uid, gid)
 #        full_path = self._full_path(path)
 #        return os.chown(full_path, uid, gid)
 

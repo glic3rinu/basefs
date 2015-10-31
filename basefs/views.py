@@ -2,8 +2,8 @@ import copy
 import os
 from collections import defaultdict
 
-from basefs.exceptions import IntegrityError
-
+from basefs import exceptions
+from basefs.utils import Candidate, is_subdir
 
 class ViewNode(object):
     def __init__(self, entry):
@@ -28,34 +28,28 @@ class ViewNode(object):
         self.paths[path] = node
 
 
-class Candidate(object):
-    def __init__(self, score, entry):
-        self.score = score
-        self.entry = entry
-    
-    def __gt__(self, candidate):
-        """ self better than candidate """
-        return (
-            self.score > candidate.score or (
-                self.score == candidate.score and self.entry.hash > candidate.entry.hash)
-        )
-
-
 class View(object):
-    def __init__(self, log):
+    def __init__(self, log, *keys):
         self.log = log
+        self.keys = {key.fingerprint: key for key in keys}
+        self.granted_paths = defaultdict(set)
     
     def build(self):
+        if not self.log.root_keys:
+            raise RuntimeError("Log %s not loaded" % self.log.logpath)
         keys = self.log.root_keys.read_keys()
         __, __, paths, root = self.rec_build(self.log.root, keys)
         self.paths = paths
         self.root = root
         return self.root
     
+    def get(self, path):
+        return self.paths[path]
+    
     def rec_build(self, entry, keys):
         # TODO copy.copy instead of deepcopy
         if entry.action != entry.MKDIR:
-            raise entry.IntegrityError("WTF are you calling rec_build on?")
+            raise exceptions.IntegrityError("WTF are you calling rec_build on?")
         # Lookup for delete+mkdir pattern
         score, state = entry.get_branch_state(keys)
         if state == [None]*4:
@@ -79,7 +73,9 @@ class View(object):
                 key_node = ViewNode(key_state)
                 node.childs.append(key_node)
                 paths[key_state.path] = key_node
-                keys.update(key_state.read_keys())
+                keys = key_state.read_keys()
+                self.update_granted_paths(entry.path, keys)
+                keys.update(keys)
         for path, childs in childs.items():
             action = childs[0].action
             selected = None
@@ -105,3 +101,133 @@ class View(object):
                 score = selected.score + score if score else selected.score
                 paths.update(selected.paths)
         return score, state, paths, node
+    
+    def update_granted_paths(self, path, keys):
+        for fingerprint, key in keys.items():
+            if fingerprint in self.keys:
+                granted_paths = self.granted_paths[fingerprint]
+                for granted_path in granted_paths:
+                    if path != granted_path and is_subdir(path, granted_path):
+                        granted_paths.remove(granted_path)
+                        granted_paths.add(path)
+                        break
+                else:
+                    granted_paths.add(path)
+    
+    def get_key(self, path):
+        """ path is granted by any self.keys """
+        selected = None
+        selected_min_path = None
+        for fingerprint, granted_paths in self.granted_paths.items():
+            min_path = None
+            for granted_path in granted_paths:
+                if granted_path == '/':
+                    return self.keys[fingerprint]
+                elif is_subdir(path, granted_path):
+                    if min_path is None or min_path > len(granted_path.split(os.sep)):
+                        min_path = len(granted_path.split(os.sep))
+            if min_path is not None and (selected_min_path is None or min_path < selected_min_path):
+                selected = fingerprint
+                selected_min_path = min_path
+        if selected:
+            return self.keys[selected]
+        return None
+    
+    def get_keys(self, path='/', by_dir=False):
+        result = defaultdict(set)
+        for npath, node in self.paths.items():
+            if npath.endswith('/.keys') and is_subdir(npath, path):
+                keys = node.entry.read_keys()
+                for fingerprint, key in keys.items():
+                    if by_dir:
+                        result[npath].add(fingerprint)
+                    else:
+                        result[fingerprint].add(npath)
+        return result
+    
+    def get(self, path):
+        try:
+            node = self.paths[path]
+        except KeyError:
+            raise exceptions.DoesNotExist(path)
+        return node
+    
+    def do_action(self, parent, action, path, *content):
+        key = self.get_key(path)
+        if key is None:
+            raise exceptions.PermissionDenied(path)
+        args = content + (key,)
+        entry = action(parent.entry, path, *args)
+        node = ViewNode(entry)
+        self.paths[path] = node
+        return node
+    
+    def mkdir(self, path):
+        path = os.path.normpath(path)
+        if self.paths.get(path):
+            raise exceptions.Exists(path)
+        parent = self.get(os.path.dirname(path))
+        self.do_action(parent, self.log.mkdir, path)
+    
+    def write(self, path, content):
+        path = os.path.normpath(path)
+        try:
+            parent = self.get(path)
+        except exceptions.DoesNotExist:
+            parent = self.get(os.path.dirname(path))
+        self.do_action(parent, self.log.write, path, content)
+    
+    def delete(self, path):
+        path = os.path.normpath(path)
+        parent = self.get(path)
+        self.do_action(parent, self.log.delete, path)
+    
+    def grant(self, path, key):
+        path = os.path.normpath(path)
+        keys_path = os.path.join(path, '.keys')
+        content = key.oneliner() + '\n'
+        try:
+            parent = self.get(keys_path)
+        except exceptions.DoesNotExist:
+            parent = self.get(path)
+        else:
+            content = parent.entry.content + content
+        self.do_action(parent, self.log.write, keys_path, content)
+    
+    def revoke(self, path, fingerprint):
+        keypaths = self.get_keys(path)[fingerprint]
+        # Remove key from keypaths
+        for path in keypaths:
+            parent = self.get(path)
+            keys = parent.entry.read_keys()
+            content = ''
+            for key in keys:
+                if key.fingerprint != fingerprint:
+                    content += key.oneliner() + '\n'
+            self.do_action(parent, self.log.write, path, content)
+        
+        # Get Higher paths
+        selected = set()
+        for path in keypaths:
+            path = os.path.dirname(path)  # remove .keys
+            for spath in selected:
+                if is_subdir(path, spath):
+                    selected.remove(spath)
+                    selected.add(path)
+            if path not in selected:
+                selected.add(path)
+        # Confirm valid state for all affected nodes
+        for path, node in self.path.items():
+            for spath in selected:
+                if is_subdir(path, spath) and path not in keypaths:
+                    break
+            else:
+                continue
+            if node.entry.fingerprint == fingerprint:
+                if node.entry.action == LogEntry.DELETE:
+                    self.do_action(node, self.log.delete, path)
+                elif node.entry.action == LogEntry.WRITE:
+                    self.do_action(node, self.log.write, path, node.entry.content)
+                elif node.entry.action == LogEntry.MKDIR:
+                    pass
+                    # TODO if mkdir: lookup also for childs
