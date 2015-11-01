@@ -21,6 +21,9 @@ class Log(object):
     root_cluster = None
     
     def __str__(self):
+        return self.print_tree()
+    
+    def __repr__(self):
         return self.logpath
     
     def __init__(self, logpath):
@@ -28,27 +31,48 @@ class Log(object):
         self.entries = {}
         self.entries_by_parent = defaultdict(list)
     
+    def print_tree(self, entry=None, indent='', view=None, bold=False):
+        if entry is None:
+            entry = self.root
+        ret = repr(entry) + '\n'
+        if view:
+            node = view.get(entry.path)
+            if node and node.entry.hash == entry.hash:
+                ret = '*' + ret
+                if bold:
+                    ret = '\033[1m\033[92m' + ret + '\033[0m'
+        childs = self.entries_by_parent[entry.hash]
+        if not childs:
+            return ret
+        for child in childs[:-1]:
+            ret += indent + '  ├─'
+            ret += self.print_tree(child, indent + '  │ ', view, bold)
+        child = childs[-1]
+        ret += indent + '  └─'
+        ret += self.print_tree(child, indent + '    ', view, bold)
+        return ret
+    
     def encode(self, entry):
         content = entry.content
         if content:
             content = zlib.compress(entry.content.encode())
             content = binascii.b2a_base64(content).decode().rstrip()
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
-        return ' '.join(map(str, (entry.time, entry.parent_hash, entry.fingerprint, entry.action, entry.path, content, signature)))
+        return ' '.join(map(str, (entry.hash, entry.parent_hash, entry.time, entry.fingerprint, entry.action, entry.path, content, signature)))
     
     def decode(self, line):
-        time, parent_hash, fingerprint, action, path, content, signature = line.split(' ')
+        hash, parent_hash, time, fingerprint, action, path, content, signature = line.split(' ')
         if content:
             content = binascii.a2b_base64(content.encode())
             content = zlib.decompress(content).decode()
         signature = binascii.a2b_base64(signature.encode())
         time = int(time)
-        return LogEntry(parent_hash, action, path, content,
+        return LogEntry(self, parent_hash, action, path, content,
             time=time, fingerprint=fingerprint, signature=signature)
     
     def load(self):
         """ loads logfile """
-        self.entries_by_parent = defaultdict(list)
+        self.entries_by_parent.clear()
         self.entries = {}
         root = None
         root_keys = None
@@ -79,7 +103,7 @@ class Log(object):
             parent = self.entries[parent_hash]
             for child in childs:
                 child.parent = parent
-            parent.childs = childs
+#            parent.childs = childs
         return self.root
     
     def bootstrap(self, keys, ips):
@@ -92,11 +116,9 @@ class Log(object):
     
     def do_action(self, parent, action, path, key, *content):
         path = os.path.normpath(path)
-        entry = LogEntry(parent, action, path, *content)
+        entry = LogEntry(self, parent, action, path, *content)
         entry.sign(key)
         self.validate(entry)
-        if parent is not None:
-            parent.childs.append(entry)
         self.entries[entry.hash] = entry
         self.entries_by_parent[entry.parent_hash].append(entry)
         self.save(entry)
@@ -132,9 +154,12 @@ class LogEntry(object):
     ROOT_PARENT_HASH = '0'*32
     
     def __str__(self):
-        return '<%s %s>' % (self.action, self.path)
+        return '{%s %s %s %s}' % (self.action, self.path, self.hash, self.content.replace('\n', '\\n')[:32])
     
-    def __init__(self, parent, action, path, *content, **kwargs):
+    def __repr__(self):
+        return str(self)
+    
+    def __init__(self, log, parent, action, path, *content, **kwargs):
         self.time = kwargs.get('time') or int(time.time())
         if isinstance(parent, LogEntry):
             self.parent_hash = parent.hash
@@ -143,13 +168,17 @@ class LogEntry(object):
             self.parent_hash = parent or self.ROOT_PARENT_HASH
         self.action = action
         self.path = path
+        self.log = log
         self.hash = kwargs.get('hash')
         self.fingerprint = kwargs.get('fingerprint')
         self.signature = kwargs.get('signature')
         self.content = '' if not content else content[0]
-        self.childs = []
         if not self.hash and self.signature:
             self.hash = self.get_hash()
+    
+    @property
+    def childs(self):
+        return self.log.entries_by_parent[self.hash]
     
     def clean(self):
         """ cleans log entry """

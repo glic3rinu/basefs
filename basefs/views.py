@@ -5,10 +5,25 @@ from collections import defaultdict
 from basefs import exceptions
 from basefs.utils import Candidate, is_subdir
 
+
 class ViewNode(object):
-    def __init__(self, entry):
+    def __str__(self, indent=''):
+        ret = repr(self) + '\n'
+        if not self.childs:
+            return ret
+        for child in self.childs[:-1]:
+            ret += indent + '  ├─'
+            ret += child.__str__(indent + '  │ ')
+        ret += indent + '  └─'
+        ret += self.childs[-1].__str__(indent + '    ')
+        return ret
+    
+    def __repr__(self):
+        return '<%s %s %s>' % (self.entry.action, self.entry.path, self.entry.content.replace('\n', '\\n')[:32])
+    
+    def __init__(self, entry, childs=None):
         self.entry = entry
-        self.childs = []
+        self.childs = childs or []
     
     def mkdir(self, path):
         self.entry.mkdir(path)
@@ -58,6 +73,8 @@ class View(object):
         paths = {
             entry.path: node
         }
+        if state.action == entry.DELETE:
+            return score, state, paths, node
         childs = defaultdict(list)
         for child in entry.childs:
             # same path branch has been already inspected
@@ -67,7 +84,7 @@ class View(object):
         key_entries = childs.pop(keys_path, None)
         if key_entries:
             # lookup for keys
-            key_score, key_state = entry.get_branch_state(copy.deepcopy(keys), *key_entries)
+            key_score, key_state = entry.get_branch_state(copy.copy(keys), *key_entries)
             if key_state:
                 score += key_score
                 key_node = ViewNode(key_state)
@@ -77,20 +94,17 @@ class View(object):
                 self.update_granted_paths(entry.path, keys)
                 keys.update(keys)
         for path, childs in childs.items():
-            action = childs[0].action
             selected = None
             for child in childs:
                 # MKDIR /hola, MKDIR /hola, WRITE /hola
-                if action == entry.WRITE:
-                    child_score, child_state = entry.get_branch_state(copy.deepcopy(keys), *childs)
-                    child_node = ViewNode(child_state)
-                    child_paths = {
-                        path: child_node
-                    }
-                else:
-                    # MKDIR
-                    child_score, child_state, child_paths, child_node = self.rec_build(child, copy.deepcopy(keys))
+                child_score, child_state = entry.get_branch_state(copy.copy(keys), *childs)
+                child_node = ViewNode(child_state)
+                child_paths = {
+                    path: child_node
+                }
                 if child_state:
+                    if child_state.action == entry.MKDIR:
+                        child_score, child_state, child_paths, child_node = self.rec_build(child_state, copy.copy(keys))
                     candidate = Candidate(score=child_score, entry=child)
                     if not selected or candidate > selected:
                         selected = candidate
@@ -160,13 +174,18 @@ class View(object):
         entry = action(parent.entry, path, *args)
         node = ViewNode(entry)
         self.paths[path] = node
+        # TODO grandparent
+        parent.childs.append(node)
         return node
     
     def mkdir(self, path):
         path = os.path.normpath(path)
-        if self.paths.get(path):
-            raise exceptions.Exists(path)
-        parent = self.get(os.path.dirname(path))
+        parent = self.paths.get(path)
+        if parent:
+            if parent.entry.action != parent.entry.DELETE:
+                raise exceptions.Exists(path)
+        else:
+            parent = self.get(os.path.dirname(path))
         self.do_action(parent, self.log.mkdir, path)
     
     def write(self, path, content):
@@ -177,10 +196,19 @@ class View(object):
             parent = self.get(os.path.dirname(path))
         self.do_action(parent, self.log.write, path, content)
     
+    def rec_delete_paths(self, node):
+        self.paths.pop(node.entry.path)
+        for child in node.childs:
+            self.rec_delete_paths(child)
+        node.childs = []
+    
     def delete(self, path):
         path = os.path.normpath(path)
         parent = self.get(path)
-        self.do_action(parent, self.log.delete, path)
+        if parent.entry.action == parent.entry.MKDIR:
+            for child in parent.childs:
+                self.rec_delete_paths(child)
+        node = self.do_action(parent, self.log.delete, path)
     
     def grant(self, path, key):
         path = os.path.normpath(path)
@@ -217,6 +245,7 @@ class View(object):
             if path not in selected:
                 selected.add(path)
         # Confirm valid state for all affected nodes
+        # TODO rec revoke from node instead of this shit
         for path, node in self.path.items():
             for spath in selected:
                 if is_subdir(path, spath) and path not in keypaths:
