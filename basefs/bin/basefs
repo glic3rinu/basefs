@@ -21,15 +21,38 @@ from basefs.views import View
 default_keypath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'id_ec')
 default_logpath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'log')
 
+
+def file_exists(parser, arg, name='The', exec=None):
+    if not os.path.exists(arg):
+        parser.error("%s file %s does not exist" % (name, arg))
+    elif not os.path.isfile(arg):
+        parser.error("%s path %s is not a file" % (name, arg))
+    elif exec is True and not os.access(handler, os.X_OK):
+        parser.error("%s %s has no execution permissions\n" % (name, arg))
+    else:
+        return arg
+
+
+def dir_exists(parser, arg, name='The'):
+    if not os.path.exists(arg):
+        parser.error("%s dir %s does not exist" % (name, arg))
+    elif not os.path.isdir(arg):
+        parser.error("%s path %s is not a directory" % (name, arg))
+    else:
+        return arg
+
+
 mount_parser = argparse.ArgumentParser(description='Mount an existing filesystem', prog='basefs mount')
 
-
 def mount():
-    mount_parser.add_argument('logpath', nargs='?', default=default_logpath)
-    mount_parser.add_argument('mountpoint')
+    mount_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        type=lambda v: file_exists(mount_parser, v, name='logpath'))
+    mount_parser.add_argument('mountpoint',
+        type=lambda v: dir_exists(mount_parser, v, name='mountpoint'))
     mount_parser.add_argument('-k', '--keys', dest='keypath',
         default=default_keypath,
-        help='Path to the EC private key. %s by default. use genkey for creating one.' % default_keypath)
+        help='Path to the EC private key. %s by default. use genkey for creating one.' % default_keypath,
+        type=lambda v: file_exists(mount_parser, v, name='keypath'))
     mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
         help='Custom handler script for filesystem update notifications')
     mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -41,12 +64,6 @@ def mount():
     logpath = args.logpath
     keypath = args.keypath
     mountpoint = args.mountpoint
-    if not os.path.exists(mountpoint):
-        sys.stderr.write("Error: mountpoint %s does not exist.\n" % mountpoint)
-        sys.exit(4)
-    if not os.path.isfile(keypath):
-        sys.stderr.write("Error: keypath %s does not exist.\n" % keypath)
-        sys.exit(2)
     if args.serf:
         context = {
             'script': os.path.realpath(__file__),
@@ -63,7 +80,7 @@ def mount():
 
 
 bootstrap_parser = argparse.ArgumentParser(
-    description='Creates a new filesystem by generating a log file containing all the necessary information',
+    description='Create a new self-contained filesystem.',
     prog='basefs bootstrap')
 
 
@@ -104,18 +121,13 @@ handler_parser = argparse.ArgumentParser(description='Run as Serf handler', prog
 
 def handler():
     handler_parser.add_argument('logpath', nargs='?', default=default_logpath,
-        help='Path to the basefs log file, uses %s by default.' % default_logpath)
+        help='Path to the basefs log file, uses %s by default.' % default_logpath,
+        type=lambda v: file_exists(handler_parser, v, name='logpath'))
     handler_parser.add_argument('--fs-handler', dest='handler', nargs=1,
-        help='custom handler, used for executing custom actions when a path is updated.')
+        help='custom handler, used for executing custom actions when a path is updated.',
+        type=lambda v: file_exists(handler_parser, v, name='fs handler', exec=True))
     args = handler_parser.parse_args()
     handler = args.handler[0] if args.handler else None
-    if handler:
-        if not os.path.isfile(handler):
-            sys.stderr.write("Error: fs handler %s does not exist or is not a file\n" % handler)
-            sys.exit(2)
-        elif not os.access(handler, os.X_OK):
-            sys.stderr.write("Error: fs handler %s has no execution permissions\n" % handler)
-            sys.exit(3)
     event = os.environ.get('SERF_EVENT')
     user_event = os.environ.get('SERF_USER_EVENT')
     if event == 'user' and user_event == 'logentry':
@@ -177,7 +189,8 @@ lskeys_parser = argparse.ArgumentParser(description='List keys and their directo
 
 def lskeys():
     lskeys_parser.add_argument('logpath', nargs='?', default=default_logpath,
-        help='Path to the basefs log file, uses %s by default.' % default_logpath)
+        help='Path to the basefs log file, uses %s by default.' % default_logpath,
+        type=lambda v: file_exists(lskeys_parser, v, name='logpath'))
     lskeys_parser.add_argument('-p', '--path', dest='path', default='/',
         help='Base path.')
     lskeys_parser.add_argument('-d', '--by-dir', dest='by_dir', action='store_true',
@@ -192,6 +205,28 @@ def lskeys():
         sys.stdout.write(key + '\n')
         for value in values:
             sys.stdout.write('    ' + value + '\n')
+
+
+logtree_parser = argparse.ArgumentParser(
+    description='Show a log file using a tree structure.', prog='basefs logtree')
+
+
+def logtree():
+    logtree_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        help='Path to the basefs log file, uses %s by default.' % default_logpath,
+        type=lambda v: file_exists(logtree_parser, v, name='logpath'))
+    logtree_parser.add_argument('-a', '--ascii', dest='ascii', action='store_true',
+        help='use ASCII line drawing characters')
+    logtree_parser.add_argument('-c', '--color', dest='color', action='store_true',
+        help='use terminal coloring')
+    args = logtree_parser.parse_args()
+    if args.ascii:
+        raise NotImplementedError
+    log = Log(args.logpath)
+    log.load()
+    view = View(log)
+    view.build()
+    sys.stdout.write(log.print_tree(view=view, color=args.color))
 
 
 def help():
@@ -219,6 +254,7 @@ methods = OrderedDict([
     ('bootstrap', (bootstrap, bootstrap_parser)),
     ('genkey', (genkey, genkey_parser)),
     ('lskeys', (lskeys, lskeys_parser)),
+    ('logtree', (logtree, logtree_parser)),
     ('help', (help, None)),
 ])
 
@@ -235,7 +271,6 @@ if __name__ == '__main__':
             help()
             sys.exit(1)
     else:
-        sys.stdout.write("Error: missing arguments\n")
         help()
         sys.exit(1)
     method()

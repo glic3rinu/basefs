@@ -31,7 +31,7 @@ class Log(object):
         self.entries = {}
         self.entries_by_parent = defaultdict(list)
     
-    def print_tree(self, entry=None, indent='', view=None, bold=False):
+    def print_tree(self, entry=None, indent='', view=None, color=False):
         if entry is None:
             entry = self.root
         ret = repr(entry) + '\n'
@@ -39,17 +39,17 @@ class Log(object):
             node = view.get(entry.path)
             if node and node.entry.hash == entry.hash:
                 ret = '*' + ret
-                if bold:
+                if color:
                     ret = '\033[1m\033[92m' + ret + '\033[0m'
         childs = self.entries_by_parent[entry.hash]
         if not childs:
             return ret
         for child in childs[:-1]:
             ret += indent + '  ├─'
-            ret += self.print_tree(child, indent + '  │ ', view, bold)
+            ret += self.print_tree(child, indent + '  │ ', view, color)
         child = childs[-1]
         ret += indent + '  └─'
-        ret += self.print_tree(child, indent + '    ', view, bold)
+        ret += self.print_tree(child, indent + '    ', view, color)
         return ret
     
     def encode(self, entry):
@@ -85,6 +85,7 @@ class Log(object):
                     self.validate(entry)
                 except KeyError:
                     # missing key
+                    print('Missing key', entry.hash)
                     pass
                     # TODO readkeys now???
                 # 0: root, 1: .keys, 2: .cluster
@@ -102,7 +103,7 @@ class Log(object):
                 continue
             parent = self.entries[parent_hash]
             for child in childs:
-                child.parent = parent
+                child.parent_hash = parent_hash
 #            parent.childs = childs
         return self.root
     
@@ -154,7 +155,9 @@ class LogEntry(object):
     ROOT_PARENT_HASH = '0'*32
     
     def __str__(self):
-        return '{%s %s %s %s}' % (self.action, self.path, self.hash, self.content.replace('\n', '\\n')[:32])
+        content = self.content.replace('\n', '\\n')
+        tail = '...' if len(content) > 32 else ''
+        return '{%s %s %s %s%s %s}' % (self.action, self.path, self.hash, content[:32], tail, self.fingerprint)
     
     def __repr__(self):
         return str(self)
@@ -163,7 +166,6 @@ class LogEntry(object):
         self.time = kwargs.get('time') or int(time.time())
         if isinstance(parent, LogEntry):
             self.parent_hash = parent.hash
-            self.parent = parent
         else:
             self.parent_hash = parent or self.ROOT_PARENT_HASH
         self.action = action
@@ -177,7 +179,14 @@ class LogEntry(object):
             self.hash = self.get_hash()
     
     @property
+    def parent(self):
+        if self.parent_hash != self.ROOT_PARENT_HASH:
+            return self.log.entries[self.parent_hash]
+    
+    @property
     def childs(self):
+        if hasattr(self, '_childs'):
+            return self._childs
         return self.log.entries_by_parent[self.hash]
     
     def clean(self):
@@ -185,6 +194,21 @@ class LogEntry(object):
         self.path = os.path.normpath(self.path)
         if self.action not in self.ACTIONS:
             raise ValidationError("'%s' not a valid action type" % self.action)
+        if self.parent:
+            if self.parent.action == self.MKDIR:
+                if self.action in (self.MKDIR, self.WRITE):
+                    if self.parent.path != os.path.dirname(self.path):
+                        raise ValidationError("%s to parent path '%s' when is not the inmediate superior of '%s' ('%s')"
+                            % (self.action, self.parent.path, self.path, os.path.dirname(self.path)))
+            elif self.parent.action == self.WRITE:
+                if self.action == self.MKDIR:
+                    raise ValidationError("'MKDIR %s' after 'WRITE %s'" % (self.path, self.parent.path))
+                elif self.parent.path != self.path:
+                    raise ValidationError("%s to parent path '%s' when is not the same as '%s'"
+                        % (self.action, self.parent.path, self.path))
+            if self.action == self.DELETE and self.parent.path != self.path:
+                raise ValidationError("%s to parent path '%s' when is not the same as '%s'"
+                    % (self.action, self.parent.path, self.path))
         if os.path.basename(self.path) == '.keys':
             if self.action is self.MKDIR:
                 raise ValidationError(".keys can not be a directory.")
@@ -194,28 +218,40 @@ class LogEntry(object):
         if not re.match(r'^[0-9a-f]{32}$', self.parent_hash):
             raise ValidationError("%s not a valid md5 hash" % self.parent_hash)
     
-    def get_valid_key(self, keys, last_keys):
-        for fingerprint, key in itertools.chain(keys.items(), last_keys.items()):
+    def get_key(self, keys, last_keys):
+        for fingerprint, key in keys.items():
             if self.fingerprint == fingerprint:
-                return key
+                return key, True
+        for fingerprint, key in last_keys.items():
+            if self.fingerprint == fingerprint:
+                return key, False
     
-    def rec_get_branch_state(self, score, path, keys, last):
+    def rec_get_branch_state(self, score, path, keys, last, pending):
         """ gets last blockchain entry """
         last_keys = {}
         # Needed for processing .key chain
         if last and os.path.basename(last.path) == '.keys':
             last_keys = last.read_keys()
-        key = self.get_valid_key(keys, last_keys)
+        key, high_key = self.get_key(keys, last_keys)
         if key:
-            # Is valid
-            # FIXME invalid keys folllowed by a valid one also should score!
-            score = Score(key) if score is None else (Score(key) + score)
+            _score = Score(key.fingerprint, high_keys=high_key)
+            if score:
+                score += _score
+            else:
+                score = _score
+            # account for revoked shit
+            for fingerprint in pending:
+                score += Score(fingerprint)
             last = self
+            del pending[:]
+        else:
+            # Maybe the key has been revoked, just store on pending for scoring if needed
+            pending.append(self.fingerprint)
         selected = None
         for child in self.childs:
             # needed for processing mkdir branches
             if child.path == path:
-                child_score, child_last = child.rec_get_branch_state(score, path, keys, last)
+                child_score, child_last = child.rec_get_branch_state(score, path, keys, last, pending)
                 if child_last is not None:
                     candidate = Candidate(score=child_score, entry=child)
                     if not selected or candidate > selected:
@@ -231,11 +267,11 @@ class LogEntry(object):
                 entry = entries[0]
             else:
                 entry = copy.copy(entries[0])
-                entry.childs = entries
+                entry._childs = entries
                 entry.is_mocked = True
         else:
             entry = self
-        score, last = entry.rec_get_branch_state(Score(), entry.path, keys, None)
+        score, last = entry.rec_get_branch_state(Score(), entry.path, keys, None, [])
         if getattr(last, 'is_mocked', False):
             return Score(), None
         last.ctime = entry.time
@@ -247,8 +283,6 @@ class LogEntry(object):
             line = line.strip()
             line = '-----BEGIN EC PRIVATE KEY-----\n' + line + '-----END EC PRIVATE KEY-----'
             key = Key.from_pem(line)
-            # TODO keys are singletones.....
-            key.add_path(self.path)
             keys[key.fingerprint] = key
         return keys
     
@@ -271,34 +305,32 @@ class LogEntry(object):
 
 # TODO count upper-class keys first (needed for key revokation)
 class Score(object):
-    """ allways growing datastructure """
+    """ allways growing datastructure
+    proof-of-stake: higher keys win """
     
-    def __init__(self, *keys):
-        self.keys = set()
-        self.weight = 0
-        self.length = 0
-        self._add_keys(keys)
+    def __str__(self):
+        return "keys: %s high: %s" % (len(self.keys), len(self.high_keys))
     
-    def _add_keys(self, keys):
-        path_length = lambda p: len(str.split(p, os.sep))
-        for key in keys:
-            if key not in self.keys:
-                self.keys.add(key)
-                self.length += 1
-                self.weight += min(map(path_length, key.paths))
-    
-    def __len__(self):
-        return self.length
+    def __init__(self, *keys, high_keys=False):
+        self.keys = set(keys)
+        self.high_keys = set(keys)
     
     def __add__(self, score):
-        self._add_keys(score.keys)
+        self.high_keys = self.high_keys.union(score.high_keys)
+        self.keys = self.keys.union(score.keys)
         return self
     
     def __gt__(self, score):
-        return len(self) > len(score) or (len(self) == len(score) and self.weight < score.weight)
+        self_high = len(self.high_keys)
+        score_high = len(score.high_keys)
+        return self_high > score_high or (self_high == score_high and len(self.keys) > len(score.keys))
     
     def __lt__(self, score):
-        return len(self) < len(score) or (len(self) == len(score) and self.weight > score.weight)
+        self_high = len(self.high_keys)
+        score_high = len(score.high_keys)
+        return self_high < score_high or (self_high == score_high and len(self.keys) < len(score.keys))
     
     def __eq__(self, score):
-        return len(self) == len(score) and self.weight == score.weight
+        self_high = len(self.high_keys)
+        score_high = len(score.high_keys)
+        return self_high == score_high and len(self.keys) == len(score.keys)

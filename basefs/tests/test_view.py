@@ -164,6 +164,15 @@ class ViewTests(unittest.TestCase):
         content = utils.random_ascii()
         view.write(file_path, content)
         self.assertEqual(content, view.get(file_path).entry.content)
+        view = View(self.log, self.root_key)
+        view.build()
+        view.write(file_path, content)
+        self.assertEqual(content, view.get(file_path).entry.content)
+        file_path = os.path.join(user_path, utils.random_ascii())
+        content = utils.random_ascii()
+        view.write(file_path, content)
+        self.assertEqual(content, view.get(file_path).entry.content)
+        self.rebuild(view)
     
     def test_revoke(self):
         view = View(self.log, self.root_key)
@@ -174,5 +183,42 @@ class ViewTests(unittest.TestCase):
         view.grant(home_path, key)
 #        print(view.get_keys())
     
-    # TODO test conflicts
-    # TODO logtest diff (str(log), str(log.load())
+    def test_dir_file_exists_conflict(self):
+        view = View(self.log, self.root_key)
+        view.build()
+        path = os.path.join(os.sep, utils.random_ascii())
+        content = utils.random_ascii()
+        view.write(path, content)
+        with self.assertRaises(exceptions.Exists):
+            view.mkdir(path)
+    
+    def test_branch_conflict(self):
+        view = View(self.log, self.root_key)
+        view.build()
+        home_path = os.path.join(os.sep, 'home-' + utils.random_ascii())
+        view.mkdir(home_path)
+        key = Key.generate()
+        view.grant(home_path, key)
+        view = View(self.log, key)
+        view.build()
+        parent_node = view.get(home_path)
+        user_path = os.path.join(home_path, 'user-' + utils.random_ascii())
+        max_hash = None
+        for ix in range(12):
+            content = 'content-' + utils.random_ascii(32)
+            entry = self.log.write(parent_node.entry, user_path, content, key)
+            max_hash = max(max_hash, entry.hash) if max_hash else entry.hash
+        view = View(self.log, self.root_key)
+        view.build()
+        self.assertEqual(self.log.entries[max_hash].content, view.get(user_path).entry.content)
+        content = 'content-' + utils.random_ascii(32)
+        self.log.write(parent_node.entry, user_path, content, self.root_key)
+        print('now')
+        view.build()
+        print(self.log.print_tree())
+        self.assertEqual(content, view.get(user_path).entry.content)
+        alt_content = 'content-' + utils.random_ascii(32)
+        self.log.write(parent_node.entry, user_path, alt_content, key)
+        self.assertEqual(content, view.get(user_path).entry.content)
+        
+        

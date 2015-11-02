@@ -13,6 +13,6 @@ def bootstrap(logpath):
     return log, root_key
 
 
-def random_ascii(length=32):
+def random_ascii(length=5):
     return ''.join([random.SystemRandom().choice(string.hexdigits) for i in range(0, length)]).lower()
 

@@ -49,17 +49,19 @@ class View(object):
         self.keys = {key.fingerprint: key for key in keys}
         self.granted_paths = defaultdict(set)
     
+    def get(self, path):
+        return self.paths[path]
+    
     def build(self):
         if not self.log.root_keys:
             raise RuntimeError("Log %s not loaded" % self.log.logpath)
         keys = self.log.root_keys.read_keys()
+        for key in keys.values()
+            key.upper_path = os.sep
         __, __, paths, root = self.rec_build(self.log.root, keys)
         self.paths = paths
         self.root = root
         return self.root
-    
-    def get(self, path):
-        return self.paths[path]
     
     def rec_build(self, entry, keys):
         # TODO copy.copy instead of deepcopy
@@ -90,14 +92,16 @@ class View(object):
                 key_node = ViewNode(key_state)
                 node.childs.append(key_node)
                 paths[key_state.path] = key_node
-                keys = key_state.read_keys()
-                self.update_granted_paths(entry.path, keys)
-                keys.update(keys)
+                state_keys = key_state.read_keys()
+                self.update_granted_paths(entry.path, state_keys)
+                for k, v in state.keys():
+                    if k not in keys:
+                        v.upper_path = entry.path
+                        keys[k] = v
         for path, childs in childs.items():
             selected = None
             for child in childs:
-                # MKDIR /hola, MKDIR /hola, WRITE /hola
-                child_score, child_state = entry.get_branch_state(copy.copy(keys), *childs)
+                child_score, child_state = entry.get_branch_state(copy.copy(keys), child)
                 child_node = ViewNode(child_state)
                 child_paths = {
                     path: child_node
@@ -186,7 +190,7 @@ class View(object):
                 raise exceptions.Exists(path)
         else:
             parent = self.get(os.path.dirname(path))
-        self.do_action(parent, self.log.mkdir, path)
+        return self.do_action(parent, self.log.mkdir, path)
     
     def write(self, path, content):
         path = os.path.normpath(path)
@@ -194,7 +198,7 @@ class View(object):
             parent = self.get(path)
         except exceptions.DoesNotExist:
             parent = self.get(os.path.dirname(path))
-        self.do_action(parent, self.log.write, path, content)
+        return self.do_action(parent, self.log.write, path, content)
     
     def rec_delete_paths(self, node):
         self.paths.pop(node.entry.path)
@@ -208,7 +212,7 @@ class View(object):
         if parent.entry.action == parent.entry.MKDIR:
             for child in parent.childs:
                 self.rec_delete_paths(child)
-        node = self.do_action(parent, self.log.delete, path)
+        return self.do_action(parent, self.log.delete, path)
     
     def grant(self, path, key):
         path = os.path.normpath(path)
@@ -220,7 +224,7 @@ class View(object):
             parent = self.get(path)
         else:
             content = parent.entry.content + content
-        self.do_action(parent, self.log.write, keys_path, content)
+        return self.do_action(parent, self.log.write, keys_path, content)
     
     def revoke(self, path, fingerprint):
         keypaths = self.get_keys(path)[fingerprint]
@@ -232,7 +236,7 @@ class View(object):
             for key in keys:
                 if key.fingerprint != fingerprint:
                     content += key.oneliner() + '\n'
-            self.do_action(parent, self.log.write, path, content)
+            ret = self.do_action(parent, self.log.write, path, content)
         
         # Get Higher paths
         selected = set()
@@ -260,3 +264,4 @@ class View(object):
                 elif node.entry.action == LogEntry.MKDIR:
                     pass
                     # TODO if mkdir: lookup also for childs
+        return ret
