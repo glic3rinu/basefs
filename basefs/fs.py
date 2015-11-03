@@ -7,29 +7,31 @@ import stat
 from fuse import FuseOSError, Operations
 from serfclient.client import SerfClient
 
+from . import exceptions
 from .keys import Key
 from .logs import Log
 from .views import View
 
 
 class FileSystem(Operations):
-    def __init__(self, logpath, keypath):
+    def __init__(self, logpath, keypath, serf=True):
         self.logpath = logpath
         self.log = Log(logpath)
         self.key = Key.load(keypath)
         self.view = View(self.log, self.key)
         self.load()
-        self.serf = SerfClient()
-        node = self.get_node('/.cluster')
-        type(self.log).serf = self.serf
-        for line in node.entry.content.splitlines():
-            ip = line.strip()
-            if ip:
-                result = self.serf.join(line.strip())
-                if not result.head[b'Error']:
-                    break
-        else:
-            raise RuntimeError("Couldn't connect to serf cluster.")
+        if serf:
+            self.serf = SerfClient()
+            node = self.get_node('/.cluster')
+            type(self.log).serf = self.serf
+            for line in node.entry.content.splitlines():
+                ip = line.strip()
+                if ip:
+                    result = self.serf.join(line.strip())
+                    if not result.head[b'Error']:
+                        break
+            else:
+                raise RuntimeError("Couldn't connect to serf cluster.")
     
     def load(self):
         print('load')
@@ -42,8 +44,13 @@ class FileSystem(Operations):
         mtime = os.stat(self.logpath).st_mtime
         if mtime != self.log_mtime:
             self.load()
-        path = os.path.normpath(path)
-        return self.view.paths[path]
+        try:
+            node = self.view.get(path)
+        except exceptions.DoesNotExist:
+            raise FuseOSError(errno.ENOENT)
+        if node.entry.action == node.entry.DELETE:
+            raise FuseOSError(errno.ENOENT)
+        return node
     
     def access(self, path, mode):
         print('access', path, mode)
@@ -87,10 +94,10 @@ class FileSystem(Operations):
 #        return dict((key, getattr(st, key)) for key in ())
 
     def readdir(self, path, fh):
-        print('readdir')
+        print('readdir', path, fh)
         node = self.get_node(path)
         dirs = ['.', '..']
-        for d in itertools.chain(dirs, [os.path.basename(child.entry.path) for child in node.childs]):
+        for d in itertools.chain(dirs, [os.path.basename(child.entry.path) for child in node.childs if child.entry.action != child.entry.DELETE]):
             yield d
 
     def readlink(self, path):
@@ -109,13 +116,13 @@ class FileSystem(Operations):
 
     def rmdir(self, path):
         print('rmdir', path)
-        node = self.get_node(path)
-        return node.delete()
+        self.view.delete(path)
 
     def mkdir(self, path, mode):
         print('mkdir', path, mode)
-        parent_node = self.get_node(os.path.dirname(path))
-        return parent_node.mkdir(os.path.normpath(path))
+#        parent_node = self.get_node(os.path.dirname(path))
+        self.view.mkdir(path)
+        return 0
 
     def statfs(self, path):
         print('statfs', path)
@@ -127,6 +134,7 @@ class FileSystem(Operations):
 
     def unlink(self, path):
         print('unlink', path)
+        self.view.delete(path)
 #        return os.unlink(self._full_path(path))
 
     def symlink(self, name, target):
@@ -151,15 +159,19 @@ class FileSystem(Operations):
     def open(self, path, flags):
         print('open', path, flags)
         node = self.get_node(path)
-        return uuid.UUID(node.entry.id).int
+        return int(node.entry.hash, 16)
+        
+#        return uuid.UUID(node.entry.id).int
         
 #        full_path = self._full_path(path)
 #        return os.open(full_path, flags)
 
     def create(self, path, mode, fi=None):
         print('create', path, mode, fi)
-        node = self.get_node(os.path.dirname(path))
-        node.create(path)
+#        node = self.get_node(os.path.dirname(path))
+#        node.create(path)
+        # Write an empty file seems stupid, but touch() only calls create.
+        self.view.write(path, '')
         return 1
 #        full_path = self._full_path(path)
 #        return os.open(full_path, os.O_WRONLY | os.O_CREAT, mode)
@@ -167,13 +179,14 @@ class FileSystem(Operations):
     def read(self, path, length, offset, fh):
         print('read', path, length, offset, fh)
         node = self.get_node(path)
-        return node.entry.decode()
-        return node.read(length, offset, fh)
+        return node.entry.content.encode()
 
     def write(self, path, buf, offset, fh):
         print('write', path, buf, offset, fh)
-        node = self.get_node(path)
-        node.write(buf)
+#        node = self.get_node(path)
+#        node.write(buf)
+        self.view.write(path, buf.decode())
+        return len(buf)
         # TODO seek
         # TODO FS.get_path() and do os.path.normpath there
 
@@ -182,17 +195,19 @@ class FileSystem(Operations):
 #        full_path = self._full_path(path)
 #        with open(full_path, 'r+') as f:
 #            f.truncate(length)
+#        return 0
 
     def flush(self, path, fh):
         print('flush', path, fh)
-        return 0
+#        return None
 #        return os.fsync(fh)
 
     def release(self, path, fh):
         print('release', path, fh)
-        return fh
+#        return None
 #        return os.close(fh)
 
     def fsync(self, path, fdatasync, fh):
         print('fsync', path, fdatasync, fh)
 #        return self.flush(path, fh)
+#        return None
