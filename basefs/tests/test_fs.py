@@ -93,4 +93,3 @@ class FSTests(unittest.TestCase):
             os.stat(self.full_path(file_path))
         with self.assertRaises(FileNotFoundError):
             os.stat(self.full_path(home_path))
-        
