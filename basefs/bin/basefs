@@ -42,7 +42,10 @@ def dir_exists(parser, arg, name='The'):
         return arg
 
 
-mount_parser = argparse.ArgumentParser(description='Mount an existing filesystem', prog='basefs mount')
+mount_parser = argparse.ArgumentParser(
+    description='Mount an existing filesystem',
+    prog='basefs mount')
+
 
 def mount():
     mount_parser.add_argument('logpath', nargs='?', default=default_logpath,
@@ -51,7 +54,7 @@ def mount():
         type=lambda v: dir_exists(mount_parser, v, name='mountpoint'))
     mount_parser.add_argument('-k', '--keys', dest='keypath',
         default=default_keypath,
-        help='Path to the EC private key. %s by default. use genkey for creating one.' % default_keypath,
+        help='Path to the EC private key. %s by default. Use genkey for creating one.' % default_keypath,
         type=lambda v: file_exists(mount_parser, v, name='keypath'))
     mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
         help='Custom handler script for filesystem update notifications')
@@ -116,7 +119,9 @@ def bootstrap():
     sys.exit(0)
 
 
-handler_parser = argparse.ArgumentParser(description='Run as Serf handler', prog='basefs handler')
+handler_parser = argparse.ArgumentParser(
+    description='Run as Serf handler',
+    prog='basefs handler')
 
 
 def handler():
@@ -158,7 +163,10 @@ def handler():
     sys.exit()
 
 
-genkey_parser = argparse.ArgumentParser(description='Generate a new EC private key', prog='basefs genkey')
+genkey_parser = argparse.ArgumentParser(
+    description='Generate a new EC private key',
+    prog='basefs genkey')
+
 
 def genkey():
     genkey_parser.add_argument('keypath', nargs='?',
@@ -184,7 +192,9 @@ def genkey():
     sys.exit()
 
 
-lskeys_parser = argparse.ArgumentParser(description='List keys and their directories.', prog='basefs lskeys')
+lskeys_parser = argparse.ArgumentParser(
+    description='List keys and their directories.',
+    prog='basefs lskeys')
 
 
 def lskeys():

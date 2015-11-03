@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 from collections import defaultdict
 
 from basefs import exceptions
@@ -19,28 +20,13 @@ class ViewNode(object):
         return ret
     
     def __repr__(self):
-        return '<%s %s %s>' % (self.entry.action, self.entry.path, self.entry.content.replace('\n', '\\n')[:32])
+        content = self.entry.content.replace('\n', '\\n')
+        return '<%s %s %s %s>' % (self.entry.action, self.entry.path, content[:32], self.entry.hash)
     
-    def __init__(self, entry, childs=None):
+    def __init__(self, entry, childs=None, parent=None):
         self.entry = entry
         self.childs = childs or []
-    
-    def mkdir(self, path):
-        self.entry.mkdir(path)
-        self.build(self.log)
-    
-    def write(self, content):
-        parent = getattr(self, 'future_parent', self)
-        parent.entry.write(self.entry.path, content)
-        parent.build(parent.log)
-    
-    def create(self, path):
-        entry = type(self.log)(self.entry, LogEntry.WRITE, path, '')
-        entry.ctime = int(time.time())
-        entry.time = entry.ctime
-        node = View(entry)
-        node.future_parent = self
-        self.paths[path] = node
+        self.parent = parent
 
 
 class View(object):
@@ -56,15 +42,15 @@ class View(object):
         if not self.log.root_keys:
             raise RuntimeError("Log %s not loaded" % self.log.logpath)
         keys = self.log.root_keys.read_keys()
-        for key in keys.values()
+        self.granted_paths.clear()
+        for key in keys.values():
             key.upper_path = os.sep
         __, __, paths, root = self.rec_build(self.log.root, keys)
         self.paths = paths
         self.root = root
         return self.root
     
-    def rec_build(self, entry, keys):
-        # TODO copy.copy instead of deepcopy
+    def rec_build(self, entry, keys,):
         if entry.action != entry.MKDIR:
             raise exceptions.IntegrityError("WTF are you calling rec_build on?")
         # Lookup for delete+mkdir pattern
@@ -86,35 +72,40 @@ class View(object):
         key_entries = childs.pop(keys_path, None)
         if key_entries:
             # lookup for keys
-            key_score, key_state = entry.get_branch_state(copy.copy(keys), *key_entries)
+            key_score, key_state = entry.get_branch_state(keys, *key_entries)
             if key_state:
                 score += key_score
                 key_node = ViewNode(key_state)
                 node.childs.append(key_node)
+                key_node.parent = node
                 paths[key_state.path] = key_node
                 state_keys = key_state.read_keys()
                 self.update_granted_paths(entry.path, state_keys)
-                for k, v in state.keys():
+                for k, v in state_keys.items():
                     if k not in keys:
                         v.upper_path = entry.path
                         keys[k] = v
         for path, childs in childs.items():
             selected = None
             for child in childs:
-                child_score, child_state = entry.get_branch_state(copy.copy(keys), child)
+                child_score, child_state = entry.get_branch_state(keys, child)
                 child_node = ViewNode(child_state)
                 child_paths = {
                     path: child_node
                 }
                 if child_state:
                     if child_state.action == entry.MKDIR:
-                        child_score, child_state, child_paths, child_node = self.rec_build(child_state, copy.copy(keys))
+                        # Add all of the directory score
+                        mkdir_score, child_state, mkdir_paths, child_node = self.rec_build(child_state, copy.copy(keys))
+                        child_score += mkdir_score
+                        child_paths.update(mkdir_paths)
                     candidate = Candidate(score=child_score, entry=child)
                     if not selected or candidate > selected:
                         selected = candidate
                         selected.node = child_node
                         selected.paths = child_paths
             if selected:
+                selected.node.parent = node
                 node.childs.append(selected.node)
                 score = selected.score + score if score else selected.score
                 paths.update(selected.paths)
@@ -135,16 +126,15 @@ class View(object):
     def get_key(self, path):
         """ path is granted by any self.keys """
         selected = None
-        selected_min_path = None
+        selected_min_path = sys.maxsize
         for fingerprint, granted_paths in self.granted_paths.items():
-            min_path = None
+            min_path = sys.maxsize
             for granted_path in granted_paths:
                 if granted_path == '/':
                     return self.keys[fingerprint]
                 elif is_subdir(path, granted_path):
-                    if min_path is None or min_path > len(granted_path.split(os.sep)):
-                        min_path = len(granted_path.split(os.sep))
-            if min_path is not None and (selected_min_path is None or min_path < selected_min_path):
+                    min_path = min(min_path, granted_path.count(os.sep))
+            if min_path < selected_min_path:
                 selected = fingerprint
                 selected_min_path = min_path
         if selected:
@@ -170,16 +160,21 @@ class View(object):
             raise exceptions.DoesNotExist(path)
         return node
     
-    def do_action(self, parent, action, path, *content):
+    def do_action(self, parent, action, path, *content, commit=True):
         key = self.get_key(path)
         if key is None:
             raise exceptions.PermissionDenied(path)
         args = content + (key,)
-        entry = action(parent.entry, path, *args)
+        entry = action(parent.entry, path, *args, commit=commit)
         node = ViewNode(entry)
         self.paths[path] = node
-        # TODO grandparent
-        parent.childs.append(node)
+        if parent.entry.path == path and parent.parent:
+            parent.parent.childs.remove(parent)
+            parent.parent.childs.append(node)
+            node.parent = parent.parent
+        else:
+            parent.childs.append(node)
+            node.parent = parent
         return node
     
     def mkdir(self, path):
@@ -214,6 +209,17 @@ class View(object):
                 self.rec_delete_paths(child)
         return self.do_action(parent, self.log.delete, path)
     
+    def rec_diff(self, node_a, node_b, diffs):
+        if node_a.entry != node_b.entry:
+            diffs.append((node_a.entry, node_b.entry))
+        b_childs = {child.entry.path: child for child in node_b.childs}
+        for a_child in node_a.childs:
+            b_child = b_childs.pop(a_child.entry.path)
+            self.rec_diff(a_child, b_child, diffs)
+        if b_childs:
+            raise KeyError
+        return diffs
+    
     def grant(self, path, key):
         path = os.path.normpath(path)
         keys_path = os.path.join(path, '.keys')
@@ -224,16 +230,47 @@ class View(object):
             parent = self.get(path)
         else:
             content = parent.entry.content + content
-        return self.do_action(parent, self.log.write, keys_path, content)
+        node = self.do_action(parent, self.log.write, keys_path, content, commit=False)
+        post = type(self)(self.log, *self.keys.values())
+        post.build()
+        for pre_entry, __ in self.rec_diff(self.root, post.root, []):
+            if pre_entry.action in (pre_entry.DELETE, pre_entry.MKDIR):
+                getattr(post, pre_entry.action.lower())(pre_entry.path)
+            else:
+                getattr(post, pre_entry.action.lower())(pre_entry.path, pre_entry.content)
+        node.entry.save()
+        self.paths = post.paths
+        self.root = post.root
+        self.log.keys[key.fingerprint] = key
+        return self.get(keys_path)
+    
+    def rec_maintain_current_state(self, node, fingerprint, confirm=False):
+        entry = node.entry
+        if confirm or entry.fingerprint == fingerprint:
+            confirm = False
+            if entry.action == entry.DELETE:
+                self.do_action(node, self.log.delete, entry.path)
+            elif entry.action == entry.WRITE:
+                self.do_action(node, self.log.write, entry.path, entry.content)
+            elif entry.action == entry.MKDIR:
+                if not node.childs:
+                    self.do_action(node, self.log.mkdir, entry.path)
+                else:
+                    confirm = True
+        for child in node.childs:
+            self.rec_maintain_current_state(child, fingerprint, confirm)
     
     def revoke(self, path, fingerprint):
+        fingerprint = getattr(fingerprint, 'fingerprint', fingerprint)
         keypaths = self.get_keys(path)[fingerprint]
+        if not keypaths:
+            raise KeyError("%s fingerprint not present on %s" % (fingerprint, path))
         # Remove key from keypaths
         for path in keypaths:
             parent = self.get(path)
             keys = parent.entry.read_keys()
             content = ''
-            for key in keys:
+            for key in keys.values():
                 if key.fingerprint != fingerprint:
                     content += key.oneliner() + '\n'
             ret = self.do_action(parent, self.log.write, path, content)
@@ -249,19 +286,7 @@ class View(object):
             if path not in selected:
                 selected.add(path)
         # Confirm valid state for all affected nodes
-        # TODO rec revoke from node instead of this shit
-        for path, node in self.path.items():
-            for spath in selected:
-                if is_subdir(path, spath) and path not in keypaths:
-                    break
-            else:
-                continue
-            if node.entry.fingerprint == fingerprint:
-                if node.entry.action == LogEntry.DELETE:
-                    self.do_action(node, self.log.delete, path)
-                elif node.entry.action == LogEntry.WRITE:
-                    self.do_action(node, self.log.write, path, node.entry.content)
-                elif node.entry.action == LogEntry.MKDIR:
-                    pass
-                    # TODO if mkdir: lookup also for childs
+        for path in selected:
+            node = self.get(path)
+            self.rec_maintain_current_state(node, fingerprint)
         return ret

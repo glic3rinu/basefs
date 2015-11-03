@@ -23,10 +23,12 @@ class ViewTests(unittest.TestCase):
     
     def rebuild(self, view):
         prev = view.paths
+        prev_str = str(view.root)
         view.build()
         for path, node in view.paths.items():
             self.assertEqual(prev.pop(path).entry, node.entry)
         self.assertEqual({}, prev)
+        self.assertEqual(len(prev_str), len(str(view.root)))  # len() is used becuase of random dict ordering
         
     def test_build(self):
         view = View(self.log, self.root_key)
@@ -150,6 +152,9 @@ class ViewTests(unittest.TestCase):
         view.mkdir(home_path)
         key = Key.generate()
         view.grant(home_path, key)
+        prev = str(view.root)
+        view.build()
+        self.assertEqual(len(prev), len(str(view.root)))
         # Change key
         view = View(self.log, key)
         view.build()
@@ -175,13 +180,29 @@ class ViewTests(unittest.TestCase):
         self.rebuild(view)
     
     def test_revoke(self):
-        view = View(self.log, self.root_key)
-        view.build()
-        home_path = os.path.join(os.sep, utils.random_ascii())
-        view.mkdir(home_path)
+        root_view = View(self.log, self.root_key)
+        root_view.build()
+        home_path = os.path.join(os.sep, 'home-' + utils.random_ascii())
+        root_view.mkdir(home_path)
         key = Key.generate()
-        view.grant(home_path, key)
-#        print(view.get_keys())
+        root_view.grant(home_path, key)
+        
+        view = View(self.log, key)
+        view.build()
+        user_path = os.path.join(home_path, 'user-' + utils.random_ascii())
+        view.mkdir(user_path)
+        
+        root_view.build()
+        file_path = os.path.join(user_path, 'file-' + utils.random_ascii())
+        file_content = 'content-' + utils.random_ascii()
+        root_view.write(file_path, file_content)
+        root_view.revoke(home_path, key)
+        self.assertEqual(file_content, root_view.get(file_path).entry.content)
+        self.assertEqual(file_path, root_view.get(file_path).entry.path)
+        view.build()
+        alt_file_content = 'content-' + utils.random_ascii()
+        with self.assertRaises(exceptions.DoesNotExist):
+            view.write(file_path, alt_file_content)
     
     def test_dir_file_exists_conflict(self):
         view = View(self.log, self.root_key)
@@ -211,14 +232,16 @@ class ViewTests(unittest.TestCase):
         view = View(self.log, self.root_key)
         view.build()
         self.assertEqual(self.log.entries[max_hash].content, view.get(user_path).entry.content)
+        # Admin branch more power
         content = 'content-' + utils.random_ascii(32)
         self.log.write(parent_node.entry, user_path, content, self.root_key)
-        print('now')
         view.build()
-        print(self.log.print_tree())
         self.assertEqual(content, view.get(user_path).entry.content)
         alt_content = 'content-' + utils.random_ascii(32)
         self.log.write(parent_node.entry, user_path, alt_content, key)
         self.assertEqual(content, view.get(user_path).entry.content)
-        
-        
+        # Grant consistency with prev state
+        view.grant(os.sep, key)
+        self.assertEqual(content, view.get(user_path).entry.content)
+        view.build()
+        self.assertEqual(content, view.get(user_path).entry.content)
