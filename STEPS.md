@@ -10,10 +10,9 @@ cd basefs
 docker build -t serf .
 
 export PYTHONPATH=$(pwd)
-# python3 -m unittest basefs.tests.test_view
-BASEFS_PATH=$(pwd)/basefs
+BASEFS_PATH=$(pwd)
 
-sudo ln -s $BASEFS_PATH/BIN/basefs /usr/local/bin/
+sudo ln -s $BASEFS_PATH/basefs/bin/basefs /usr/local/bin/
 
 mkdir -p $BASEFS_PATH/tmp/{keys,logs,fs}
 basefs genkey $BASEFS_PATH/tmp/keys/root
@@ -28,14 +27,38 @@ cp $BASEFS_PATH/tmp/logs/root $BASEFS_PATH/tmp/logs/serf2
 
 basefs mount -d -k $BASEFS_PATH/tmp/keys/root $BASEFS_PATH/tmp/logs/root $BASEFS_PATH/tmp/fs
 
-DOCKER_ARGS="-v $BASEFS_PATH/tmp:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -i -t serf"
+
+
+DOCKER_ARGS="-v $BASEFS_PATH/:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -i -t serf"
+docker create --name serf0 $DOCKER_ARGS screen bash
+docker create --name serf1 $DOCKER_ARGS --link serf0:serf0 screen bash
+docker create --name serf2 $DOCKER_ARGS --link serf0:serf0 screen bash
+
+docker start serf0
+docker start serf1
+docker start serf2
+
+docker attach serf0
+docker attach serf1
+docker attach serf2
+
+
+basefs mount /mnt/tmp/logs/serf0 /mnt/tmp/fs/ -d -k /mnt/tmp/keys/serf0 
+
+
+docker run --name serf1 --link serf0:serf0 $DOCKER_ARGS bash
+docker run --name serf2 --link serf0:serf0 $DOCKER_ARGS bash
+
+mnt/bin/basefs mount -d -k mnt/keys/serf1 mnt/logs/serf1 mnt/fs/serf1
+
+
 docker create --name serf0 $DOCKER_ARGS mnt/bin/basefs mount -d -k mnt/keys/serf0 mnt/logs/serf0 mnt/fs/serf0
 docker create --name serf1 $DOCKER_ARGS --link serf0:serf0 mnt/bin/basefs mount -d -k mnt/keys/serf1 mnt/logs/serf1 mnt/fs/serf1
 docker create --name serf2 $DOCKER_ARGS --link serf0:serf0 mnt/bin/basefs mount -d -k mnt/keys/serf2 mnt/logs/serf2 mnt/fs/serf2
 
-docker start --name serf0
-docker start --name serf1
-docker start --name serf2
+docker start serf0
+docker start serf1
+docker start serf2
 
 #docker exec serf1 usr/bin/serf join $(docker exec serf0 ifconfig|grep 172.17|sed -E 's/.*addr:([^ ]+).*/\1/')
 #docker exec serf2 usr/bin/serf join $(docker exec serf0 ifconfig|grep 172.17|sed -E 's/.*addr:([^ ]+).*/\1/')

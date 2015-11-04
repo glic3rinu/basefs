@@ -18,6 +18,6 @@ class LogTests(unittest.TestCase):
             self.assertEqual(3, len(logfile.readlines()))
     
     def test_load(self):
-        self.log, __ = utils.bootstrap(self)
+        self.log, __ = utils.bootstrap(self.logpath)
         self.log.load()
         self.assertEqual(3, len(self.log.entries))

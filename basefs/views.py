@@ -125,6 +125,7 @@ class View(object):
     
     def get_key(self, path):
         """ path is granted by any self.keys """
+        path = os.path.normpath(path)
         selected = None
         selected_min_path = sys.maxsize
         for fingerprint, granted_paths in self.granted_paths.items():
@@ -177,7 +178,7 @@ class View(object):
             node.parent = parent
         return node
     
-    def mkdir(self, path):
+    def mkdir(self, path, commit=True):
         path = os.path.normpath(path)
         parent = self.paths.get(path)
         if parent:
@@ -185,15 +186,15 @@ class View(object):
                 raise exceptions.Exists(path)
         else:
             parent = self.get(os.path.dirname(path))
-        return self.do_action(parent, self.log.mkdir, path)
+        return self.do_action(parent, self.log.mkdir, path, commit=commit)
     
-    def write(self, path, content):
+    def write(self, path, content, commit=True):
         path = os.path.normpath(path)
         try:
             parent = self.get(path)
         except exceptions.DoesNotExist:
             parent = self.get(os.path.dirname(path))
-        return self.do_action(parent, self.log.write, path, content)
+        return self.do_action(parent, self.log.write, path, content, commit=commit)
     
     def rec_delete_paths(self, node):
         self.paths.pop(node.entry.path)
@@ -201,13 +202,13 @@ class View(object):
             self.rec_delete_paths(child)
         node.childs = []
     
-    def delete(self, path):
+    def delete(self, path, commit=True):
         path = os.path.normpath(path)
         parent = self.get(path)
         if parent.entry.action == parent.entry.MKDIR:
             for child in parent.childs:
                 self.rec_delete_paths(child)
-        return self.do_action(parent, self.log.delete, path)
+        return self.do_action(parent, self.log.delete, path, commit=commit)
     
     def rec_diff(self, node_a, node_b, diffs):
         if node_a.entry != node_b.entry:
@@ -238,10 +239,10 @@ class View(object):
                 getattr(post, pre_entry.action.lower())(pre_entry.path)
             else:
                 getattr(post, pre_entry.action.lower())(pre_entry.path, pre_entry.content)
+        node.entry.sign()
         node.entry.save()
         self.paths = post.paths
         self.root = post.root
-        self.log.keys[key.fingerprint] = key
         return self.get(keys_path)
     
     def rec_maintain_current_state(self, node, fingerprint, confirm=False):

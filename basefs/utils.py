@@ -23,3 +23,8 @@ def is_subdir(path, directory):
     else:
         return True
 
+
+def touch(fname, times=None):
+    with open(fname, 'a'):
+        os.utime(fname, times)
+

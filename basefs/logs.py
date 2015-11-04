@@ -12,7 +12,7 @@ import zlib
 from collections import defaultdict
 
 from .keys import Key
-from .exceptions import ValidationError
+from .exceptions import ValidationError, IntegrityError
 from .utils import Candidate
 
 
@@ -33,7 +33,7 @@ class Log(object):
         self.keys = {}
         self.entries_by_parent = defaultdict(list)
     
-    def print_tree(self, entry=None, indent='', view=None, color=False):
+    def print_tree(self, entry=None, indent='', view=None, color=False, ascii=False):
         if entry is None:
             entry = self.root
         ret = repr(entry) + '\n'
@@ -47,11 +47,14 @@ class Log(object):
         if not childs:
             return ret
         for child in childs[:-1]:
-            ret += indent + '  ├─'
-            ret += self.print_tree(child, indent + '  │ ', view, color)
+            sep = '  |-' if ascii else '  ├─'
+            ret += indent + sep
+            sep = '  | ' if ascii else '  │ '
+            ret += self.print_tree(child, indent+sep, view, color, ascii)
         child = childs[-1]
-        ret += indent + '  └─'
-        ret += self.print_tree(child, indent + '    ', view, color)
+        sep = '  `-' if ascii else '  └─'
+        ret += indent + sep
+        ret += self.print_tree(child, indent + '    ', view, color, ascii)
         return ret
     
     def encode(self, entry):
@@ -84,9 +87,6 @@ class Log(object):
             # Read all log entries
             for line in log.readlines():
                 entry = self.decode(line)
-                self.validate(entry)
-                if entry.path.endswith(os.sep + '.keys'):
-                    self.keys.update(entry.read_keys())
                 # 0: root, 1: .keys, 2: .cluster
                 if not self.root:
                     self.root = entry
@@ -94,16 +94,16 @@ class Log(object):
                     self.root_keys = entry
                 elif not self.root_cluster:
                     self.root_cluster = entry
-                self.entries[entry.hash] = entry
-                self.entries_by_parent[entry.parent_hash].append(entry)
-        # Build FS hierarchy
-        for parent_hash, childs in self.entries_by_parent.items():
-            if parent_hash == LogEntry.ROOT_PARENT_HASH:
-                continue
-            parent = self.entries[parent_hash]
-            for child in childs:
-                child.parent_hash = parent_hash
+                entry.validate()
+                entry.clean()
+                self.add_entry(entry)
         return self.root
+    
+    def add_entry(self, entry):
+        if entry.path.endswith(os.sep + '.keys'):
+            self.keys.update(entry.read_keys())
+        self.entries[entry.hash] = entry
+        self.entries_by_parent[entry.parent_hash].append(entry)
     
     def bootstrap(self, keys, ips):
         root_key = keys[0]
@@ -116,12 +116,18 @@ class Log(object):
     def do_action(self, parent, action, path, key, *content, commit=True):
         path = os.path.normpath(path)
         entry = LogEntry(self, parent, action, path, *content)
-        entry.sign(key)
-        self.validate(entry)
-        self.entries[entry.hash] = entry
-        self.entries_by_parent[entry.parent_hash].append(entry)
+        if parent and parent.action == entry.action:
+            entry.ctime = parent.ctime
+        else:
+            entry.ctime = entry.time
+        entry.clean()
         if commit:
-            self.save(entry)
+            entry.sign(key)
+            self.save(entry, key)
+        else:
+            entry.hash = id(entry)
+            entry.fingerprint = key.fingerprint
+        self.add_entry(entry)
         return entry
     
     def validate(self, entry):
@@ -129,9 +135,6 @@ class Log(object):
             # Rootkey is already loaded
             key = self.keys[entry.fingerprint]
             entry.verify(key)
-        if entry.hash in self.entries:
-            raise self.IntegrityError("%s already exists" % entry.hash)
-        entry.clean()
     
     def mkdir(self, parent, path, key, commit=True):
         return self.do_action(parent, LogEntry.MKDIR, path, key, commit=commit)
@@ -142,7 +145,7 @@ class Log(object):
     def delete(self, parent, path, key, commit=True):
         return self.do_action(parent, LogEntry.DELETE, path, key, commit=commit)
     
-    def save(self, entry):
+    def save(self, entry, key=None):
         with open(self.logpath, 'a') as logfile:
             logfile.write(self.encode(entry) + '\n')
 
@@ -192,7 +195,7 @@ class LogEntry(object):
     
     def clean(self):
         """ cleans log entry """
-        self.path = os.path.normpath(self.path)
+        self.path = os.path.normpath(self.path.strip())
         if self.action not in self.ACTIONS:
             raise ValidationError("'%s' not a valid action type" % self.action)
         if self.parent:
@@ -220,6 +223,8 @@ class LogEntry(object):
                 self.read_keys()
         if not re.match(r'^[0-9a-f]{32}$', self.parent_hash):
             raise ValidationError("%s not a valid md5 hash" % self.parent_hash)
+        if self.hash in self.log.entries:
+            raise IntegrityError("%s already exists" % self.hash)
     
     def get_key(self, keys, last_keys):
         for fingerprint, key in itertools.chain(keys.items(), last_keys.items()):
@@ -293,10 +298,19 @@ class LogEntry(object):
                                   self.content, self.fingerprint)))
         return hashlib.md5(line.encode()).hexdigest()
     
-    def sign(self, key):
+    def sign(self, key=None):
+        key = key or self.log.keys[self.fingerprint]
+        pre_self = self.log.entries.pop(self.hash, None)
+        pre_childs = self.log.entries_by_parent.pop(self.hash, None)
         self.fingerprint = key.fingerprint
         self.hash = self.get_hash()
         self.signature = key.sign(self.hash.encode())
+        if pre_childs is not None:
+            for child in pre_childs:
+                child.parent_hash = self.hash
+            self.log.entries_by_parent[self.hash] = pre_childs
+        if pre_self is not None:
+            self.log.entries[self.hash] = self
     
     def verify(self, key):
         if not self.hash:
@@ -307,6 +321,9 @@ class LogEntry(object):
     
     def save(self):
         self.log.save(self)
+    
+    def validate(self):
+        self.log.validate(self)
 
 
 # TODO count upper-class keys first (needed for key revokation)

@@ -7,12 +7,17 @@ RUN apt-get -y update && apt-get install -y \
     net-tools \
     python3-pip \
     sudo \
-    unzip
+    unzip \
+    screen
 
 RUN curl -L https://dl.bintray.com/mitchellh/serf/0.6.4_linux_amd64.zip > /tmp/serf.zip && \
-    unzip /tmp/serf.zip -d /usr/bin/
+    unzip /tmp/serf.zip -d /usr/bin/ && \
+    rm /tmp/serf.zip
 
 RUN pip3 install \
     ecdsa \
     fusepy \
     serfclient
+
+RUN echo '/mnt/' > /usr/local/lib/python3.4/dist-packages/basefs.pth
+RUN ln -s /mnt/basefs/bin/basefs /usr/local/bin/
