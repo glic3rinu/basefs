@@ -31,8 +31,8 @@ basefs mount -d -k $BASEFS_PATH/tmp/keys/root $BASEFS_PATH/tmp/logs/root $BASEFS
 
 DOCKER_ARGS="-v $BASEFS_PATH/:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -i -t serf"
 docker create --name serf0 $DOCKER_ARGS screen bash
-docker create --name serf1 $DOCKER_ARGS --link serf0:serf0 screen bash
-docker create --name serf2 $DOCKER_ARGS --link serf0:serf0 screen bash
+docker create --name serf1 --link serf0:serf0 $DOCKER_ARGS screen bash
+docker create --name serf2 --link serf0:serf0 $DOCKER_ARGS screen bash
 
 docker start serf0
 docker start serf1
@@ -43,7 +43,9 @@ docker attach serf1
 docker attach serf2
 
 
-basefs mount /mnt/tmp/logs/serf0 /mnt/tmp/fs/ -d -k /mnt/tmp/keys/serf0 
+basefs mount /mnt/tmp/logs/serf0 /tmp/fs/ -d -k /mnt/tmp/keys/serf0 
+basefs mount /mnt/tmp/logs/serf1 /tmp/fs/ -d -k /mnt/tmp/keys/serf1 
+basefs mount /mnt/tmp/logs/serf2 /tmp/fs/ -d -k /mnt/tmp/keys/serf2
 
 
 docker run --name serf1 --link serf0:serf0 $DOCKER_ARGS bash

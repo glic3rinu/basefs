@@ -38,7 +38,8 @@ class View(object):
     def get(self, path):
         return self.paths[path]
     
-    def build(self):
+    def build(self, partial=None):
+        # TODO partial support
         if not self.log.root_keys:
             raise RuntimeError("Log %s not loaded" % self.log.logpath)
         keys = self.log.root_keys.read_keys()
@@ -96,6 +97,7 @@ class View(object):
                 if child_state:
                     if child_state.action == entry.MKDIR:
                         # Add all of the directory score
+                        # TODO because we are calling on child_state we miss the possible scores on the non-active branches
                         mkdir_score, child_state, mkdir_paths, child_node = self.rec_build(child_state, copy.copy(keys))
                         child_score += mkdir_score
                         child_paths.update(mkdir_paths)

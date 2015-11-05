@@ -31,6 +31,7 @@ class Log(object):
         self.logpath = logpath
         self.entries = {}
         self.keys = {}
+        self.loaded = 0
         self.entries_by_parent = defaultdict(list)
     
     def print_tree(self, entry=None, indent='', view=None, color=False, ascii=False):
@@ -76,15 +77,16 @@ class Log(object):
         return LogEntry(self, parent_hash, action, path, content,
             time=time, fingerprint=fingerprint, signature=signature)
     
-    def load(self):
+    def load(self, clear=False):
         """ loads logfile """
-        self.entries_by_parent.clear()
-        self.entries = {}
-        root = None
-        root_keys = None
-        root_cluster = None
+        if clear:
+            self.entries_by_parent.clear()
+            self.entries.clear()
+            self.keys.clear()
+            self.loaded = 0
         with open(self.logpath, 'r') as log:
             # Read all log entries
+            log.seek(self.loaded)
             for line in log.readlines():
                 entry = self.decode(line)
                 # 0: root, 1: .keys, 2: .cluster
@@ -97,6 +99,7 @@ class Log(object):
                 entry.validate()
                 entry.clean()
                 self.add_entry(entry)
+            self.loaded = log.tell()
         return self.root
     
     def add_entry(self, entry):
@@ -107,11 +110,13 @@ class Log(object):
     
     def bootstrap(self, keys, ips):
         root_key = keys[0]
-        root = self.mkdir(parent=None, path='/', key=root_key)
+        self.root = self.mkdir(parent=None, path='/', key=root_key)
         keys = '\n'.join((key.oneliner() for key in keys)) + '\n'
-        self.write(parent=root, path='/.keys', content=keys, key=root_key)
+        self.root_keys = self.write(parent=self.root, path='/.keys', content=keys, key=root_key)
         ips = '\n'.join(ips) + '\n'
-        self.write(parent=root, path='/.cluster', content=ips, key=root_key)
+        self.root_cluster = self.write(parent=self.root, path='/.cluster', content=ips, key=root_key)
+        with open(self.logpath, 'r') as log:
+            self.loaded = log.seek(0, 2)
     
     def do_action(self, parent, action, path, key, *content, commit=True):
         path = os.path.normpath(path)

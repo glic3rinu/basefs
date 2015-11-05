@@ -74,6 +74,14 @@ class ViewTests(unittest.TestCase):
         self.assertEqual(content, view.get(path).entry.content)
         self.rebuild(view)
         self.assertEqual(content, view.get(path).entry.content)
+        with self.assertRaises(exceptions.Exists):
+            view.mkdir(path)
+        view.delete(path)
+        view.mkdir(path)
+        path = os.path.join(path, 'content-%s' % utils.random_ascii())
+        alt_content = utils.random_ascii()
+        view.write(path, alt_content)
+        self.assertEqual(alt_content, view.get(path).entry.content)
     
     def test_delete(self):
         view = View(self.log, self.root_key)

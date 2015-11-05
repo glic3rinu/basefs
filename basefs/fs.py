@@ -30,7 +30,7 @@ class ViewToErrno():
 class FileSystem(Operations):
     logger = logging.getLogger('basefs.fs')
     
-    def __init__(self, logpath, keypath, serf=True, loglevel=logging.DEBUG):
+    def __init__(self, logpath, keypath, serf=True, loglevel=logging.ERROR):
         logging.basicConfig(level=loglevel)
         self.logpath = os.path.normpath(logpath)
         self.log = Log(logpath)
@@ -45,13 +45,9 @@ class FileSystem(Operations):
             self.serf = SerfClient(self.log)
             node = self.get_node('/.cluster')
             type(self.log).serf = self.serf
-            for line in node.entry.content.splitlines():
-                ip = line.strip()
-                if ip:
-                    result = self.serf.join(line.strip())
-                    if not result.head[b'Error']:
-                        break
-            else:
+            ips = [line.strip() for line in node.entry.content.splitlines() if line.strip()]
+            result = self.serf.join(ips)
+            if result.head[b'Error']:
                 raise RuntimeError("Couldn't connect to serf cluster.")
     
     def __call__(self, op, path, *args):
