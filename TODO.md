@@ -1,3 +1,9 @@
+basefs revisions path
+basefs ls path // in order to see username and permissions 
+basefs show revisionnumber
+basefs revert revisionnumber
+# TODO date in human readable when print_tree() and user to fingerprint match
+
 View.build(partial='/.cluster')
 
 PATH history: WRITE - WRITE - DELETE - MKDIR - DELETE - MKDIR - DELETE - WRITE - WRITE - DELETE
@@ -38,17 +44,17 @@ RENAME/MOVE: because its a allways growingg data structure, things can not be mo
 #   if patch size ~= entire file size: send file ? (optimization)
 
 
-import hashlib, uuid, lzma, json
-import marshal, pickle, zlib, random
+import hashlib, uuid, lzma, json, operator, marshal, pickle, zlib, random, string
 hashfunc = lambda: hashlib.md5(uuid.uuid4().hex.encode()).hexdigest()
+random_ascii = lambda length=5: ''.join([random.SystemRandom().choice(string.hexdigits) for i in range(0, length)]).lower()
 #a = {hashfunc(): [hashfunc() for i in range(random.randrange(1,10))] for i in range(10000)}
 #hashfunc = lambda: int(hashlib.md5(uuid.uuid4().hex.encode()).hexdigest(), 16)
 #b = {hashfunc(): [hashfunc() for i in range(random.randrange(1,10))] for i in range(10000)}
 
 hashfunc = lambda: hashlib.md5(uuid.uuid4().hex.encode()).hexdigest()
-a = '\n'.join([hashfunc() for i in range(5000)])
+a = '\n'.join(['%s %s' % (random_ascii(random.randint(5, 100)), hashfunc()) for i in range(25)])
 hashfunc = lambda: int(hashlib.md5(uuid.uuid4().hex.encode()).hexdigest(), 16)
-b = [hashfunc() for i in range(5000)]
+b = '\n'.join(['%s %s' % (random_ascii(random.randint(5, 100)), hashfunc()) for i in range(25)])
 
 results = {
     'str_json': len(json.dumps(a).replace(' ', '')),
@@ -58,6 +64,8 @@ results = {
     'int_marshal': len(marshal.dumps(b)),
     'int_pickle': len(pickle.dumps(b)),
     
+    'str_zlib': len(zlib.compress(a.encode())),
+    'int_zlib': len(zlib.compress(b.encode())),
     'str_json_zlib': len(zlib.compress(json.dumps(a).replace(' ', '').encode())),
     'int_json_zlib': len(zlib.compress(json.dumps(b).replace(' ', '').encode())),
     'str_marshal_zlib': len(zlib.compress(marshal.dumps(a))),
@@ -65,14 +73,16 @@ results = {
     'int_marshal_zlib': len(zlib.compress(marshal.dumps(b))),
     'int_pickle_zlib': len(zlib.compress(pickle.dumps(b))),
     
+    'str_lzma': len(lzma.compress(a.encode())),
+    'int_lzma': len(lzma.compress(b.encode())),
     'str_json_lzma': len(lzma.compress(json.dumps(a).replace(' ', '').encode())),
     'int_json_lzma': len(lzma.compress(json.dumps(b).replace(' ', '').encode())),
     'str_marshal_lzma': len(lzma.compress(marshal.dumps(a))),
     'str_pickle_lzma': len(lzma.compress(pickle.dumps(a))),
     'int_marshal_lzma': len(lzma.compress(marshal.dumps(b))),
     'int_pickle_lzma': len(lzma.compress(pickle.dumps(b))),
+    
 }
-import operator
 for k, v in sorted(results.items(), key=operator.itemgetter(1)):
     print(k + (' '*(20-len(k))) + str(v) +'b' + ' '*(14-len(str(v))) +str(float(v)/1000) + 'kb')
 int_marshal_lzma    1054408b       1054.408kb

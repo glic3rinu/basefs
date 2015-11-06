@@ -44,7 +44,7 @@ class SerfClient(client.SerfClient):
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
 #        action = self.ACTION_MAP[entry.action]
         line = ' '.join(map(str, (entry.parent_hash, entry.time, entry.fingerprint,
-                                  action, entry.path, signature)))
+                                  entry.action, entry.path, signature)))
         if entry.content:
             line += '\n' + entry.content
         line = zlib.compress(line.encode())

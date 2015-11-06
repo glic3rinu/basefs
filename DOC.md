@@ -29,3 +29,8 @@ It means we can send the replicated state for each service registration in one U
 
 
 Strong consistency guarantees inside the group are not probided, but can be provided in upper layers. Eventual consistent is provided.
+
+
+merkle tree ordered by directory, because is the inherent structure and ordering of the events by time is not deterministic on the cluster.
+EXP replication, because 1024 last event replaying if a node fails to sync is becuase misses lots of events, exp merkle size sync will give faster convergence while saving bandwith on few changes cases.
+

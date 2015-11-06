@@ -11,6 +11,7 @@ import time
 import zlib
 from collections import defaultdict
 
+from . import utils
 from .keys import Key
 from .exceptions import ValidationError, IntegrityError
 from .utils import Candidate
@@ -100,6 +101,8 @@ class Log(object):
                 entry.clean()
                 self.add_entry(entry)
             self.loaded = log.tell()
+        if not self.root:
+            raise RuntimeError("Empty logfile %s" % self.logpath)
         return self.root
     
     def add_entry(self, entry):
@@ -153,6 +156,9 @@ class Log(object):
     def save(self, entry, key=None):
         with open(self.logpath, 'a') as logfile:
             logfile.write(self.encode(entry) + '\n')
+    
+    def find(self, path):
+        return self.root.find(path)
 
 
 class LogEntry(object):
@@ -236,6 +242,7 @@ class LogEntry(object):
             if self.fingerprint == fingerprint:
                 return key
     
+    # TODO blockchain terminology
     def rec_get_branch_state(self, score, path, keys, last, pending):
         """ gets last blockchain entry """
         last_keys = {}
@@ -272,11 +279,22 @@ class LogEntry(object):
             return score, selected.last
         return score, last
     
+    def find(self, path):
+        if self.path == path:
+            return self
+        else:
+            for child in self.childs:
+                if utils.is_subdir(path, child.path):
+                    entry = child.find(path)
+                    if entry:
+                        return entry
+    
     def get_branch_state(self, keys, *entries):
         if entries:
             if len(entries) == 1:
                 entry = entries[0]
             else:
+                # Conflicting initial branches, create a fake node to allow the rec call
                 entry = copy.copy(entries[0])
                 entry._childs = entries
                 entry.is_mocked = True
@@ -284,7 +302,7 @@ class LogEntry(object):
             entry = self
         score, last = entry.rec_get_branch_state(Score(), entry.path, keys, None, [])
         if getattr(last, 'is_mocked', False):
-            return Score(), None
+            raise RuntimeError("At least one branch should have been selected")
         if last:
             last.ctime = entry.time
         return score, last
