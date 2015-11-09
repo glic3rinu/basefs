@@ -34,6 +34,8 @@ class Log(object):
         self.keys = {}
         self.loaded = 0
         self.entries_by_parent = defaultdict(list)
+        self.blocks = {}
+        self.blocks_by_parent = {}
     
     def print_tree(self, entry=None, indent='', view=None, color=False, ascii=False):
         if entry is None:
@@ -60,19 +62,25 @@ class Log(object):
         return ret
     
     def encode(self, entry):
-        content = entry.content
-        if content:
-            content = zlib.compress(entry.content.encode())
-            content = binascii.b2a_base64(content).decode().rstrip()
+        if isinstance(entry, Block):
+            content = binascii.b2a_base64(content.encode()).decode().rstrip()
+            return ' '.join(('B', entry.hash, entry.next_hash, content))
+#       content = entry.content
+#       if content:
+#           content = zlib.compress(entry.content.encode())
+#           content = binascii.b2a_base64(content).decode().rstrip()
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
-        return ' '.join(map(str, (entry.hash, entry.parent_hash, entry.time, entry.fingerprint,
-                                  entry.action, entry.path, content, signature)))
+        return ' '.join((entry.hash, entry.parent_hash, str(entry.time), entry.fingerprint,
+                         entry.action, entry.path, entry.content, signature))
     
     def decode(self, line):
+        if line.startswith('B'):
+            __, hash, next_hash, content = line.split()
+            return Block(self, hash, next_hash, offset-len(content), offset)
         hash, parent_hash, time, fingerprint, action, path, content, signature = line.split(' ')
-        if content:
-            content = binascii.a2b_base64(content.encode())
-            content = zlib.decompress(content).decode()
+#        if content:
+#            content = binascii.a2b_base64(content.encode())
+#            content = zlib.decompress(content).decode()
         signature = binascii.a2b_base64(signature.encode())
         time = int(time)
         return LogEntry(self, parent_hash, action, path, content,
@@ -83,6 +91,8 @@ class Log(object):
         if clear:
             self.entries_by_parent.clear()
             self.entries.clear()
+            self.blocks.clear()
+            self.blocks_by_parent.clear()
             self.keys.clear()
             self.loaded = 0
         with open(self.logpath, 'r') as log:
@@ -90,16 +100,20 @@ class Log(object):
             log.seek(self.loaded)
             for line in log.readlines():
                 entry = self.decode(line)
-                # 0: root, 1: .keys, 2: .cluster
-                if not self.root:
-                    self.root = entry
-                elif not self.root_keys:
-                    self.root_keys = entry
-                elif not self.root_cluster:
-                    self.root_cluster = entry
-                entry.validate()
-                entry.clean()
-                self.add_entry(entry)
+                if isinstance(entry, Block):
+                    # Read block
+                    self.add_block(block)
+                else:
+                    # 0: root, 1: .keys, 2: .cluster
+                    if not self.root:
+                        self.root = entry
+                    elif not self.root_keys:
+                        self.root_keys = entry
+                    elif not self.root_cluster:
+                        self.root_cluster = entry
+                    entry.validate()
+                    entry.clean()
+                    self.add_entry(entry)
             self.loaded = log.tell()
         if not self.root:
             raise RuntimeError("Empty logfile %s" % self.logpath)
@@ -110,6 +124,11 @@ class Log(object):
             self.keys.update(entry.read_keys())
         self.entries[entry.hash] = entry
         self.entries_by_parent[entry.parent_hash].append(entry)
+    
+    def add_block(self, block):
+        self.blocks[block.hash] = block
+        if block.next_hash:
+            self.blocks_by_parent[block.next_hash] = block
     
     def bootstrap(self, keys, ips):
         root_key = keys[0]
@@ -148,6 +167,16 @@ class Log(object):
         return self.do_action(parent, LogEntry.MKDIR, path, key, commit=commit)
     
     def write(self, parent, path, content, key, commit=True):
+        blocks = []
+        next_hash = None
+        for ix in reversed(range(300, len(content), 448)):
+            block = Block(self, next_hash, content[ix, ix+448])
+            next_hash = block.hash
+            blocks.insert(0, block)
+        block = Block(self, next_hash, content[:300])
+        blocks.insert(0, block)
+        content = block.next_hash
+        # TODO self.add_blocks on do_action
         return self.do_action(parent, LogEntry.WRITE, path, key, content, commit=commit)
     
     def delete(self, parent, path, key, commit=True):
@@ -203,6 +232,22 @@ class LogEntry(object):
         if hasattr(self, '_childs'):
             return self._childs
         return self.log.entries_by_parent[self.hash]
+    
+    def get_content(self):
+        if not hasattr(self, '_content'):
+            if not self.content:
+                self._content = self.content
+            else:
+                content = ''
+                next_hash = content
+                while True:
+                    block = self.blocks[next_hash]
+                    content += block.content
+                    next_hash = block.next_hash
+                    if next_hash is None:
+                        break
+                self._content = content
+        return self._content
     
     def clean(self):
         """ cleans log entry """
@@ -347,6 +392,36 @@ class LogEntry(object):
     
     def validate(self):
         self.log.validate(self)
+
+
+class Block(object):
+    def __init__(self, log, next_hash, *content, hash=None, offset=None):
+        self.log = log
+        self.next_hash = next_hash
+        if offset:
+            self.ini, self.end = offset
+        if content:
+            self._content = content[0]
+        self.hash = hashlib.sha256(self.content).hexdigest().decode()[:32]
+    
+    @property
+    def next(self):
+        if self.next_hash:
+            return self.log.blocks[self.next_hash]
+        return None
+    
+    @property
+    def previous(self):
+        return self.log.blocks_by_parent[self.hash]
+    
+    @property
+    def content(self):
+        if not hasattr(self, '_content'):
+            with open(self.log.logpath) as log:
+                log.seek(self.ini)
+                content = self.log.read(self.end)
+            self._content = content
+        return self._content
 
 
 # TODO count upper-class keys first (needed for key revokation)

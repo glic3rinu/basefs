@@ -27,6 +27,15 @@ class ViewNode(object):
         self.entry = entry
         self.childs = childs or []
         self.parent = parent
+    
+    @property
+    def content(self):
+        if not hasattr(self, '_content'):
+            content = b""
+            for entry in self.previous_entries:
+                content = bsdiff4.patch(content, entry.get_content())
+            self._content = content
+        return self._content
 
 
 class View(object):
@@ -196,6 +205,7 @@ class View(object):
             parent = self.get(path)
         except exceptions.DoesNotExist:
             parent = self.get(os.path.dirname(path))
+        content = bsdiff4.diff(parent.content, content)
         return self.do_action(parent, self.log.write, path, content, commit=commit)
     
     def rec_delete_paths(self, node):
