@@ -16,3 +16,15 @@ def bootstrap(logpath):
 def random_ascii(length=5):
     return ''.join([random.SystemRandom().choice(string.hexdigits) for i in range(0, length)]).lower()
 
+
+class Socket(object):
+    def write(self, data):
+        self.data = data
+    
+    def read(self, close_check=False):
+        if close_check and getattr(self, 'is_closed', False):
+            raise ValueError('closed')
+        return self.data
+    
+    def close(self):
+        self.is_closed = True

@@ -13,7 +13,7 @@ from collections import defaultdict
 
 from . import utils
 from .keys import Key
-from .exceptions import ValidationError, IntegrityError
+from .exceptions import ValidationError
 from .utils import Candidate
 
 
@@ -235,7 +235,7 @@ class LogEntry(object):
         if not re.match(r'^[0-9a-f]{32}$', self.parent_hash):
             raise ValidationError("%s not a valid md5 hash" % self.parent_hash)
         if self.hash in self.log.entries:
-            raise IntegrityError("%s already exists" % self.hash)
+            raise ValidationError("%s already exists" % self.hash)
     
     def get_key(self, keys, last_keys):
         for fingerprint, key in itertools.chain(keys.items(), last_keys.items()):

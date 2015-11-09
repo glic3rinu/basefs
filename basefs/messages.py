@@ -9,20 +9,20 @@ from basefs.logs import LogEntry
 
 
 class SerfClient(client.SerfClient):
-#    ACTION_MAP = {
-#        LogEntry.WRITE: 'W',
-#        LogEntry.MKDIR: 'M',
-#        LogEntry.DELETE: 'D',
-#        LogEntry.GRANT: 'G',
-#        LogEntry.REVOKE: 'R',
-#    }
-#    ACTION_REVERSE_MAP:
-#        'W': LogEntry.WRITE,
-#        'M': LogEntry.MKDIR,
-#        'D': LogEntry.DELETE,
-#        'G': LogEntry.GRANT,
-#        'R': LogEntry.REVOKE,
-#    }
+    ACTION_MAP = {
+        LogEntry.WRITE: 'W',
+        LogEntry.MKDIR: 'M',
+        LogEntry.DELETE: 'D',
+        LogEntry.GRANT: 'G',
+        LogEntry.REVOKE: 'R',
+    }
+    ACTION_REVERSE_MAP:
+        'W': LogEntry.WRITE,
+        'M': LogEntry.MKDIR,
+        'D': LogEntry.DELETE,
+        'G': LogEntry.GRANT,
+        'R': LogEntry.REVOKE,
+    }
     
     def __init__(self, log, *args, **kwargs):
         self.log = log
@@ -42,8 +42,9 @@ class SerfClient(client.SerfClient):
     
     def send(self, entry):
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
-#        action = self.ACTION_MAP[entry.action]
-        line = ' '.join(map(str, (entry.parent_hash, entry.time, entry.fingerprint,
+        action = self.ACTION_MAP[entry.action]
+        fingerprint = fingerprint.replace(':', '')
+        line = ' '.join(map(str, (entry.parent_hash, entry.time, fingerprint,
                                   entry.action, entry.path, signature)))
         if entry.content:
             line += '\n' + entry.content
@@ -57,7 +58,8 @@ class SerfClient(client.SerfClient):
         payload = zlib.decompress(payload).decode()
         lines = payload.split('\n')
         parent_hash, time, fingerprint, action, path, signature = lines[0].strip().split()
-        
+        action = self.ACTION_REVERSE_MAP[action]
+        fingerprint = ':'.join([fingerprint[ix:ix+2] for ix in range(0, 32, 2)])
         content = '\n'.join(lines[1:])
         signature = binascii.a2b_base64(signature.encode())
         entry = LogEntry(self.log, parent_hash, action, path, content,

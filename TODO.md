@@ -1,7 +1,23 @@
+make basefs to be able to run multiple times on the same machine for esay testing (solve port issuse)
+cluster discovery: /.cluster <ip, port> tuple
+WRITE vs WRITE-DELTA
+
+
+Future work: gossip layer should discard shit
+stronger logentry validation to avoid shit (read current branch)
+
+GRANT REVOKE operations over dir/file ?? no more keys file, show as extra attributes: unique key name; lookup for first appearance
+
+remove full path, just relative path (filename/basename): needed for GOTO  (smaller metadata)
+mv () implemented like revert() GOTO hash and DELETE origin path
+on revoke() WRITE-ACK instead of rewriting everything
+
+autodetect logpath based on current filesystem
+
 basefs revisions path
 basefs ls path // in order to see username and permissions 
 basefs show revisionnumber
-basefs revert revisionnumber
+basefs revert revisionnumber // implemented like mv() GOTO hash 
 # TODO date in human readable when print_tree() and user to fingerprint match
 
 View.build(partial='/.cluster')
@@ -159,3 +175,21 @@ a = [hashlib.md5(random_ascii(512).encode()) for i in range(10000)]
 print('md5 '+str(time.time()-now))
 
 # MD5 is broken use hashlib.sha256(random_ascii(512).encode()).hexdigest()[:32]
+
+
+# Calculate average and so
+import zlib
+g = 0
+l = 0
+for line in open('/tmp/merda', 'r').readlines():
+ with open(line.strip(), 'rb') as handler:
+  size = len(zlib.compress(handler.read()))
+  if size > 400:
+    g += 1
+    print(line.strip(), size)
+  else:
+    l += 1
+
+
+print(l, g)
+

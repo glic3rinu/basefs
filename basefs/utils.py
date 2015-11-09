@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 
 class Candidate(object):
@@ -28,3 +29,16 @@ def touch(fname, times=None):
     with open(fname, 'a'):
         os.utime(fname, times)
 
+
+def get_mounted_logpath():
+    path = os.getcwd()
+    while path != os.sep:
+        if os.path.ismount(path):
+            mount = subprocess.Popen('mount', stdout=subprocess.PIPE)
+            mount.wait()
+            for line in mount.stdout.readlines():
+                logpath, __, mountpoint = line.split()[:3]
+                if path == mountpoint.decode():
+                    return logpath.decode()
+            return
+        path = os.path.abspath(os.path.join(path, os.pardir))

@@ -12,7 +12,7 @@ from collections import OrderedDict
 
 from fuse import FUSE
 
-from basefs import handlers
+from basefs import handlers, utils
 from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log
@@ -21,7 +21,7 @@ from basefs.views import View
 
 
 default_keypath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'id_ec')
-default_logpath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'log')
+default_logpath = utils.get_mounted_logpath() or os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'log')
 
 
 def file_exists(parser, arg, name='The', exec=None):
