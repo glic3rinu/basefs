@@ -13,15 +13,15 @@ class SerfClient(client.SerfClient):
         LogEntry.WRITE: 'W',
         LogEntry.MKDIR: 'M',
         LogEntry.DELETE: 'D',
-        LogEntry.GRANT: 'G',
-        LogEntry.REVOKE: 'R',
+#        LogEntry.GRANT: 'G',
+#        LogEntry.REVOKE: 'R',
     }
-    ACTION_REVERSE_MAP:
+    ACTION_REVERSE_MAP = {
         'W': LogEntry.WRITE,
         'M': LogEntry.MKDIR,
         'D': LogEntry.DELETE,
-        'G': LogEntry.GRANT,
-        'R': LogEntry.REVOKE,
+#        'G': LogEntry.GRANT,
+#        'R': LogEntry.REVOKE,
     }
     
     def __init__(self, log, *args, **kwargs):
@@ -43,33 +43,24 @@ class SerfClient(client.SerfClient):
     def send(self, entry):
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
         action = self.ACTION_MAP[entry.action]
-        fingerprint = fingerprint.replace(':', '')
+        fingerprint = entry.fingerprint.replace(':', '')
         line = ' '.join(map(str, (entry.parent_hash, entry.time, fingerprint,
-                                  entry.action, entry.path, signature)))
+                                  action, entry.name, signature)))
         if entry.content:
             line += '\n' + entry.content
         line = zlib.compress(line.encode())
-        if len(line) > 512:
-            raise KeyError("Line too long %s" % len(line))
-        self.event('logentry', line, coalesce=False)
+        self.event('e', line, coalesce=False)
     
     def receive(self, payload):
         sys.stderr.write('SIZE: %s\n' % len(payload))
         payload = zlib.decompress(payload).decode()
         lines = payload.split('\n')
-        parent_hash, time, fingerprint, action, path, signature = lines[0].strip().split()
+        parent_hash, time, fingerprint, action, name, signature = lines[0].strip().split()
         action = self.ACTION_REVERSE_MAP[action]
         fingerprint = ':'.join([fingerprint[ix:ix+2] for ix in range(0, 32, 2)])
         content = '\n'.join(lines[1:])
         signature = binascii.a2b_base64(signature.encode())
-        entry = LogEntry(self.log, parent_hash, action, path, content,
+        time = int(time)
+        entry = LogEntry(self.log, parent_hash, action, name, content,
             time=time, fingerprint=fingerprint, signature=signature)
-        try:
-            entry.clean()
-        except exceptions.IntegrityError as e:
-            sys.stderr.write(str(e)+'\n')
-        else:
-            entry.validate()
-            entry.save()
-            # TODO '/tmp/.%s.updated' % self.log.logpath.replace(os.sep, '-')
-            utils.touch(self.log.logpath + '.updated')
+        return entry

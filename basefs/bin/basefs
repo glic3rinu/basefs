@@ -5,9 +5,11 @@ import atexit
 import ipaddress
 import os
 import pwd
+import socket
 import subprocess
 import sys
 import textwrap
+import threading
 from collections import OrderedDict
 
 from fuse import FUSE
@@ -78,8 +80,12 @@ def mount():
         default=default_keypath,
         help='Path to the EC private key. %s by default. Use genkey for creating one.' % default_keypath,
         type=lambda v: file_exists(mount_parser, v, name='keypath'))
-    mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
-        help='Custom handler script for filesystem update notifications')
+#    mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
+#        help='Custom handler script for filesystem update notifications')
+    mount_parser.add_argument('-p', '--port', dest='port', type=int, default=7372,
+        help='Serf agent port (serf agent port port+1, sync server port+1), defaults to 7372 (7373, 7374)')
+    mount_parser.add_argument('--hostname', dest='hostname', default=socket.gethostname(),
+        help='Name of this node. Must be unique in the cluster.')
     mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
         help='Enables debugging information.')
     mount_parser.add_argument('-n', '--no-serf', dest='serf', action='store_false',
@@ -93,18 +99,27 @@ def mount():
         context = {
             'script': os.path.realpath(__file__),
             'log': logpath,
-            'handler': ('--fs-handler='+args.handler[0]) if args.handler else '',
-            'debug': '-log-level=debug' if args.debug else ''
+#            'handler': ('--fs-handler='+args.handler[0]) if args.handler else '',
+            'debug': '-log-level=debug' if args.debug else '',
+            'port': args.port,
+            'rpc_port': args.port+1,
+            'sync_port': args.port+2,
+            'hostname': args.hostname,
         }
-        cmd = "serf agent -replay %(debug)s -event-handler='%(script)s handler %(log)s %(handler)s'" % context
+        cmd = textwrap.dedent("""\
+            serf agent \\
+                -node %(hostname)s \\
+                -bind 0.0.0.0:%(port)s \\
+                -rpc-addr=127.0.0.1:%(rpc_port)s \\
+                -replay %(debug)s \\
+                -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context #'echo -n "$SERF_USER_EVENT$(cat -)" | nc 127.0.0.1 %(sync_port)s'""") % context
         sys.stdout.write(cmd + '\n')
-        import threading
         serf_agent = threading.Thread(target=os.system, args=(cmd,))
         serf_agent.start()
 #        serf_agent = subprocess.Popen(cmd, shell=True)
 #        atexit.register(lambda: serf_agent.kill())
     sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
-    FUSE(FileSystem(logpath, keypath), mountpoint, fsname=logpath, nothreads=True, foreground=True)
+    FUSE(FileSystem(logpath, keypath, rpc_port=args.port+1, sync_port=args.port+2, hostname=args.hostname), mountpoint, fsname=logpath, nothreads=True, foreground=True)
 
 
 bootstrap_parser = argparse.ArgumentParser(

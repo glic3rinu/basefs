@@ -1,6 +1,10 @@
 Steps
 =====
 
+
+basefs mount /tmp/log /tmp/ola/  -p 7970 --hostname rata
+
+
 For creating a basefs 4-node test cluster with Docker
 
 ```bash

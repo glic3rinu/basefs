@@ -5,6 +5,8 @@ import asyncio
 import functools
 import itertools
 import os
+import random
+import socket
 from collections import defaultdict
 
 from . import exceptions
@@ -14,9 +16,11 @@ from .views import View
 
 
 def get_entries(entry, eq_path=False):
+    # TODO
     yield entry
     for child in entry.childs:
-        if not eq_path or child.path == entry.path:
+        if not eq_path or entry.action in (entry.GRANT, entry.REVOKE) or child.name == entry.name:
+            print(child)
             yield from get_entries(child)
 
 
@@ -26,22 +30,23 @@ class BasefsSyncProtocol(asyncio.Protocol):
     PATH_REQ = 'P-REQ'
     ENTRIES = 'ENTRIES'
     CLOSE = 'CLOSE'
-
-    def __init__(self, log, *args, cport=0, **kwargs):
-        super(BasefsSyncProtocol, self).__init__(*args, **kwargs)
-        self.log = log
-        self.tree = defaultdict(list)
-        self.merkle = {}
-        self.cport = cport
-        for entry in self.log.entries.values():
-            self.update_merkle(entry)
+    merkle = {}
+    tree = defaultdict(list)
+    
+    def __init__(self, view, serf, client=False, hostname=None):
+        super(BasefsSyncProtocol, self).__init__()
+        self.view = view
+        self.log = view.log
+        self.serf = serf
+        self.client = client
+        self.hostname = hostname or socket.gethostname()
     
     def encode(self, data):
         # TODO compress or whatever
-        return data.encode()
+        return b's' + data.encode()
     
     def decode(self, data):
-        return data.decode()
+        return data.decode()[1:]
     
     def encode_entry(self, entry):
         # TODO remove unthrosworthy shit (hash) and whatever
@@ -58,12 +63,12 @@ class BasefsSyncProtocol(asyncio.Protocol):
         When the connection is closed, connection_lost() is called.
         """
         self.transport = transport
- 
-    def data_received(self, data):
-        """
-        Called when some data is received.
-        The argument is a bytes object.
-        """
+        if self.client:
+            request = self.initial_request()
+            self.transport.write(request)
+    
+    def sync_received(self, data):
+        print('sync-received', data)
         lines = self.decode(data).splitlines()
         entries_to_send = set()
         entries_to_request = set()
@@ -140,16 +145,43 @@ class BasefsSyncProtocol(asyncio.Protocol):
             for ehash in entries_to_send:
                 response.append(self.encode_entry(self.log.entries[ehash]))
             for path in paths_to_send:
+                print(self.log.find(path), path, self.log.print_tree())
+                print(list(get_entries(self.log.find(path))))
                 for entry in get_entries(self.log.find(path)):
+                    print(entry)
                     if entry.hash not in entries_to_send:
                         response.append(self.log.encode(entry))
         if close:
             response.append(self.CLOSE)
         response = '\n'.join(response)
+        print('response', self.encode(response))
         self.transport.write(self.encode(response))
         if close:
             self.transport.close()
     
+    def entry_received(self, data):
+        entry = self.serf.receive(data[1:].strip())
+        entry.clean()
+        entry.validate()
+        print('received entry', entry)
+        self.log.save(entry)
+        self.log.add_entry(entry)
+        self.update_merkle(entry)
+        self.view.build()
+    
+    def data_received(self, data):
+        """
+        Called when some data is received.
+        The argument is a bytes object.
+        """
+        if data[0] == 115:
+            self.sync_received(data)
+        elif data[0] == 101:
+            self.entry_received(data)
+        else:
+            print('UNKNOWN TOKEN', data[0])
+    
+    # TODO view.load() if updated
 #    def connection_lost(self, exc):
 #        """
 #        Called when the connection is lost or closed.
@@ -159,79 +191,61 @@ class BasefsSyncProtocol(asyncio.Protocol):
 #        """
 #        print("Connection lost! Closing server...")
 #        self.server.close()
-
-    def update_merkle(self, entry):
+    
+    @classmethod
+    def update_merkle(cls, entry):
         hash = int(entry.hash, 16)
         path = os.sep
         for part in itertools.chain(entry.path.split(os.sep)):
             path = os.path.join(path, part)
             try:
-                self.merkle[path] ^= hash
+                cls.merkle[path] ^= hash
             except KeyError:
-                self.merkle[path] = hash
+                cls.merkle[path] = hash
                 if os.path.dirname(path) != path:
-                    self.tree[os.path.dirname(path)].append(path)
-    
-    def get_member(self):
-        return '127.0.0.1'
-        members = self.serf.members()
-        members = members.body[b'Members']
-        random.shuffle(members)
-        myself = socket.gethostname()
-        for member in members:
-            if member[b'Status'] == b'alive' and member[b'Name'] != myself.encode():
-                return member[b'Addr'].decode()
+                    cls.tree[os.path.dirname(path)].append(path)
     
     def initial_request(self):
         request = [
             'LS',
             '%s %s' % (os.sep, hex(self.merkle[os.sep])[2:])
         ]
-        return '\n'.join(request).encode()
-    
-    def initiate(self):
-        print('initiate', 'connecting to', self.cport)
-        ip = self.get_member()
-        request = self.initial_request()
-        reader, writer = yield from asyncio.open_connection(ip, self.cport)
-        writer.write(request)
-        writer.close()
+        return self.encode('\n'.join(request))
 
 
 @asyncio.coroutine
-def do_full_sync(protocol):
+def do_full_sync(client_factory, serf, hostname):
     paths = None
+    loop = asyncio.get_event_loop()
+    def get_member():
+        members = serf.members()
+        members = members.body[b'Members']
+        random.shuffle(members)
+        for member in members:
+            if member[b'Status'] == b'alive' and member[b'Name'] != hostname.encode():
+                return member[b'Addr'].decode(), member[b'Port']+2
+        return None, None
     while True:
         print('do full sync')
-        import random
-        yield from asyncio.sleep(random.randint(1, 10))  # switch to other code and continue execution in 5 seconds
-        yield from protocol.initiate()
+        yield from asyncio.sleep(10) #1000000) # random.randint(5, 10))  # switch to other code and continue execution in 5 seconds
+        ip, port = get_member()
+        if ip:
+            coro = loop.create_connection(client_factory, ip, port)
+            asyncio.async(coro)
 
 
-def run(logpath, port):
-    log = Log(logpath)
-    log.load()
-    view = View(log)
-    view.build()
-    node = view.get('/.cluster')
-    del view
-    ips = [line.strip() for line in node.entry.content.splitlines() if line.strip()]
-    serf = SerfClient(log)
-    result = serf.join(ips)
-    if result.head[b'Error']:
-        raise RuntimeError("Couldn't connect to serf cluster.")
-    
-    loop = asyncio.get_event_loop()
-    cport = 2222 if port == 2223 else 2223
-    protocol = BasefsSyncProtocol(log, port)
-    protocol_factory = lambda: protocol
-    print('server on', cport)
-    server = loop.run_until_complete(loop.create_server(protocol_factory, 'localhost', cport))
-    asyncio.async(do_full_sync(protocol))
+def run(view, serf, port, hostname=None):
+    protocol = BasefsSyncProtocol(view, serf, hostname=hostname)
+    for entry in view.log.entries.values():
+        BasefsSyncProtocol.update_merkle(entry)
+    server_factory = lambda: BasefsSyncProtocol(view, serf, hostname=hostname)
+    client_factory = lambda: BasefsSyncProtocol(view, serf, hostname=hostname, client=True)
+    print('server on', port)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    server = loop.run_until_complete(loop.create_server(server_factory, '0.0.0.0', port))
+    asyncio.async(do_full_sync(client_factory, serf, hostname))
     try:
         loop.run_until_complete(server.wait_closed())
     finally:
         loop.close()
-#        loop.run_forever()
-#    finally:
-#        loop.close()

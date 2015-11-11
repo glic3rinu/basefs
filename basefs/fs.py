@@ -4,10 +4,11 @@ import errno
 import itertools
 import logging
 import stat
+import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils
+from . import exceptions, utils, handlers
 from .keys import Key
 from .logs import Log
 from .messages import SerfClient
@@ -30,7 +31,7 @@ class ViewToErrno():
 class FileSystem(Operations):
     logger = logging.getLogger('basefs.fs')
     
-    def __init__(self, logpath, keypath, serf=True, loglevel=logging.ERROR):
+    def __init__(self, logpath, keypath, serf=True, rpc_port=7373, sync_port=7952, loglevel=logging.DEBUG, hostname=None):
         logging.basicConfig(level=loglevel)
         self.logpath = os.path.normpath(logpath)
         self.log = Log(logpath)
@@ -38,17 +39,22 @@ class FileSystem(Operations):
         self.view = View(self.log, self.key)
         self.logupdated = logpath + '.updated'
         utils.touch(self.logupdated)
-        self.operations = {}
         self.load()
         self.serf = None
+        self.cache = {}
+        self.dirty = {}
         if serf:
-            self.serf = SerfClient(self.log)
+            self.serf = SerfClient(self.log, port=rpc_port)
             node = self.get_node('/.cluster')
             type(self.log).serf = self.serf
-            ips = [line.strip() for line in node.entry.content.splitlines() if line.strip()]
+#            ips = [line.strip() for line in node.content.splitlines() if line.strip()]
+            # TODO get ips from fucking cluster (default port)
+            ips = ['10.0.0.169:7372']
             result = self.serf.join(ips)
             if result.head[b'Error']:
-                raise RuntimeError("Couldn't connect to serf cluster.")
+                raise RuntimeError("Couldn't connect to serf cluster %s." % ips)
+            self.handler = threading.Thread(target=handlers.run, args=(self.view, self.serf, sync_port), kwargs={'hostname': hostname})
+            self.handler.start()
     
     def __call__(self, op, path, *args):
         self.logger.debug('-> %s %s %s', op, path, repr(args))
@@ -97,22 +103,39 @@ class FileSystem(Operations):
 #        return os.chown(full_path, uid, gid)
 
     def getattr(self, path, fh=None):
-        node = self.get_node(path)
-        has_perm = bool(self.view.get_key(path))
-        if node.entry.action == node.entry.MKDIR:
-            mode = stat.S_IFDIR | (0o0750 if has_perm else 0o0550)
+        try:
+            content = self.cache[path]
+        except KeyError:
+            node = self.get_node(path)
+            has_perm = bool(self.view.get_key(path))
+            if node.entry.action == node.entry.MKDIR:
+                mode = stat.S_IFDIR | (0o0750 if has_perm else 0o0550)
+            else:
+                mode = stat.S_IFREG | (0o0640 if has_perm else 0o0440)
+            return {
+                'st_atime': node.entry.time,
+                'st_ctime': node.entry.ctime,
+                'st_gid': os.getgid(),
+                'st_mode': mode, 
+                'st_mtime': node.entry.time, 
+                'st_nlink': 1,
+                'st_size': len(node.content),
+                'st_uid': os.getuid(),
+            }
         else:
-            mode = stat.S_IFREG | (0o0640 if has_perm else 0o0440)
-        return {
-            'st_atime': node.entry.time,
-            'st_ctime': node.entry.ctime,
-            'st_gid': os.getgid(),
-            'st_mode': mode, 
-            'st_mtime': node.entry.time, 
-            'st_nlink': 1,
-            'st_size': len(node.entry.content),
-            'st_uid': os.getuid(),
-        }
+            import time
+            return {
+                'st_atime': time.time(),
+                'st_ctime': time.time(),
+                'st_gid': os.getgid(),
+                'st_mode': stat.S_IFREG | 0o0640,
+                'st_mtime': time.time(),
+                'st_nlink': 1,
+                'st_size': len(content),
+                'st_uid': os.getuid(),
+            }
+        
+
         
 #        full_path = self._full_path(path)
 #        st = os.lstat(full_path)
@@ -120,8 +143,9 @@ class FileSystem(Operations):
 
     def readdir(self, path, fh):
         node = self.get_node(path)
+        entry = node.entry
         dirs = ['.', '..']
-        for d in itertools.chain(dirs, [os.path.basename(child.entry.path) for child in node.childs if child.entry.action != child.entry.DELETE]):
+        for d in itertools.chain(dirs, [child.entry.name for child in node.childs if child.entry.action not in (entry.DELETE, entry.GRANT, entry.REVOKE)]):
             yield d
 
 #    def readlink(self, path):
@@ -176,45 +200,58 @@ class FileSystem(Operations):
 
     def open(self, path, flags):
         node = self.get_node(path)
-        return int(node.entry.hash, 16)
+        id = int(node.entry.hash, 16)
+        if path not in self.cache:
+            self.cache[path] = node.content
+            self.dirty[path] = False
+        return id
 
     def create(self, path, mode, fi=None):
-        node = self.view.write(path, '', commit=False)
-        return node.entry.hash
+        self.cache[path] = b''
+        self.dirty[path] = True
+        return id(path)
 
     def read(self, path, length, offset, fh):
-        node = self.get_node(path)
-        return node.entry.content.encode()[offset:length+1]
+        try:
+            content = self.cache[path]
+        except KeyError:
+            node = self.get_node(path)
+            content = node.content
+        return content[offset:length+1]
 
     def write(self, path, buf, offset, fh):
+        try:
+            content = self.cache[path]
+        except KeyError:
+            node = self.get_node(path)
+            content = node.content
         size = len(buf)
-        content = buf.decode()
-        node = self.get_node(path)
-        if offset:
-            entry = node.entry
-            content = entry.content[:offset] + content + entry.content[offset+size:]
-        if not node.entry.signature:
-            node.entry.content = content
-        else:
-            with ViewToErrno():
-                self.view.write(path, content, commit=False)
+        new_content = content[:offset] + buf + content[offset+size:]
+        if content != new_content:
+            self.dirty[path] = True
+            self.cache[path] = new_content
         return size
     
     def truncate(self, path, length, fh=None):
-        """ not implemented because every time ther is a file.write() a truncate(0) is issued """
-        pass
+        self.cache[path] = self.cache[path][:length]
+        self.dirty[path] = True
     
-    def flush(self, path, fh):
-        # TODO Filesystems shouldn't assume that flush will always be called after some writes, or that if will be called at all.
-        node = self.get_node(path)
-        if not node.entry.signature:
-            node.entry.sign()
-            node.entry.save()
+#    def flush(self, path, fh):
+#        # TODO Filesystems shouldn't assume that flush will always be called after some writes, or that if will be called at all.
+#        content = self.cache.pop(path, None)
+#        dirty = self.dirty.pop(path, False)
+#        if content is not None and dirty:
+#            print('write')
+#            node = self.view.write(path, content)
+##            self.send(node)
+    
+    def release(self, path, fh):
+        content = self.cache.pop(path, None)
+        dirty = self.dirty.pop(path, False)
+        if content is not None and dirty:
+            print('write')
+            node = self.view.write(path, content)
             self.send(node)
-    
-#    def release(self, path, fh):
-#        return None
-#        return os.close(fh)
 
 #    def fsync(self, path, fdatasync, fh):
 #        return self.flush(path, fh)
