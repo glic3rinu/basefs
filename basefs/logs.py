@@ -2,6 +2,7 @@ import base64
 import binascii
 import copy
 import hashlib
+import ipaddress
 import itertools
 #import lzma vs zlib
 import os
@@ -11,13 +12,13 @@ import time
 import zlib
 from collections import defaultdict
 
-from . import utils
+from . import utils, signals
 from .keys import Key
-from .exceptions import ValidationError
+from .exceptions import ValidationError, Exists
 from .utils import Candidate
 
 
-class Log(object):
+class Log:
     root = None
     root_key = None
     root_cluster = None
@@ -37,6 +38,7 @@ class Log(object):
         self.blocks = {}
         self.blocks_by_parent = {}
         self.keys_by_name = {}
+        self.post_create = utils.Signal()
     
     def print_tree(self, entry=None, indent='', view=None, color=False, ascii=False, values=None):
         if entry is None:
@@ -49,9 +51,12 @@ class Log(object):
                     values.add(node.entry.hash)
                     if node.perm:
                         values.add(node.perm.entry.hash)
+            bootstrap = entry.hash in (self.root.hash, self.root_cluster.hash, self.root_key.hash)
+            if color and bootstrap:
+                ret = '\033[1m\033[94m' + ret + '\033[0m'
             if entry.hash in values:
                 ret = '*' + ret
-                if color:
+                if color and not bootstrap:
                     ret = '\033[1m\033[92m' + ret + '\033[0m'
         childs = self.entries_by_parent[entry.hash]
         if not childs:
@@ -76,7 +81,7 @@ class Log(object):
 #           content = zlib.compress(entry.content.encode())
 #           content = binascii.b2a_base64(content).decode().rstrip()
         signature = binascii.b2a_base64(entry.signature).decode().rstrip()
-        return ' '.join((entry.hash, entry.parent_hash, str(entry.time), entry.fingerprint,
+        return ' '.join((entry.hash, entry.parent_hash, str(entry.timestamp), entry.fingerprint,
                          entry.action, entry.name, str(entry.content), signature))
     
     def decode(self, line, log=None):
@@ -90,14 +95,17 @@ class Log(object):
                 offset = (offset-len(content), offset)
             content = binascii.a2b_base64(content)
             return Block(self, next_hash, content, hash=hash, offset=offset)
-        hash, parent_hash, time, fingerprint, action, path, content, signature = line.split(' ')
+        line = line.split(' ')
+        hash, parent_hash, timestamp, fingerprint, action = line[:5]
+        path = ' '.join(line[5:-2])
+        content, signature = line[-2:]
 #        if content:
 #            content = binascii.a2b_base64(content.encode())
 #            content = zlib.decompress(content).decode()
         signature = binascii.a2b_base64(signature.encode())
-        time = int(time)
+        timestamp = int(timestamp)
         return LogEntry(self, parent_hash, action, path, content,
-            time=time, fingerprint=fingerprint, signature=signature)
+            timestamp=timestamp, fingerprint=fingerprint, signature=signature)
     
     def load(self, clear=False):
         """ loads logfile """
@@ -115,23 +123,33 @@ class Log(object):
             for line in log.readlines():
                 entry = self.decode(line, log)
                 if isinstance(entry, Block):
-                    # Read block
-                    self.add_block(entry)
+                    block = entry
+                    self.add_block(block)
                 else:
                     # 0: root, 1: .keys, 2: .cluster
                     if not self.root:
                         self.root = entry
-                    # TODO read fucking root keys correctly
                     elif not self.root_key:
-                        self.root_key = entry.read_key()
+                        self.root_key = entry
                     elif not self.root_cluster:
                         self.root_cluster = entry
-                    entry.validate()
-                    entry.clean()
+                    # TODO option to run cleaning somehow
+#                    entry.validate()
+#                    entry.clean()
                     self.add_entry(entry)
             self.loaded = log.tell()
         if not self.root:
             raise RuntimeError("Empty logfile %s" % self.logpath)
+        for entry in self.entries.values():
+            if entry.action == entry.WRITE:
+                entry.next_block = None
+                next = self.blocks[entry.content]
+                while next:
+                    try:
+                        next = next.next
+                    except KeyError:
+                        entry.next_block = next
+                        break
         return self.root
     
     def add_entry(self, entry):
@@ -153,33 +171,42 @@ class Log(object):
     def bootstrap(self, keys, ips):
         root_key = keys[0]
         self.root = self.mkdir(parent=None, name='/', key=root_key)
-        self.root_key = root_key
         parent = self.root
         for ix, key in enumerate(keys):
             name = 'root'
             if ix:
                 name = 'root-%s' % ix
             parent = self.grant(parent=parent, name=name, key=root_key, content=key)
-        ips = '\n'.join(ips) + '\n'
+            if not ix:
+                self.root_key = parent
+        # Validate ips: ['ip:port']
+        content = ''
+        for ip in ips:
+            ip, port = ip.split(':')
+            ip = ipaddress.ip_address(ip)
+            port = int(port)
+            content += '%s:%s\n' % (ip, port)
         from .views import View
-        view = View(self, self.root_key)
+        view = View(self, root_key)
         view.build()
-        view.write('/.cluster', ips)
+        view.write('/.cluster', content)
     
     def do_action(self, parent, action, name, key, *args, commit=True):
         entry = LogEntry(self, parent, action, name, *args)
+        entry.next_block = None
         if parent and parent.action == entry.action:
             entry.ctime = parent.ctime
         else:
-            entry.ctime = entry.time
+            entry.ctime = entry.timestamp
         entry.clean()
         if commit:
             entry.sign(key)
-            self.save(entry)
+            entry.save()
         else:
             entry.hash = id(entry)
             entry.fingerprint = key.fingerprint
         self.add_entry(entry)
+        self.post_create.send(entry)
         return entry
     
     def validate(self, entry):
@@ -195,11 +222,13 @@ class Log(object):
         blocks = []
         if attachment:
             next_hash = None
-            for ix in reversed(range(300, len(attachment), 448)):
-                block = Block(self, next_hash, attachment[ix:ix+448])
+            first = 355 - len(name)  # 512 - (1+28+4+1+1+0+1+28+16+48 +1+28) - len(name)
+            # 483 = 512 - 28 -1
+            for ix in reversed(range(first, len(attachment), 483)):
+                block = Block(self, next_hash, attachment[ix:ix+483])
                 next_hash = block.hash
                 blocks.insert(0, block)
-            block = Block(self, next_hash, attachment[:300])
+            block = Block(self, next_hash, attachment[:first])
             blocks.insert(0, block)
         if not content:
             content = block.hash
@@ -207,7 +236,7 @@ class Log(object):
         for block in blocks:
             self.add_block(block)
             if commit:
-                self.save(block)
+                block.save()
         return response
     
     def delete(self, parent, name, key, commit=True):
@@ -247,6 +276,7 @@ class Log(object):
         return self.do_action(parent, LogEntry.REVOKE, name, key, fingerprint, commit=commit)
     
     def save(self, entry):
+        signals.send(type(entry).save, entry)
         with open(self.logpath, 'a') as logfile:
             logfile.write(self.encode(entry) + '\n')
             self.loaded = logfile.tell()
@@ -255,7 +285,8 @@ class Log(object):
         return self.root.find(path)
 
 
-class LogEntry(object):
+
+class LogEntry:
     MKDIR = 'MKDIR'
     WRITE = 'WRITE'
     DELETE = 'DELETE'
@@ -264,8 +295,10 @@ class LogEntry(object):
     SLINK = 'SLINK'
     LINK = 'LINK'
     REVERT = 'REVERTE'
-    ACTIONS = set((MKDIR, WRITE, DELETE, GRANT, REVOKE, LINK, SLINK, REVERT))
-    ROOT_PARENT_HASH = '0'*32
+    MODE = 'MODE'
+    ACK = 'ACK'
+    ACTIONS = set((MKDIR, WRITE, DELETE, GRANT, REVOKE, LINK, SLINK, REVERT, MODE, ACK))
+    ROOT_PARENT_HASH = '0'*56
     
     def __str__(self):
         content = self.content.replace('\n', '\\n')
@@ -277,7 +310,7 @@ class LogEntry(object):
         return str(self)
     
     def __init__(self, log, parent, action, name, *content, **kwargs):
-        self.time = kwargs.get('time') or int(time.time())
+        self.timestamp = kwargs.pop('timestamp', None) or int(time.time())
         if isinstance(parent, LogEntry):
             self.parent_hash = parent.hash
         else:
@@ -285,9 +318,11 @@ class LogEntry(object):
         self.action = action
         self.name = name
         self.log = log
-        self.hash = kwargs.get('hash')
-        self.fingerprint = kwargs.get('fingerprint')
-        self.signature = kwargs.get('signature')
+        self.hash = kwargs.pop('hash', None)
+        self.fingerprint = kwargs.pop('fingerprint', None)
+        self.signature = kwargs.pop('signature', None)
+        if kwargs:
+            raise ValueError("Unkown %s kwargs" % kwargs)
         self.content = '' if not content else content[0]
         if not self.hash and self.signature:
             self.hash = self.get_hash()
@@ -320,20 +355,20 @@ class LogEntry(object):
                     self._path = os.path.join(self.parent.path, self.name)
         return self._path
     
+    def get_blocks(self):
+        next = self.log.blocks[self.content]
+        while next:
+            yield next
+            next = next.next
+    
     def get_content(self):
         if not hasattr(self, '_content'):
             if not self.content:
                 self._content = self.content
             else:
                 content = b''
-                try:
-                    next = self.log.blocks[self.content]
-                except KeyError:
-                    print(self.log.blocks)
-                    raise
-                while next:
-                    content += next.content
-                    next = next.next
+                for block in self.get_blocks():
+                    content += block.content
                 self._content = content
         return self._content
     
@@ -341,7 +376,7 @@ class LogEntry(object):
         """ cleans log entry """
         self.name = os.path.normpath(self.name.strip())
         if self.action not in self.ACTIONS:
-            raise ValidationError("'%s' not a valid action type" % self.action)
+            raise ValidationError("Entry with '%s' not a valid action type" % self.action)
         if self.parent:
             if self.parent.action == self.WRITE:
                 if self.action == self.MKDIR:
@@ -352,10 +387,10 @@ class LogEntry(object):
                         self.read_key()
                     except:
                         raise ValidationError("Invalid EC public key '%s'." % self.content)
-        if not re.match(r'^[0-9a-f]{32}$', self.parent_hash):
-            raise ValidationError("%s not a valid md5 hash" % self.parent_hash)
+        if not re.match(r'^[0-9a-f]{56}$', self.parent_hash):
+            raise ValidationError("Entry %s not a valid sha224 hash" % self.parent_hash)
         if self.hash in self.log.entries:
-            raise ValidationError("%s already exists" % self.hash)
+            raise Exists("Entry %s already exists" % self.hash)
     
     def get_key(self, keys, last_keys):
         for fingerprint, key in itertools.chain(keys.items(), last_keys.items()):
@@ -410,7 +445,7 @@ class LogEntry(object):
         else:
             for child in self.childs:
                 if child.action not in (self.GRANT, self.REVOKE):
-                    if utils.is_subdir(child.path, path):
+                    if utils.issubdir(path, child.path):
                         entry = child.find(path)
                         if entry:
                             return entry
@@ -432,7 +467,7 @@ class LogEntry(object):
             raise RuntimeError("At least one branch should have been selected")
         if last:
             last.branch_keys = branch_keys
-            last.ctime = entry.time
+            last.ctime = entry.timestamp
         return score, last
     
     def read_key(self):
@@ -449,9 +484,9 @@ class LogEntry(object):
         return key
     
     def get_hash(self):
-        line = ' '.join(map(str, (self.parent_hash, self.time, self.action, self.name,
+        line = ' '.join(map(str, (self.parent_hash, self.timestamp, self.action, self.name,
                                   self.content, self.fingerprint)))
-        return hashlib.md5(line.encode()).hexdigest()
+        return hashlib.sha224(line.encode()).hexdigest()
     
     def sign(self, key=None):
         key = key or self.log.keys[self.fingerprint]
@@ -481,7 +516,7 @@ class LogEntry(object):
         self.log.validate(self)
 
 
-class Block(object):
+class Block:
     def __str__(self):
         return "[%s %s %s]" % (self.hash, self.next_hash, self.content[:32])
     
@@ -497,7 +532,14 @@ class Block(object):
             self._content = content[0]
         self.hash = hash
         if not self.hash:
-            self.hash = hashlib.sha256(self.content).hexdigest()[:32]
+            self.hash = hashlib.sha224(self.content).hexdigest()
+    
+    def clean(self):
+        if self.next_hash is not None:
+            if not re.match(r'^[0-9a-f]{56}$', self.next_hash):
+                raise ValidationError("Block %s not a valid sha224 hash" % self.next_hash)
+        if self.hash in self.log.blocks:
+            raise Exists("Block %s already exists" % self.hash)
     
     @property
     def next(self):
@@ -517,10 +559,13 @@ class Block(object):
                 content = self.log.read(self.end)
             self._content = content
         return self._content
+    
+    def save(self):
+        self.log.save(self)
 
 
 # TODO count upper-class keys first (needed for key revokation)
-class Score(object):
+class Score:
     """ allways growing datastructure
     proof-of-stake: higher keys win """
     

@@ -17,7 +17,8 @@ RUN curl -L https://dl.bintray.com/mitchellh/serf/0.6.4_linux_amd64.zip > /tmp/s
 RUN pip3 install \
     ecdsa \
     fusepy \
-    serfclient
+    serfclient \
+    bsdiff4
 
 RUN echo '/mnt/' > /usr/local/lib/python3.4/dist-packages/basefs.pth
 RUN ln -s /mnt/basefs/bin/basefs /usr/local/bin/

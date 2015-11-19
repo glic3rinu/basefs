@@ -7,10 +7,10 @@ from collections import defaultdict
 import bsdiff4
 
 from basefs import exceptions
-from basefs.utils import Candidate, is_subdir
+from basefs.utils import Candidate, issubdir
 
 
-class ViewNode(object):
+class ViewNode:
     def __str__(self, indent=''):
         ret = repr(self) + '\n'
         if not self.childs:
@@ -74,7 +74,7 @@ class ViewNode(object):
         return self.entry.action == self.entry.SLINK
 
 
-class View(object):
+class View:
     def __init__(self, log, *keys):
         self.log = log
         self.keys = {key.fingerprint: key for key in keys}
@@ -87,7 +87,7 @@ class View(object):
         # TODO partial support
         if not self.log.root_key:
             raise RuntimeError("Log %s not loaded" % self.log.logpath)
-        root_key = self.log.root_key
+        root_key = self.log.root_key.read_key()
         root_key.upper_path = os.sep
         keys = {
             root_key.fingerprint: root_key
@@ -171,7 +171,7 @@ class View(object):
                     granted_paths = set()
                     self.granted_paths[fingerprint] = granted_paths
                 for granted_path in granted_paths:
-                    if path != granted_path and is_subdir(path, granted_path):
+                    if issubdir(granted_path, path):
                         granted_paths.remove(granted_path)
                         granted_paths.add(path)
                         break
@@ -188,7 +188,7 @@ class View(object):
             for granted_path in granted_paths:
                 if granted_path == '/':
                     return self.keys[fingerprint]
-                elif is_subdir(path, granted_path):
+                elif issubdir(granted_path, path):
                     min_path = min(min_path, granted_path.count(os.sep))
             if min_path < selected_min_path:
                 selected = fingerprint
@@ -200,7 +200,7 @@ class View(object):
     def get_keys(self, path='/', by_dir=False):
         result = defaultdict(set)
         for npath, node in self.paths.items():
-            if node.perm and is_subdir(npath, path):
+            if node.perm and issubdir(path, npath):
                 branch = []
                 parent = node.perm
                 while parent.is_permission:
@@ -351,7 +351,7 @@ class View(object):
         for path in keypaths:
             path = os.path.dirname(path)  # remove .keys
             for spath in selected:
-                if is_subdir(path, spath):
+                if issubdir(spath, path):
                     selected.remove(spath)
                     selected.add(path)
             if path not in selected:

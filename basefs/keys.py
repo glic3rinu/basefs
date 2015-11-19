@@ -5,7 +5,7 @@ from collections import defaultdict
 import ecdsa
 
 
-class KeyRing(object):
+class KeyRing:
     def __init__(self):
         self.keys = {}
     
@@ -17,7 +17,7 @@ class Key(ecdsa.SigningKey):
     _paths = defaultdict(set)
     
     def __init__(self, *args, **kwargs):
-        super(Key, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
     
     def __hash__(self):
         return hash(self.fingerprint)

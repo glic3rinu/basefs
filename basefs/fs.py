@@ -8,10 +8,9 @@ import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils, handlers
+from . import exceptions, utils
 from .keys import Key
 from .logs import Log
-from .messages import SerfClient
 from .views import View
 
 
@@ -31,30 +30,13 @@ class ViewToErrno():
 class FileSystem(Operations):
     logger = logging.getLogger('basefs.fs')
     
-    def __init__(self, logpath, keypath, serf=True, rpc_port=7373, sync_port=7952, loglevel=logging.DEBUG, hostname=None):
+    def __init__(self, view, serf=None, loglevel=logging.INFO):
         logging.basicConfig(level=loglevel)
-        self.logpath = os.path.normpath(logpath)
-        self.log = Log(logpath)
-        self.key = Key.load(keypath)
-        self.view = View(self.log, self.key)
-        self.logupdated = logpath + '.updated'
-        utils.touch(self.logupdated)
-        self.load()
-        self.serf = None
+        self.serf = serf
+        self.view = view
         self.cache = {}
         self.dirty = {}
-        if serf:
-            self.serf = SerfClient(self.log, port=rpc_port)
-            node = self.get_node('/.cluster')
-            type(self.log).serf = self.serf
-#            ips = [line.strip() for line in node.content.splitlines() if line.strip()]
-            # TODO get ips from fucking cluster (default port)
-            ips = ['10.0.0.169:7372']
-            result = self.serf.join(ips)
-            if result.head[b'Error']:
-                raise RuntimeError("Couldn't connect to serf cluster %s." % ips)
-            self.handler = threading.Thread(target=handlers.run, args=(self.view, self.serf, sync_port), kwargs={'hostname': hostname})
-            self.handler.start()
+        self.loaded = view.log.loaded
     
     def __call__(self, op, path, *args):
         self.logger.debug('-> %s %s %s', op, path, repr(args))
@@ -68,16 +50,11 @@ class FileSystem(Operations):
         finally:
             self.logger.debug('<- %s %s', op, repr(ret))
     
-    def load(self):
-        self.log_mtime = os.stat(self.logupdated).st_mtime
-        self.log.load()
-        self.view.build()
-    
     def get_node(self, path):
         # check if logfile has been modified
-        mtime = os.stat(self.logupdated).st_mtime
-        if mtime != self.log_mtime:
-            self.load()
+        if self.loaded != self.view.log.loaded:
+            self.view.build()
+            self.loaded = self.view.log.loaded
         with ViewToErrno():
             node = self.view.get(path)
         if node.entry.action == node.entry.DELETE:
@@ -113,11 +90,11 @@ class FileSystem(Operations):
             else:
                 mode = stat.S_IFREG | (0o0640 if has_perm else 0o0440)
             return {
-                'st_atime': node.entry.time,
+                'st_atime': node.entry.timestamp,
                 'st_ctime': node.entry.ctime,
                 'st_gid': os.getgid(),
                 'st_mode': mode, 
-                'st_mtime': node.entry.time, 
+                'st_mtime': node.entry.timestamp,
                 'st_nlink': 1,
                 'st_size': len(node.content),
                 'st_uid': os.getuid(),
@@ -155,28 +132,28 @@ class FileSystem(Operations):
 #            return os.path.relpath(pathname, self.root)
 #        else:
 #            return pathname
-
+    
     def mknod(self, path, mode, dev):
         raise NotImplementedError
-
+    
     def rmdir(self, path):
         with ViewToErrno():
             node = self.view.delete(path)
         self.send(node)
-
+    
     def mkdir(self, path, mode):
         with ViewToErrno():
             node = self.view.mkdir(path)
         self.send(node)
         return 0
-
+    
 #    def statfs(self, path):
 #        full_path = self._full_path(path)
 #        stv = os.statvfs(full_path)
 #        return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
 #            'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
 #            'f_frsize', 'f_namemax'))
-
+    
     def unlink(self, path):
         with ViewToErrno():
             node = self.view.delete(path)

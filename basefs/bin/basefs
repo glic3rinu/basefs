@@ -2,7 +2,7 @@
 
 import argparse
 import atexit
-import ipaddress
+import logging
 import os
 import pwd
 import socket
@@ -14,7 +14,7 @@ from collections import OrderedDict
 
 from fuse import FUSE
 
-from basefs import handlers, utils
+from basefs import loop, utils
 from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log
@@ -22,8 +22,10 @@ from basefs.messages import SerfClient
 from basefs.views import View
 
 
-default_keypath = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'id_ec')
-default_logpath = utils.get_mounted_logpath() or os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs', 'log')
+pw_dir = pwd.getpwuid(os.getuid()).pw_dir
+default_keypath = os.path.join(pw_dir, '.basefs', 'id_ec')
+mount_info = utils.get_mount_info()
+default_logpath = mount_info and mount_info.logpath or os.path.join(pw_dir, '.basefs', 'log')
 
 
 def file_exists(parser, arg, name='The', exec=None):
@@ -84,26 +86,29 @@ def mount():
 #        help='Custom handler script for filesystem update notifications')
     mount_parser.add_argument('-p', '--port', dest='port', type=int, default=7372,
         help='Serf agent port (serf agent port port+1, sync server port+1), defaults to 7372 (7373, 7374)')
-    mount_parser.add_argument('--hostname', dest='hostname', default=socket.gethostname(),
+    mount_parser.add_argument('-n', '--hostname', dest='hostname', default=socket.gethostname(),
         help='Name of this node. Must be unique in the cluster.')
     mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
         help='Enables debugging information.')
-    mount_parser.add_argument('-n', '--no-serf', dest='serf', action='store_false',
+    mount_parser.add_argument('-s', '--single-node', dest='serf', action='store_false',
         help='Disables Serf agent (testing purposes).')
     
     args = mount_parser.parse_args()
     logpath = os.path.normpath(args.logpath)
     keypath = os.path.normpath(args.keypath)
     mountpoint = args.mountpoint
+    rpc_port = args.port+1
+    sync_port = args.port+2
     if args.serf:
+        # launch serf agent
         context = {
             'script': os.path.realpath(__file__),
             'log': logpath,
 #            'handler': ('--fs-handler='+args.handler[0]) if args.handler else '',
             'debug': '-log-level=debug' if args.debug else '',
             'port': args.port,
-            'rpc_port': args.port+1,
-            'sync_port': args.port+2,
+            'rpc_port': rpc_port,
+            'sync_port': sync_port,
             'hostname': args.hostname,
         }
         cmd = textwrap.dedent("""\
@@ -112,14 +117,32 @@ def mount():
                 -bind 0.0.0.0:%(port)s \\
                 -rpc-addr=127.0.0.1:%(rpc_port)s \\
                 -replay %(debug)s \\
-                -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context #'echo -n "$SERF_USER_EVENT$(cat -)" | nc 127.0.0.1 %(sync_port)s'""") % context
+                -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context
         sys.stdout.write(cmd + '\n')
         serf_agent = threading.Thread(target=os.system, args=(cmd,))
         serf_agent.start()
 #        serf_agent = subprocess.Popen(cmd, shell=True)
 #        atexit.register(lambda: serf_agent.kill())
+        # Launch serf client
+        logpath = os.path.normpath(logpath)
+        log = Log(logpath)
+        log.load()
+        key = Key.load(keypath)
+        view = View(log, key)
+        view.build()
+        serf = SerfClient(log, port=rpc_port)
+        cluster = view.get('/.cluster')
+        members = [line.strip() for line in cluster.content.splitlines() if line.strip()]
+        join_result = serf.join(members)
+        if join_result.head[b'Error']:
+            raise RuntimeError("Couldn't connect to serf cluster %s." % members)
+        # Launch event loop
+        handler = threading.Thread(target=loop.run, args=(view, serf, sync_port))
+        handler.start()
     sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
-    FUSE(FileSystem(logpath, keypath, rpc_port=args.port+1, sync_port=args.port+2, hostname=args.hostname), mountpoint, fsname=logpath, nothreads=True, foreground=True)
+    fsname = '%s:%i' % (logpath, sync_port)
+    fs = FileSystem(view, serf, loglevel=logging.DEBUG if args.debug else logging.INFO)
+    FUSE(fs, mountpoint, fsname=fsname, nothreads=True, foreground=True)
 
 
 bootstrap_parser = argparse.ArgumentParser(
@@ -151,9 +174,8 @@ def bootstrap():
             sys.stderr.write("Error: bootsraping keypath %s does not exist.\n" % keypath)
             sys.exit(2)
         keys.append(Key.load(keypath))
-    ips = [str(ipaddress.ip_address(ip)) for ip in args.ips.split(',')]
     log = Log(logpath)
-    log.bootstrap(keys, ips)
+    log.bootstrap(keys, args.ips.split(','))
     sys.stdout.write('Created log file %s\n' % logpath)
     sys.exit(0)
 
@@ -210,19 +232,19 @@ def genkey():
     sys.exit()
 
 
-lskeys_parser = argparse.ArgumentParser(
+keys_parser = argparse.ArgumentParser(
     description='List keys and their directories',
-    prog='basefs lskeys')
+    prog='basefs keys')
 
-def lskeys():
-    lskeys_parser.add_argument('logpath', nargs='?', default=default_logpath,
+def keys():
+    keys_parser.add_argument('logpath', nargs='?', default=default_logpath,
         help='Path to the basefs log file, uses %s by default.' % default_logpath,
-        type=lambda v: file_exists(lskeys_parser, v, name='logpath'))
-    lskeys_parser.add_argument('-p', '--path', dest='path', default='/',
+        type=lambda v: file_exists(keys_parser, v, name='logpath'))
+    keys_parser.add_argument('-p', '--path', dest='path', default='/',
         help='Base path.')
-    lskeys_parser.add_argument('-d', '--by-dir', dest='by_dir', action='store_true',
+    keys_parser.add_argument('-d', '--by-dir', dest='by_dir', action='store_true',
         help='List keys by dir instead of by key.')
-    args = lskeys_parser.parse_args()
+    args = keys_parser.parse_args()
     log = Log(args.logpath)
     log.load()
     view = View(log)
@@ -234,19 +256,19 @@ def lskeys():
             sys.stdout.write('    ' + value + '\n')
 
 
-logtree_parser = argparse.ArgumentParser(
+log_parser = argparse.ArgumentParser(
     description='Show a log file using a tree representation',
-    prog='basefs logtree')
+    prog='basefs log')
 
-def logtree():
-    logtree_parser.add_argument('logpath', nargs='?', default=default_logpath,
+def log():
+    log_parser.add_argument('logpath', nargs='?', default=default_logpath,
         help='Path to the basefs log file, uses %s by default.' % default_logpath,
-        type=lambda v: file_exists(logtree_parser, v, name='logpath'))
-    logtree_parser.add_argument('-a', '--ascii', dest='ascii', action='store_true',
+        type=lambda v: file_exists(log_parser, v, name='logpath'))
+    log_parser.add_argument('-a', '--ascii', dest='ascii', action='store_true',
         help='use ASCII line drawing characters')
-    logtree_parser.add_argument('-c', '--color', dest='color', action='store_true',
+    log_parser.add_argument('-c', '--color', dest='color', action='store_true',
         help='use terminal coloring')
-    args = logtree_parser.parse_args()
+    args = log_parser.parse_args()
     log = Log(args.logpath)
     log.load()
     view = View(log)
@@ -262,69 +284,96 @@ grant_parser = argparse.ArgumentParser(
     description='Grant key write permission',
     prog='basefs grant')
 
-#def grant():
+def grant():
 #    grant_parser.add_argument('logpath', nargs='?', default=default_logpath,
 #        help='Path to the basefs log file, uses %s by default.' % default_logpath,
 #        type=lambda v: file_exists(grant_parser, v, name='logpath'))
-#    grant_parser.add_argument('grantkey',
-#        help='Key fingerprint, if exists on lskeys, or path to a public key.',
-#        type=lambda v: key(grant_parser, v))
-#    grant_parser.add_argument('grantpath',
-#        help='Path where the permission should be granted.')
+    grant_parser.add_argument('grantpath',
+        help='Path where the permission should be granted.')
+    grant_parser.add_argument('grantkey',
+        help='Key fingerprint, if exists on lskeys, or path to a public key.',
+        type=lambda v: key(grant_parser, v))
 #    grant_parser.add_argument('-k', '--key', dest='key',
 #        default=default_keypath,
 #        help='Path to your EC private key. %s by default.' % default_keypath,
 #        type=lambda v: key(grant_parser, v))
-#    args = grant_parser.parse_args()
-#    log = Log(args.logpath)
-#    view = View(log, args.key)
-#    view.grant(args.grant_path, args.grantkey)
-#    sys.exit()
+    args = grant_parser.parse_args()
+    mount_info = utils.get_mount_info(os.path.abspath(args.grantpath))
+    if mount_info is None:
+        sys.stderr.write("Error: grantpath '%s' is not a basefs mountpoint subdir\n" % args.grantpath)
+        sys.exit(2)
+    path = os.path.relpath(args.grantpath, mount_info.mountpoint)
+    if path.startswith('.'):
+        path = path[1:]
+    path = '/' + path
+    context = {
+        'path': path,
+        'grant_key': args.grantkey.oneliner(),
+    }
+    grant_cmd = 'c GRANT %(path)s %(grant_key)s' % context
+    response = utils.netcat('127.0.0.1', mount_info.port, grant_cmd)
+    print(response)
+    sys.exit()
 
 
-#revoke_parser = argparse.ArgumentParser(
-#    description='Revoke key write permission',
-#    prog='basefs revoke')
+revoke_parser = argparse.ArgumentParser(
+    description='Revoke key write permission',
+    prog='basefs revoke')
 
-#def revoke():
+def revoke():
 #    revoke_parser.add_argument('logpath', nargs='?', default=default_logpath,
 #        help='Path to the basefs log file, uses %s by default.' % default_logpath,
 #        type=lambda v: file_exists(revoke_parser, v, name='logpath'))
-#    grant_parser.add_argument('revokekey',
-#        help='Key fingerprint, if exists on lskeys, or path to a public key.',
-#        type=lambda v: fingerprint(revoke_parser, v))
-#    revoke_parser.add_argument('revokepath', nargs='?', default='/',
-#        help='Path where the permission should be granted. Defaults to /.')
+    grant_parser.add_argument('revokekey',
+        help='Key fingerprint, if exists on lskeys, or path to a public key.',
+        type=lambda v: fingerprint(revoke_parser, v))
+    revoke_parser.add_argument('revokepath', nargs='?', default='/',
+        help='Path where the permission should be granted. Defaults to /.')
 #    grant_parser.add_argument('-k', '--key', dest='key',
 #        default=default_keypath,
 #        help='Path to your EC private key. %s by default.' % default_keypath,
 #        type=lambda v: key(revoke_parser, v))
-#    args = revoke_parser.parse_args()
-#    log = Log(args.logpath)
-#    view = View(log, args.key)
-#    view.revoke(args.revokepath, args.revokekey.fingerprint)
-#    sys.exit()
+    args = revoke_parser.parse_args()
+    log = Log(args.logpath)
+    view = View(log, args.key)
+    view.revoke(args.revokepath, args.revokekey.fingerprint)
+    sys.exit()
 
 
+revert_parser = argparse.ArgumentParser(
+    description="Revert object to previous state, 'log' command lists all revisions",
+    prog='basefs revert')
 
-test_parser = argparse.ArgumentParser(
-    description='????',
-    prog='basefs test')
-
-def test():
-    test_parser.add_argument('logpath', nargs='?', default=default_logpath,
-        help='Path to the basefs log file, uses %s by default.' % default_logpath,
-        type=lambda v: file_exists(test_parser, v, name='logpath'))
-    test_parser.add_argument('-p', '--port', dest='port', default=2222, type=int)
-    args = test_parser.parse_args()
-    handlers.run(args.logpath, args.port)
+def revert():
+#    revert_parser.add_argument('logpath', nargs='?', default=default_logpath,
+#        help='Path to the basefs log file, uses %s by default.' % default_logpath,
+#        type=lambda v: file_exists(revoke_parser, v, name='logpath'))
+    revert_parser.add_argument('path',
+        help='Path of the directory or file to revert')
+    revert_parser.add_argument('hash',
+        help="Hash of a previous revision, use 'basefs log path' for showing all revisions")
+#    revert_parser.add_argument('-k', '--key', dest='key',
+#        default=default_keypath,
+#        help='Path to your EC private key. %s by default.' % default_keypath,
+#        type=lambda v: key(revoke_parser, v))
+    args = revert_parser.parse_args()
+    log = Log(args.logpath)
+    view = View(log, args.key)
+    view.revert(args.path, args.hash)
+    sys.exit()
 
 
 def help():
     commands = []
+    max_key = 0
+    for key in methods.keys():
+        max_key = max(len(key), max_key)
+    tabs = int((max_key+4)/8)
     for key, value in methods.items():
         method, parser = value
-        commands.append('    '+key + ('\t' + parser.description if parser else ''))
+        head = '    ' + key
+        indent = '\t'*(tabs - int(len(head)/8) + 1)
+        commands.append(head + (indent + parser.description if parser else ''))
     sys.stdout.write(textwrap.dedent("""\
         Usage: basefs COMMAND [arg...]
                basefs [ --help | -v | --version ]
@@ -344,11 +393,11 @@ methods = OrderedDict([
     ('handler', (handler, handler_parser)),
     ('bootstrap', (bootstrap, bootstrap_parser)),
     ('genkey', (genkey, genkey_parser)),
-    ('lskeys', (lskeys, lskeys_parser)),
-#    ('grant', (grant, grant_parser)),
-#    ('revoke', (revoke, revoke_parser)),
-    ('logtree', (logtree, logtree_parser)),
-    ('test', (test, test_parser)),
+    ('keys', (keys, keys_parser)),
+    ('grant', (grant, grant_parser)),
+    ('revoke', (revoke, revoke_parser)),
+    ('log', (log, log_parser)),
+    ('revert', (revert, revert_parser)),
     ('help', (help, None)),
 ])
 

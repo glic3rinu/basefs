@@ -1,3 +1,8 @@
+MONOTONICITY on delete: ho! i see you're missing a block, let me send it to you! thanks mate! i'm now synchronized!
+
+
+struct.unpack('>I', struct.pack('>I',1447273245))[0]
+
 Decentralised Gossip driven
 then sync them up in hostile network settings
 linked immutable objects synced via a gossip protocol.
