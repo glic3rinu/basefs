@@ -19,6 +19,7 @@ from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log
 from basefs.messages import SerfClient
+from basefs.state import BlockState
 from basefs.views import View
 
 
@@ -130,7 +131,8 @@ def mount():
         key = Key.load(keypath)
         view = View(log, key)
         view.build()
-        serf = SerfClient(log, port=rpc_port)
+        blockstate = BlockState(log)
+        serf = SerfClient(log, blockstate, port=rpc_port)
         cluster = view.get('/.cluster')
         members = [line.strip() for line in cluster.content.splitlines() if line.strip()]
         join_result = serf.join(members)

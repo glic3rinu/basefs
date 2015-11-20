@@ -26,15 +26,10 @@ class SerfClient(client.SerfClient):
     }
     ACTION_REVERSE_MAP = {v: k for k, v in ACTION_MAP.items()}
     
-    def __init__(self, log, *args, **kwargs):
+    def __init__(self, log, blockstate, *args, **kwargs):
         self.log = log
-        self.block_buffer = utils.LRUCache(2048)
-        self.incomplete = {}
-        self.blockstate = BlockState(log)
-        self.received = utils.Signal()
-        for entry in log.entries.values():
-            if entry.action == entry.WRITE and entry.next_block:
-                self.incomplete[entry.next_block] = entry.hash
+        self.blockstate = blockstate
+        self.entry_received = utils.Signal()
         super().__init__(*args, **kwargs)
     
     def join(self, location):
@@ -181,90 +176,14 @@ class SerfClient(client.SerfClient):
                 entry.validate()
                 entry.save()
                 self.log.add_entry(entry)
-                self.received.send(entry)
-                if entry.action == entry.WRITE:
-                    next_hash = entry.content
-                    while next_hash:
-                        try:
-                            block = self.block_buffer.pop(next_hash)
-                        except KeyError:
-                            self.incomplete[next_hash] = entry.hash
-                            self.blockstate.set_receiving(entry.hash)
-                            break
-                        else:
-                            block.save()
-                            block.log.add_block(block)
-                            next_hash = block.next_hash
-                    else:
-                        self.blockstate.post_change.send(entry, self.blockstate.RECEIVING, self.blockstate.COMPLETED)
-                
+                self.entry_received.send(entry)
+                self.blockstate.entry_received(entry)
             else:
                 # Block
                 block = entry
-                ehash = self.incomplete.pop(block.hash, None)
-                if ehash:
-                    prev_state = self.blockstate.get_state(ehash)
-                    try:
-                        block.clean()
-                    except exceptions.Exists:
-                        pass
-                    else:
-                        block.save()
-                        block.log.add_block(block)
-                        while block.next_hash:
-                            try:
-                                block = self.block_buffer.pop(block.next_hash)
-                            except KeyError:
-                                break
-                            else:
-                                block.save()
-                                block.log.add_block(block)
-                    if block.next_hash:
-                        # Still receiving
-                        self.incomplete[block.next_hash] = ehash
-                        if prev_state != self.blockstate.RECEIVING:
-                            entry = self.log.entries[ehash]
-                            self.blockstate.post_change.send(entry, prev_state, self.blockstate.RECEIVING)
-                    else:
-                        # Completed
-                        self.blockstate.receiving.pop(ehash, None)
-                        entry = self.log.entries[ehash]
-                        entry.next_block = None
-                        self.blockstate.post_change.send(entry, prev_state, self.blockstate.COMPLETED)
-                else:
-                    self.block_buffer.set(block.hash, block)
+                try:
+                    block.clean()
+                except exceptions.Exists:
+                    continue
+                self.blockstate.block_received(block)
         transport.close()
-
-
-class BlockState:
-    RECEIVING = 'R'
-    STALLED = 'S'
-    COMPLETED = 'C'
-    
-    def __init__(self, log):
-        self.log = log
-        self.post_change = utils.Signal()
-        self.receiving = {}
-    
-    def get_state(self, ehash):
-        if self.receiving.get(ehash, None):
-            return self.RECEIVING
-        entry = self.log.entries[ehash]
-        if entry.is_complete:
-            return self.COMPLETED
-        return self.STALLED
-    
-    def set_receiving(self, ehash):
-        self.receiving[ehash] = time.time()
-    
-    def get_receiving(self):
-        now = time.time()
-        receiving = list(self.receiving.items())
-        for ehash, timestamp in receiving:
-            if timestamp+60 < now:
-                # stalled
-                self.receiving.pop(ehash)
-                entry = self.log.entries[ehash]
-                self.post_change.send(entry, self.RECEIVING, self.STALLED)
-            else:
-                yield ehash

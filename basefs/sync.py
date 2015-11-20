@@ -6,8 +6,9 @@ import random
 from collections import defaultdict
 
 from . import exceptions, signals, utils
-from .messages import BlockState
 
+
+# TODO us the fucking logger
 
 def get_entries(entry, eq_path=False):
     # TODO
@@ -34,13 +35,14 @@ def merkle_update_on_blockstate_change_factory(sync):
                 | Stalled +-------------+
                 +---------+
         """
-        if BlockState.RECEIVING in (pre, post) and BlockState.STALLED in (pre, post):
+        blockstate = sync.blockstate
+        if blockstate.RECEIVING in (pre, post) and blockstate.STALLED in (pre, post):
             sync.update_merkle(entry)
             sync.update_merkle(entry, hash=entry.content)
-        if post == BlockState.COMPLETED:
-            if pre == BlockState.STALLED:
+        if post == blockstate.COMPLETED:
+            if pre == blockstate.STALLED:
                 sync.update_merkle(entry, hash=entry.content)
-            if pre == BlockState.RECEIVING:
+            if pre == blockstate.RECEIVING:
                 sync.update_merkle(entry)
     return update_merkle
 
@@ -59,7 +61,7 @@ class SyncHandler:
     def __init__(self, view, serf):
         super().__init__()
         self.view = view
-        self.serf = serf
+        self.blockstate = serf.blockstate
         self.log = view.log
         self.merkle = {}
         self.tree = defaultdict(list)
@@ -70,7 +72,7 @@ class SyncHandler:
                 self.update_merkle(entry, hash=entry.content)
         self.log.post_create.connect(lambda e: self.update_merkle(e))
         serf.blockstate.post_change.connect(merkle_update_on_blockstate_change_factory(self))
-        serf.received.connect(lambda e: e.action != e.WRITE and self.update_merkle(e))
+        serf.entry_received.connect(lambda e: e.action != e.WRITE and self.update_merkle(e))
     
     def update_merkle(self, entry, hash=None):
         if hash is None:
@@ -125,8 +127,8 @@ class SyncHandler:
                 section = line
                 continue
             if section == self.BLOCKS_REC:
-                path, *block_hashes = line.split()
-                receiving_blocks[path].extend(block_hashes)
+                path, *entries_hashes = line.split()
+                receiving_blocks[path].extend(entries_hashes)
             elif section == self.LS:
                 line = line.split()
                 if line[0].startswith('*'):
@@ -183,23 +185,17 @@ class SyncHandler:
                 else:
                     self.log.add_entry(entry)
                     entry.save()
-                    self.update_merkle(entry)
+                    if entry.action != entry.WRITE:
+                        self.update_merkle(entry)
+                    self.blockstate.entry_received(entry)
             elif section == self.BLOCKS:
                 block = self.decode_block(line)
                 try:
                     block.clean()
-                    block.validate()
                 except (exceptions.ValidationError, exceptions.Exists):
                     pass
                 else:
-                    if block.entry.hash not in self.receiving:
-                        self.receiving[block.entry.hash] = block.entry
-                        # Remove hash from merkle by reapling
-                        self.update_merkle(entry.entry.last_next_block)
-                    if block.is_last:
-                        self.receiving.pop(block.entry.hash)
-                    self.log.add_block(block)
-                    block.save()
+                    self.blockstate.block_received(block)
         if ls_paths:
             local_paths = []
             for ls_path in ls_paths:
@@ -211,6 +207,7 @@ class SyncHandler:
             for entry in get_entries(self.log.find(path)):
                 entries_to_send.add(entry.hash)
                 # TODO if non-receiving(remote or local), non-deleted blocks
+                
                 if entry.action == entry.WRITE:
                     blocks_to_send.add(entry.content)
         if section == self.CLOSE:
@@ -219,7 +216,7 @@ class SyncHandler:
         return entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls
     
     def get_receiving(self):
-        return [self.log.entries[ehash] for ehash in self.serf.blockstate.get_receiving()]
+        return [self.log.entries[ehash] for ehash in self.blockstate.get_receiving()]
     
     def respond_sync(self, transport, state):
         entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls = state
@@ -275,14 +272,16 @@ class SyncHandler:
     
     def initial_request(self):
         request = []
-        receiving = list(self.serf.blockstate.get_receiving())
+        receiving = list(self.blockstate.get_receiving())
         if receiving:
             request.append(self.BLOCKS_REC)
             for ehash in receiving:
                 entry = self.log.entries[ehash]
-                request.append('%s %s' % (entry.path, entry.content))
+                request.append('%s %s' % (entry.path, entry.hash))
         request.append(self.LS)
         request.append('%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
+        print('>>>>INIT<<<<\n', self.encode('\n'.join(request)).decode())
+        print('>>>><<<<<')
         return self.encode('\n'.join(request))
 
 

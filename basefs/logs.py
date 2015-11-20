@@ -285,7 +285,6 @@ class Log:
         return self.root.find(path)
 
 
-
 class LogEntry:
     MKDIR = 'MKDIR'
     WRITE = 'WRITE'
@@ -532,7 +531,11 @@ class Block:
             self._content = content[0]
         self.hash = hash
         if not self.hash:
-            self.hash = hashlib.sha224(self.content).hexdigest()
+            self.hash = self.get_hash()
+    
+    def get_hash(self):
+        content = (self.next_hash or str(None)).encode() + self.content
+        return hashlib.sha224(content).hexdigest()
     
     def clean(self):
         if self.next_hash is not None:
