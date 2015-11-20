@@ -148,7 +148,7 @@ class Log:
                     try:
                         next = next.next
                     except KeyError:
-                        entry.next_block = next
+                        entry.next_block = next.next_hash
                         break
         return self.root
     

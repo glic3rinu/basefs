@@ -15,7 +15,7 @@ class BlockState:
     def __init__(self, log):
         self.post_change = utils.Signal()
         self.log = log
-        self.buffer = utils.LRUCache(2048)
+        self.buffer = utils.LRUCache(4096)
         self.incomplete = collections.defaultdict(list)
         for entry in self.log.entries.values():
             if entry.action == entry.WRITE and entry.next_block:

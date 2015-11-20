@@ -1,6 +1,10 @@
 import asyncio
+import logging
 
 from . import sync, commands
+
+
+logger = logging.getLogger('basefs.loop')
 
 
 class BasefsProtocol(asyncio.Protocol):
@@ -18,19 +22,23 @@ class BasefsProtocol(asyncio.Protocol):
         """
         self.transport = transport
         if self.client:
-            request = self.handlers[self.client].initial_request()
-            self.transport.write(request)
+            handler = self.handlers[self.client]
+            peername = self.transport.get_extra_info('peername')
+            logger.debug('Initiating %s with %s', handler, peername)
+            handler.initial_request(self.transport)
     
     def data_received(self, data):
         """
         Called when some data is received.
         The argument is a bytes object.
         """
+        peername = self.transport.get_extra_info('peername')
         try:
             handler = self.handlers[data[0]]
         except KeyError:
-            print('UNKNOWN TOKEN', data[0])
+            logger.debug('Unknown token from %s: %s', peername, data[0])
         else:
+            logger.debug('Reciving %s from %s: %s', handler, peername, data.decode())
             handler.data_received(self.transport, data)
 
 

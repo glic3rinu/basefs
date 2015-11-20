@@ -1,6 +1,7 @@
 import asyncio
 import functools
 import itertools
+import logging
 import os
 import random
 from collections import defaultdict
@@ -8,7 +9,8 @@ from collections import defaultdict
 from . import exceptions, signals, utils
 
 
-# TODO us the fucking logger
+logger = logging.getLogger('basefs.sync')
+
 
 def get_entries(entry, eq_path=False):
     # TODO
@@ -58,6 +60,9 @@ class SyncHandler:
     BLOCK_REQ = 'B-REQ'
     SECTIONS = (BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
     
+    def __str__(self):
+        return "Sync:%s" % self.log.logpath 
+    
     def __init__(self, view, serf):
         super().__init__()
         self.view = view
@@ -102,6 +107,12 @@ class SyncHandler:
     def decode_entry(self, line):
         return self.log.decode(line)
     
+    def encode_block(self, block):
+        return self.log.encode(block)
+    
+    def decode_block(self, block):
+        return self.log.decode(block)
+    
     def data_received(self, transport, data):
         # TODO create a timer ???
         state = self.read_sync(transport, data)
@@ -109,8 +120,6 @@ class SyncHandler:
             self.respond_sync(transport, state)
     
     def read_sync(self, transport, data):
-        print('>>>>REQUEST<<<<<\n', data.decode())
-        print('>>>><<<<')
         lines = self.decode(data).splitlines()
         entries_to_send = utils.OrderedSet()
         entries_to_request = utils.OrderedSet()
@@ -122,6 +131,7 @@ class SyncHandler:
         receiving_blocks = defaultdict(list)
         ls = utils.OrderedSet()
         ls_paths = []
+        b_path = None
         for line in lines:
             if line in self.SECTIONS:
                 section = line
@@ -131,34 +141,35 @@ class SyncHandler:
                 receiving_blocks[path].extend(entries_hashes)
             elif section == self.LS:
                 line = line.split()
-                if line[0].startswith('*'):
+                if line[0].startswith('!'):
+                    b_path, rblocks = line[0], utils.OrderedSet(line[1:])
+                    b_path = b_path[1:]
+                    for rblock in rblocks:
+                        try:
+                            rblock = self.log.blocks[rblock]
+                        except KeyError:
+                            pass
+                        else:
+                            blocks_to_send.add(rblock.hash)
+                elif line[0].startswith('*'):
                     # path entries
                     ls_path, rentries = line[0], set(line[1:])
                     ls_path = ls_path[1:]
                     ls_paths.append(ls_path)
                     ls_entry = self.log.find(ls_path)
-                    lentries = utils.OrderedSet([lentry.hash for lentry in get_entries(ls_entry, eq_path=True)])
+                    lentries = utils.OrderedSet()
+                    for lentry in get_entries(ls_entry, eq_path=True):
+                        lentries.add(lentry.hash)
+                        if (lentry.action == lentry.WRITE and
+                            lentry.next_block and (b_path is None or lentry.next_block not in rblocks) and
+                            lentry.hash in rentries and
+                            self.blockstate.get_state(lentry.hash) != self.blockstate.RECEIVING):
+                                blocks_to_request.add(lentry.next_block)
                     entries_to_send = entries_to_send.union(lentries - rentries)
                     entries_to_request = entries_to_request.union(rentries - lentries)
-                elif line[0].startswith('!'):
-                    b_path, rblocks = line[0], utils.OrderedSet(line[1:])
-                    b_path = b_path[1:]
-                    if b_path != ls_path:
-                        raise RuntimeError("%s != %s" % (b_path, ls_path))
-                    # Incomplete, non-receiving (remote or local), non-deleted blocks
-                    lblocks = utils.OrderedSet()
-                    for entry in get_entries(ls_entry, eq_path=True):
-                        if entry.action == entry.WRITE:
-                            # local/remove Non-receiving blocks
-                            if (entry.hash not in receiving_blocks[entry.path] and
-                                self.state.get_state(entry.hash) != self.state.RECEIVING):
-                                # Incomplete
-                                if entry.next_block:
-                                    lblocks.add(entry.next_block)
-                    blocks_to_send = blocks_to_send.union(lblocks - rblocks)
-                    blocks_to_request = blocks_to_request.union(rblocks, lblocks)
+                    b_path = None
                 else:
-                    # TODO Account for receiving entries
+                    # TODO Account for receiving entries (local and remote)
                     path, rhash = line
                     try:
                         lhash = self.merkle[path]
@@ -206,10 +217,6 @@ class SyncHandler:
         for path in paths_to_send:
             for entry in get_entries(self.log.find(path)):
                 entries_to_send.add(entry.hash)
-                # TODO if non-receiving(remote or local), non-deleted blocks
-                
-                if entry.action == entry.WRITE:
-                    blocks_to_send.add(entry.content)
         if section == self.CLOSE:
             transport.close()
             return
@@ -230,17 +237,18 @@ class SyncHandler:
                 for entry in receiving_entries:
                     if utils.issubdir(path, entry.path):
                         receiving[entry.path].append(entry.hash)
-                ls_entries = get_entries(self.log.find(path), eq_path=True)
+                ls_entries = list(get_entries(self.log.find(path), eq_path=True))
+                incomplete_blocks = []
+                for entry in ls_entries:
+                    # TODO exclude receiving
+                    if entry.action == entry.WRITE and entry.next_block:
+                        incomplete_blocks.append(entry.next_block)
+                # ! indicate incomplete blocks
+                if path in incomplete_blocks:
+                    response.append('!%s ' % path + ' '.join(incomplete_blocks))
                 ls_ehashes = [entry.hash for entry in ls_entries]
                 # * indicates all path hashes
                 response.append('*%s ' % path + ' '.join(ls_ehashes))
-                # TODO this doesn't acctually work
-                incomplete_blocks = []
-                for entry in ls_entries:
-                    if entry.action == entry.WRITE and entry.last_next:
-                        incomplete_blocks.append(entry.last_next)
-                if path in incomplete_blocks:
-                    response.append('!%s ' % path + ' '.join(incomplete_blocks))
                 for cpath in self.tree[path]:
                     response.append('%s %s' % (cpath, hex(self.merkle[cpath])[2:]))
             if receiving:
@@ -255,22 +263,35 @@ class SyncHandler:
         if paths_to_request:
             response.append(self.PATH_REQ)
             response.extend(paths_to_request)
+        if blocks_to_request:
+            response.append(self.BLOCK_REQ)
+            response.extend(blocks_to_request)
         if not response:
             close = True
         if entries_to_send:
             response.append(self.ENTRIES)
             for ehash in entries_to_send:
                 response.append(self.encode_entry(self.log.entries[ehash]))
+        if blocks_to_send:
+            response.append(self.BLOCKS)
+            sent_blocks = set()
+            for bhash in blocks_to_send:
+                next = self.log.blocks[bhash]
+                while next:
+                    if next.hash in sent_blocks:
+                        break
+                    response.append(self.encode_block(next))
+                    sent_blocks.add(next.hash)
+                    next = next.next
         if close:
             response.append(self.CLOSE)
-        response = '\n'.join(response)
-        print('>>>>RESPONSE<<<<<\n', self.encode(response).decode())
-        print('>>>><<<<')
-        transport.write(self.encode(response))
+        response = self.encode('\n'.join(response))
+        logger.debug('Responding: %s', response.decode())
+        transport.write(response)
         if close:
             transport.close()
     
-    def initial_request(self):
+    def initial_request(self, transport):
         request = []
         receiving = list(self.blockstate.get_receiving())
         if receiving:
@@ -280,16 +301,16 @@ class SyncHandler:
                 request.append('%s %s' % (entry.path, entry.hash))
         request.append(self.LS)
         request.append('%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
-        print('>>>>INIT<<<<\n', self.encode('\n'.join(request)).decode())
-        print('>>>><<<<<')
-        return self.encode('\n'.join(request))
+        request = self.encode('\n'.join(request))
+        logger.debug('Requesting: %s', request.decode())
+        transport.write(request)
 
 
 @asyncio.coroutine
-def do_full_sync(client_factory, serf, period=5):
+def do_full_sync(client_factory, serf):
     loop = asyncio.get_event_loop()
     while True:
-        yield from asyncio.sleep(period)
+        yield from asyncio.sleep(105 or random.randint(5, 60))
         member = serf.get_random_member()
         # TODO don't make sync requests with members that which whom we're already syncing
         if member:

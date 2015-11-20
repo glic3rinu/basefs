@@ -100,6 +100,7 @@ def mount():
     mountpoint = args.mountpoint
     rpc_port = args.port+1
     sync_port = args.port+2
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
     if args.serf:
         # launch serf agent
         context = {
@@ -143,7 +144,7 @@ def mount():
         handler.start()
     sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
     fsname = '%s:%i' % (logpath, sync_port)
-    fs = FileSystem(view, serf, loglevel=logging.DEBUG if args.debug else logging.INFO)
+    fs = FileSystem(view, serf)
     FUSE(fs, mountpoint, fsname=fsname, nothreads=True, foreground=True)
 
 

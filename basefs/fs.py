@@ -14,6 +14,9 @@ from .logs import Log
 from .views import View
 
 
+logger = logging.getLogger('basefs.fs')
+
+
 class ViewToErrno():
     def __enter__(self):
         return self
@@ -28,10 +31,7 @@ class ViewToErrno():
 
 
 class FileSystem(Operations):
-    logger = logging.getLogger('basefs.fs')
-    
-    def __init__(self, view, serf=None, loglevel=logging.INFO):
-        logging.basicConfig(level=loglevel)
+    def __init__(self, view, serf=None):
         self.serf = serf
         self.view = view
         self.cache = {}
@@ -39,7 +39,7 @@ class FileSystem(Operations):
         self.loaded = view.log.loaded
     
     def __call__(self, op, path, *args):
-        self.logger.debug('-> %s %s %s', op, path, repr(args))
+        logger.debug('-> %s %s %s', op, path, repr(args))
         ret = '[Unhandled Exception]'
         try:
             ret = getattr(self, op)(path, *args)
@@ -48,7 +48,7 @@ class FileSystem(Operations):
             ret = str(e)
             raise
         finally:
-            self.logger.debug('<- %s %s', op, repr(ret))
+            logger.debug('<- %s %s', op, repr(ret))
     
     def get_node(self, path):
         # check if logfile has been modified
