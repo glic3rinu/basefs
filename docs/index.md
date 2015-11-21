@@ -21,7 +21,7 @@ specialized Merkle trees
 Properties
 ==========
 a. decentralized state
-    Dropbox-like applications
+    Dropbox-like applications: each user with each folder, and shared folders
     SO upgrade on large clusters
     shared configuration for decentralized cloud computing: zookeeper, etcd
     shared in-memory-state for clusters: memcached
@@ -96,3 +96,12 @@ Update merkle:
     * entry_hash: receiving all blocks
     * entry_hash + last_block_hash: stalled receiving blocks
     * last_block_hash: if stalled receiving continues or receiving all blocks
+
+
+For small files it is not really important to give incentives for sharing because the resources that each node has to contribute for becoming part of the network are small. However for large files or very-very large file systemes we can consider to incentive mechanisms:
+    a) block-market swarn: write content contains all the blocks hashes of that file, the original content has to be fetched from a bitTorrent-like swarm, much like swaptorrent works (ipfs)
+    b) nodes do not contribute all the missing parts when syncing, they can keep track of the behaviour of the other nodes and decide to choke them if appropiate
+
+
+gossip layer problems: Keep track of bad behaviour and ban bad nodes.
+

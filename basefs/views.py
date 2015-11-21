@@ -171,7 +171,7 @@ class View:
                     granted_paths = set()
                     self.granted_paths[fingerprint] = granted_paths
                 for granted_path in granted_paths:
-                    if issubdir(granted_path, path):
+                    if issubdir(path, granted_path):
                         granted_paths.remove(granted_path)
                         granted_paths.add(path)
                         break
@@ -188,7 +188,7 @@ class View:
             for granted_path in granted_paths:
                 if granted_path == '/':
                     return self.keys[fingerprint]
-                elif issubdir(granted_path, path):
+                elif issubdir(path, granted_path):
                     min_path = min(min_path, granted_path.count(os.sep))
             if min_path < selected_min_path:
                 selected = fingerprint
@@ -200,7 +200,7 @@ class View:
     def get_keys(self, path='/', by_dir=False):
         result = defaultdict(set)
         for npath, node in self.paths.items():
-            if node.perm and issubdir(path, npath):
+            if node.perm and issubdir(npath, path):
                 branch = []
                 parent = node.perm
                 while parent.is_permission:
@@ -351,7 +351,7 @@ class View:
         for path in keypaths:
             path = os.path.dirname(path)  # remove .keys
             for spath in selected:
-                if issubdir(spath, path):
+                if issubdir(path, spath):
                     selected.remove(spath)
                     selected.add(path)
             if path not in selected:

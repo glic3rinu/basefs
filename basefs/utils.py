@@ -26,7 +26,7 @@ class AttrDict(dict):
         return hash(id(self))
 
 
-def issubdir(directory, path):
+def issubdir(path, directory):
     path = os.path.realpath(path)
     directory = os.path.realpath(directory)
     relative = os.path.relpath(path, directory)

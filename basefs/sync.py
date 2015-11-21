@@ -13,7 +13,6 @@ logger = logging.getLogger('basefs.sync')
 
 
 def get_entries(entry, eq_path=False):
-    # TODO
     yield entry
     for child in entry.childs:
         if not eq_path or entry.action in (entry.GRANT, entry.REVOKE) or child.name == entry.name:
@@ -66,6 +65,7 @@ class SyncHandler:
     def __init__(self, view, serf):
         super().__init__()
         self.view = view
+        self.serf = serf
         self.blockstate = serf.blockstate
         self.log = view.log
         self.merkle = {}
@@ -78,6 +78,7 @@ class SyncHandler:
         self.log.post_create.connect(lambda e: self.update_merkle(e))
         serf.blockstate.post_change.connect(merkle_update_on_blockstate_change_factory(self))
         serf.entry_received.connect(lambda e: e.action != e.WRITE and self.update_merkle(e))
+        self.responses = {}
     
     def update_merkle(self, entry, hash=None):
         if hash is None:
@@ -93,13 +94,6 @@ class SyncHandler:
                 if os.path.dirname(path) != path:
                     self.tree[os.path.dirname(path)].append(path)
     
-    def encode(self, data):
-        # TODO compress or whatever
-        return b's' + data.encode()
-    
-    def decode(self, data):
-        return data.decode()[1:]
-    
     def encode_entry(self, entry):
         # TODO remove unthrosworthy shit (hash) and whatever
         return self.log.encode(entry)
@@ -113,14 +107,26 @@ class SyncHandler:
     def decode_block(self, block):
         return self.log.decode(block)
     
-    def data_received(self, transport, data):
-        # TODO create a timer ???
-        state = self.read_sync(transport, data)
+    @asyncio.coroutine
+    def data_received(self, reader, writer):
+        state = yield from self.read_sync(reader, writer)
         if state is not None:
-            self.respond_sync(transport, state)
+            state = yield from self.respond_sync(reader, writer, state)
+            if state:
+                yield from self.data_received(reader, writer)
+        writer.close()
     
-    def read_sync(self, transport, data):
-        lines = self.decode(data).splitlines()
+    def split(self, line):
+        """ path aware """
+        path, *tail = line.split()
+        while path[-1] == '\\':
+            path = path[:-1] + ' ' + tail[0]
+            tail = tail[1:]
+        tail.insert(0, path)
+        return tail
+    
+    @asyncio.coroutine
+    def read_sync(self, reader, writer):
         entries_to_send = utils.OrderedSet()
         entries_to_request = utils.OrderedSet()
         blocks_to_send = utils.OrderedSet()
@@ -128,19 +134,29 @@ class SyncHandler:
         paths_to_send = utils.OrderedSet()
         paths_to_request = utils.OrderedSet()
         verified_paths = utils.OrderedSet()
-        receiving_blocks = defaultdict(list)
+        rreceiving = defaultdict(list)
+        lreceiving = defaultdict(list)
+        for entry in self.get_receiving():
+            lreceiving[entry.path].append(entry.hash)
         ls = utils.OrderedSet()
         ls_paths = []
         b_path = None
-        for line in lines:
+        line = yield from reader.readline()
+        if not line:
+            return
+        while line and line != b'EOF\n':
+            print('R', line)
+            line = line.decode().rstrip('\n')
             if line in self.SECTIONS:
                 section = line
+                line = yield from reader.readline()
                 continue
             if section == self.BLOCKS_REC:
-                path, *entries_hashes = line.split()
-                receiving_blocks[path].extend(entries_hashes)
+                path, *entries_hashes = self.split(line)
+                rreceiving[path].extend(entries_hashes)
             elif section == self.LS:
-                line = line.split()
+                line = self.split(line)
+                # TODO account for receiving???
                 if line[0].startswith('!'):
                     b_path, rblocks = line[0], utils.OrderedSet(line[1:])
                     b_path = b_path[1:]
@@ -169,14 +185,26 @@ class SyncHandler:
                     entries_to_request = entries_to_request.union(rentries - lentries)
                     b_path = None
                 else:
-                    # TODO Account for receiving entries (local and remote)
                     path, rhash = line
                     try:
                         lhash = self.merkle[path]
                     except KeyError:
                         paths_to_request.add(path)
                     else:
-                        if hex(lhash)[2:] != rhash:
+                        # apply receiving entries (local and remote)
+                        lrec, rrec = set(), set()
+                        for lpath, ehashes in lreceiving.items():
+                            if utils.issubdir(lpath, path):
+                                [lrec.add(ehash) for ehash in ehashes]
+                        for rpath, ehashes in rreceiving.items():
+                            if utils.issubdir(rpath, path):
+                                [lrec.add(ehash) for ehash in ehashes]
+                        for rrechash in rrec-lrec:
+                            lhash ^= int(rrechash, 16)
+                        rhash = int(rhash, 16)
+                        for lrechash in lrec-rrec:
+                            rhash ^= int(lrechash, 16)
+                        if lhash != rhash:
                             ls.add(path)
                         else:
                             verified_paths.add(path)
@@ -207,6 +235,7 @@ class SyncHandler:
                     pass
                 else:
                     self.blockstate.block_received(block)
+            line = yield from reader.readline()
         if ls_paths:
             local_paths = []
             for ls_path in ls_paths:
@@ -218,102 +247,121 @@ class SyncHandler:
             for entry in get_entries(self.log.find(path)):
                 entries_to_send.add(entry.hash)
         if section == self.CLOSE:
-            transport.close()
+            writer.close()
             return
-        return entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls
+        return entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls, lreceiving
     
     def get_receiving(self):
         return [self.log.entries[ehash] for ehash in self.blockstate.get_receiving()]
     
-    def respond_sync(self, transport, state):
-        entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls = state
+    def write(self, writer, line):
+        if isinstance(line, str):
+            line = line.encode()
+        print('W', line)
+        writer.write(line + b'\n')
+    
+    @asyncio.coroutine
+    def respond_sync(self, reader, writer, state):
+        entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls, lreceiving = state
         close = False
-        response = []
+#        response = []
         if ls:
-            response.append(self.LS)
-            receiving = defaultdict(list)
-            receiving_entries = self.get_receiving()
+            receiving = {}
             for path in ls:
-                for entry in receiving_entries:
-                    if utils.issubdir(path, entry.path):
-                        receiving[entry.path].append(entry.hash)
+                for rpath, entries in lreceiving.items():
+                    if utils.issubdir(rpath, path):
+                        receiving[rpath] = entries
+            if receiving:
+                self.write(writer, self.BLOCKS_REC)
+                for recv in receiving.items():
+                    path, hashes = recv
+                    hashes = ' '.join(hashes)
+                    self.write(writer, "%s %s" % (path.replace(' ', '\ '), hashes))
+            self.write(writer, self.LS)
+            for path in ls:
                 ls_entries = list(get_entries(self.log.find(path), eq_path=True))
                 incomplete_blocks = []
                 for entry in ls_entries:
-                    # TODO exclude receiving
-                    if entry.action == entry.WRITE and entry.next_block:
-                        incomplete_blocks.append(entry.next_block)
-                # ! indicate incomplete blocks
-                if path in incomplete_blocks:
-                    response.append('!%s ' % path + ' '.join(incomplete_blocks))
+                    if (entry.action == entry.WRITE and entry.next_block and
+                        self.blockstate.get_state(entry.hash) != self.blockstate.RECEIVING):
+                            incomplete_blocks.append(entry.next_block)
+                # ! indicate incomplete stalled blocks
+                if incomplete_blocks:
+                    self.write(writer, '!%s %s' % (path.replace(' ', '\ '), ' '.join(incomplete_blocks)))
                 ls_ehashes = [entry.hash for entry in ls_entries]
                 # * indicates all path hashes
-                response.append('*%s ' % path + ' '.join(ls_ehashes))
+                self.write(writer, '*%s %s' % (path.replace(' ', '\ '), ' '.join(ls_ehashes)))
                 for cpath in self.tree[path]:
-                    response.append('%s %s' % (cpath, hex(self.merkle[cpath])[2:]))
-            if receiving:
-                response.insert(0, self.BLOCKS_REC)
-                for ix, recv in enumerate(receiving.items()):
-                    path, hashes = recv
-                    hashes = ' '.join(hashes)
-                    response.insert(ix+1, "%s %s" % (path, hashes))
+                    self.write(writer, '%s %s' % (cpath.replace(' ', '\ '), hex(self.merkle[cpath])[2:]))
         if entries_to_request:
-            response.append(self.ENTRY_REQ)
-            response.extend(entries_to_request)
+            self.write(writer, self.ENTRY_REQ)
+            for line in entries_to_request:
+                self.write(writer, line)
         if paths_to_request:
-            response.append(self.PATH_REQ)
-            response.extend(paths_to_request)
+            self.write(writer, self.PATH_REQ)
+            for line in paths_to_request:
+                self.write(writer, line)
         if blocks_to_request:
-            response.append(self.BLOCK_REQ)
-            response.extend(blocks_to_request)
-        if not response:
+            self.write(writer, self.BLOCK_REQ)
+            for line in blocks_to_request:
+                self.write(writer, line)
+        if not (ls or entries_to_request or paths_to_request or blocks_to_request):
             close = True
         if entries_to_send:
-            response.append(self.ENTRIES)
+            self.write(writer, self.ENTRIES)
             for ehash in entries_to_send:
-                response.append(self.encode_entry(self.log.entries[ehash]))
+                self.write(writer, self.encode_entry(self.log.entries[ehash]))
         if blocks_to_send:
-            response.append(self.BLOCKS)
+            self.write(writer, self.BLOCKS)
             sent_blocks = set()
             for bhash in blocks_to_send:
                 next = self.log.blocks[bhash]
                 while next:
                     if next.hash in sent_blocks:
                         break
-                    response.append(self.encode_block(next))
+                    self.write(writer, self.encode_block(next))
                     sent_blocks.add(next.hash)
                     next = next.next
         if close:
-            response.append(self.CLOSE)
-        response = self.encode('\n'.join(response))
-        logger.debug('Responding: %s', response.decode())
-        transport.write(response)
-        if close:
-            transport.close()
+            self.write(writer, self.CLOSE)
+#            yield from writer.drain()
+            writer.close()
+        else:
+            self.write(writer, 'EOF')
+            return True
+#            yield from writer.drain()
+#        response = self.encode('\n'.join(response))
+#        logger.debug('Responding: %s', response.decode())
+#        transport.write(response)
+#        if close:
+#            transport.close()
     
-    def initial_request(self, transport):
-        request = []
+    @asyncio.coroutine
+    def initial_request(self, reader, writer):
+        peername = writer.get_extra_info('peername')
+        logger.debug('Initiating sync with %s', peername)
         receiving = list(self.blockstate.get_receiving())
+        writer.write(b's')
         if receiving:
-            request.append(self.BLOCKS_REC)
+            self.respond(transport, section=self.BLOCKS_REC)
             for ehash in receiving:
                 entry = self.log.entries[ehash]
-                request.append('%s %s' % (entry.path, entry.hash))
-        request.append(self.LS)
-        request.append('%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
-        request = self.encode('\n'.join(request))
-        logger.debug('Requesting: %s', request.decode())
-        transport.write(request)
+                self.respond(transport, '%s %s' % (entry.path.replace(' ', '\ '), entry.hash))
+        self.write(writer, self.LS)
+        self.write(writer, '%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
+        self.write(writer, 'EOF')
+#        yield from writer.drain()
+        yield from self.data_received(reader, writer)
 
 
 @asyncio.coroutine
-def do_full_sync(client_factory, serf):
+def do_full_sync(sync):
     loop = asyncio.get_event_loop()
     while True:
-        yield from asyncio.sleep(105 or random.randint(5, 60))
-        member = serf.get_random_member()
+        yield from asyncio.sleep(5 or random.randint(5, 60))
+        member = sync.serf.get_random_member()
         # TODO don't make sync requests with members that which whom we're already syncing
         if member:
             ip, port = member
-            coro = loop.create_connection(client_factory, ip, port)
-            asyncio.async(coro)
+            reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
+            yield from sync.initial_request(reader, writer)

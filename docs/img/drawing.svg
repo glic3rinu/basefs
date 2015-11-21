@@ -26,7 +26,7 @@
      inkscape:pageshadow="2"
      inkscape:zoom="1.979899"
      inkscape:cx="376.13298"
-     inkscape:cy="846.04112"
+     inkscape:cy="502.58926"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -750,18 +750,22 @@
       <text
          sodipodi:linespacing="129%"
          id="text4098"
-         y="384.29205"
+         y="366.29205"
          x="437.79214"
          style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:128.99999619%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';text-align:center;letter-spacing:-0.5px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
-           y="384.29205"
-           x="437.54214"
+           y="366.29205"
+           x="437.79214"
            id="tspan4100"
-           sodipodi:role="line">asyncio</tspan><tspan
+           sodipodi:role="line" /><tspan
            id="tspan4102"
-           y="401.06204"
+           y="383.06204"
            x="437.54214"
-           sodipodi:role="line">eventloop</tspan></text>
+           sodipodi:role="line">event</tspan><tspan
+           y="399.83206"
+           x="437.54214"
+           sodipodi:role="line"
+           id="tspan4555">loop</tspan></text>
     </g>
     <g
        id="g4222"
@@ -2237,5 +2241,65 @@
          id="tspan4526"
          x="262.14285"
          y="133.57648" /></text>
+    <g
+       id="g4549"
+       transform="translate(9.0913728,-121.72338)">
+      <g
+         transform="translate(-77.502132,273.48102)"
+         id="g4206-9">
+        <rect
+           style="opacity:0.85;fill:#d3d7cf;fill-opacity:1;stroke:#555753;stroke-width:0.50988001;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="rect4143-6"
+           width="102.70441"
+           height="34.234802"
+           x="267.57639"
+           y="335.98447"
+           rx="4.6355095"
+           ry="4.6355095" />
+        <text
+           xml:space="preserve"
+           style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:128.99999619%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
+           x="285.2673"
+           y="358.38904"
+           id="text4092-0"
+           sodipodi:linespacing="129%"><tspan
+             sodipodi:role="line"
+             id="tspan4094-8"
+             x="285.2673"
+             y="358.38904">BlockState</tspan></text>
+      </g>
+    </g>
+    <g
+       id="g4549-1"
+       transform="translate(237.38585,-44.446712)">
+      <g
+         transform="translate(-77.502132,273.48102)"
+         id="g4206-9-2">
+        <g
+           id="g4584"
+           transform="translate(-172.73608,1.5152288)">
+          <rect
+             ry="4.6355095"
+             rx="4.6355095"
+             y="335.98447"
+             x="267.57639"
+             height="34.234802"
+             width="102.70441"
+             id="rect4143-6-7"
+             style="opacity:0.85;fill:#d3d7cf;fill-opacity:1;stroke:#555753;stroke-width:0.50988001;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+          <text
+             sodipodi:linespacing="129%"
+             id="text4092-0-9"
+             y="358.38904"
+             x="285.2673"
+             style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:128.99999619%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
+             xml:space="preserve"><tspan
+               y="358.38904"
+               x="285.2673"
+               id="tspan4094-8-2"
+               sodipodi:role="line">Command</tspan></text>
+        </g>
+      </g>
+    </g>
   </g>
 </svg>

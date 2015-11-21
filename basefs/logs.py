@@ -143,13 +143,17 @@ class Log:
         for entry in self.entries.values():
             if entry.action == entry.WRITE:
                 entry.next_block = None
-                next = self.blocks[entry.content]
-                while next:
-                    try:
-                        next = next.next
-                    except KeyError:
-                        entry.next_block = next.next_hash
-                        break
+                try:
+                    next = self.blocks[entry.content]
+                except KeyError:
+                    entry.next_block = entry.content
+                else:
+                    while next:
+                        try:
+                            next = next.next
+                        except KeyError:
+                            entry.next_block = next.next_hash
+                            break
         return self.root
     
     def add_entry(self, entry):
@@ -444,7 +448,7 @@ class LogEntry:
         else:
             for child in self.childs:
                 if child.action not in (self.GRANT, self.REVOKE):
-                    if utils.issubdir(path, child.path):
+                    if utils.issubdir(child.path, path):
                         entry = child.find(path)
                         if entry:
                             return entry
