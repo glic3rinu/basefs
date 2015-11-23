@@ -7,7 +7,7 @@ import zlib
 
 from serfclient import client
 
-from basefs import utils, exceptions
+from basefs import utils, exceptions, settings
 from basefs.logs import LogEntry, Block
 
 
@@ -88,7 +88,7 @@ class SerfClient(client.SerfClient):
                              content_offset, content, fingerprint, signature))
         elif isinstance(entry, Block):
             block = entry
-            next_hash = binascii.a2b_hex(block.next_hash if block.next_hash else '0'*56)
+            next_hash = binascii.a2b_hex(block.next_hash if block.next_hash else '0'*block.HASH_SIZE)
             return b''.join((b'b', next_hash, block.content))
     
     def decode(self, data, offset=0, entries=None):
@@ -129,7 +129,7 @@ class SerfClient(client.SerfClient):
             entries.append(entry)
         elif event == 'b':
             next_hash = binascii.b2a_hex(data[offset:offset+28]).decode()
-            if next_hash == '0'*56:
+            if next_hash == '0'*Block.HASH_SIZE:
                 next_hash = None
             offset += 28
             content = data[offset:]
@@ -153,7 +153,9 @@ class SerfClient(client.SerfClient):
             else:
                 data += entry_data
             if entry.action == entry.WRITE:
-                for block in entry.get_blocks():
+                for ix, block in enumerate(entry.get_blocks()):
+                    if ix > settings.MAX_BLOCK_MESSAGES:
+                        break
                     block_data = self.encode(block)
                     if len(data) + len(block_data) > 512:
                         event = chr(data[0])
@@ -165,7 +167,10 @@ class SerfClient(client.SerfClient):
             event = chr(data[0])
             self.event(event, data[1:], coalesce=False)
     
-    def data_received(self, transport, data):
+    def data_received(self, reader, writer, token):
+        data = yield from reader.read(-1)
+        writer.close()
+        data = token + data
         entries = self.decode(data[:-1]) # remove \n char inserted by serf
         for entry in entries:
             if isinstance(entry, LogEntry):
@@ -186,4 +191,3 @@ class SerfClient(client.SerfClient):
                 except exceptions.Exists:
                     continue
                 self.blockstate.block_received(block)
-        transport.close()

@@ -4,9 +4,10 @@ import itertools
 import logging
 import os
 import random
+import traceback
 from collections import defaultdict
 
-from . import exceptions, signals, utils
+from . import exceptions, signals, utils, settings
 
 
 logger = logging.getLogger('basefs.sync')
@@ -108,7 +109,7 @@ class SyncHandler:
         return self.log.decode(block)
     
     @asyncio.coroutine
-    def data_received(self, reader, writer):
+    def data_received(self, reader, writer, *token):
         state = yield from self.read_sync(reader, writer)
         if state is not None:
             state = yield from self.respond_sync(reader, writer, state)
@@ -343,10 +344,10 @@ class SyncHandler:
         receiving = list(self.blockstate.get_receiving())
         writer.write(b's')
         if receiving:
-            self.respond(transport, section=self.BLOCKS_REC)
+            self.write(writer, self.BLOCKS_REC)
             for ehash in receiving:
                 entry = self.log.entries[ehash]
-                self.respond(transport, '%s %s' % (entry.path.replace(' ', '\ '), entry.hash))
+                self.write(writer, '%s %s' % (entry.path.replace(' ', '\ '), entry.hash))
         self.write(writer, self.LS)
         self.write(writer, '%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
         self.write(writer, 'EOF')
@@ -358,10 +359,13 @@ class SyncHandler:
 def do_full_sync(sync):
     loop = asyncio.get_event_loop()
     while True:
-        yield from asyncio.sleep(5 or random.randint(5, 60))
-        member = sync.serf.get_random_member()
-        # TODO don't make sync requests with members that which whom we're already syncing
-        if member:
-            ip, port = member
-            reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
-            yield from sync.initial_request(reader, writer)
+        try:
+            yield from asyncio.sleep(random.randint(*settings.FULL_SYNC_INTERVAL))
+            member = sync.serf.get_random_member()
+            # TODO don't make sync requests with members that which whom we're already syncing
+            if member:
+                ip, port = member
+                reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
+                yield from sync.initial_request(reader, writer)
+        except Exception as exc:
+            logger.error(traceback.format_exc())

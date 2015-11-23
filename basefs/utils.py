@@ -38,10 +38,24 @@ def touch(fname, times=None):
         os.utime(fname, times)
 
 
+import asyncio
+
 def netcat(host, port, content):
+#    @asyncio.coroutine
+#    def coro():
+#        reader, writer = yield from asyncio.open_connection(host, port)
+#        writer.write(content.encode()+b'\n')
+#        data = yield from reader.read(1024)
+#        writer.close()
+#        print(data)
+#        return data
+#    loop = asyncio.get_event_loop()
+#    task = asyncio.async(coro())
+#    return loop.run_until_complete(task)
+        
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, int(port)))
-    s.sendall(content.encode())
+    s.sendall(content)
     s.shutdown(socket.SHUT_WR)
     data = b''
     while True:
@@ -71,12 +85,13 @@ def get_mount_info(*args):
                     with open(logpath, 'r') as log:
                         line = log.readline()
                     line = line.split(' ')
-                    if len(line) == 8 and line[1] == '0'*32 and line[4] == 'MKDIR' and line[5] == os.sep:
+                    if len(line) == 8 and line[1].startswith('0'*16) and line[4] == 'MKDIR' and line[5] == os.sep:
                         return AttrDict(
                             logpath=logpath,
                             port=int(info.split(':')[-1]),
                             mountpoint=mountpoint.decode(),
                         )
+            
             return
         path = os.path.abspath(os.path.join(path, os.pardir))
 
@@ -107,6 +122,9 @@ class LRUCache:
     
     def pop(self, key, *default):
         return self.cache.pop(key, *default)
+    
+    def items(self):
+        return self.cache.items()
 
 
 class Signal(object):

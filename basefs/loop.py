@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import traceback
 
 from . import sync, commands
 
@@ -10,14 +11,13 @@ logger = logging.getLogger('basefs.loop')
 def run(view, serf, port):
     handlers = {
         b's': sync.SyncHandler(view, serf),
-        b'c': commands.CommandHandler(view),
+        b'c': commands.CommandHandler(view, serf),
         b'e': serf,
         b'b': serf,
     }
-
+    
     @asyncio.coroutine
     def handle_connection(reader, writer, handlers=handlers):
-        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
         token = yield from reader.read(1)
         peername = writer.get_extra_info('peername')
         try:
@@ -28,9 +28,11 @@ def run(view, serf, port):
             writer.close()
         else:
             logger.debug('Reciving %s from %s', handler, peername)
-            yield from handler.data_received(reader, writer)
-
-
+            try:
+                yield from handler.data_received(reader, writer, token)
+            except Exception as exc:
+                logger.error(traceback.format_exc())
+    
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     coro = asyncio.start_server(handle_connection, '0.0.0.0', port, loop=loop)

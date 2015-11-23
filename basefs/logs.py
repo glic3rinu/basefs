@@ -301,7 +301,8 @@ class LogEntry:
     MODE = 'MODE'
     ACK = 'ACK'
     ACTIONS = set((MKDIR, WRITE, DELETE, GRANT, REVOKE, LINK, SLINK, REVERT, MODE, ACK))
-    ROOT_PARENT_HASH = '0'*56
+    HASH_SIZE = 56
+    ROOT_PARENT_HASH = '0'*HASH_SIZE
     
     def __str__(self):
         content = self.content.replace('\n', '\\n')
@@ -390,7 +391,7 @@ class LogEntry:
                         self.read_key()
                     except:
                         raise ValidationError("Invalid EC public key '%s'." % self.content)
-        if not re.match(r'^[0-9a-f]{56}$', self.parent_hash):
+        if not re.match(r'^[0-9a-f]{%i}$' % self.HASH_SIZE, self.parent_hash):
             raise ValidationError("Entry %s not a valid sha224 hash" % self.parent_hash)
         if self.hash in self.log.entries:
             raise Exists("Entry %s already exists" % self.hash)
@@ -520,6 +521,8 @@ class LogEntry:
 
 
 class Block:
+    HASH_SIZE = 56
+    
     def __str__(self):
         return "[%s %s %s]" % (self.hash, self.next_hash, self.content[:32])
     
@@ -543,7 +546,7 @@ class Block:
     
     def clean(self):
         if self.next_hash is not None:
-            if not re.match(r'^[0-9a-f]{56}$', self.next_hash):
+            if not re.match(r'^[0-9a-f]{%i}$' % self.HASH_SIZE, self.next_hash):
                 raise ValidationError("Block %s not a valid sha224 hash" % self.next_hash)
         if self.hash in self.log.blocks:
             raise Exists("Block %s already exists" % self.hash)

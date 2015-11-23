@@ -1,7 +1,7 @@
 import time
 import collections
 
-from . import utils
+from . import utils, settings
 
 
 class BlockState:
@@ -15,7 +15,7 @@ class BlockState:
     def __init__(self, log):
         self.post_change = utils.Signal()
         self.log = log
-        self.buffer = utils.LRUCache(4096)
+        self.buffer = utils.LRUCache(settings.BLOCK_RECEIVING_BUFFER)
         self.incomplete = collections.defaultdict(list)
         for entry in self.log.entries.values():
             if entry.action == entry.WRITE and entry.next_block:
@@ -71,9 +71,10 @@ class BlockState:
             self.buffer.set(block.hash, block)
     
     def get_state(self, ehash):
-        timestamp = self.receiving.get(ehash, None)
-        if timestamp:
-            if timestamp+60 >= time.time():
+        state = self.receiving.get(ehash, None)
+        if state:
+            timestamp, __ = state
+            if timestamp+settings.BLOCK_RECEIVING_TIMEOUT >= time.time():
                 return self.RECEIVING
             else:
                 self.receiving.pop(ehash)
@@ -83,13 +84,19 @@ class BlockState:
         return self.STALLED
     
     def set_receiving(self, ehash):
-        self.receiving[ehash] = time.time()
+        try:
+            state = self.receiving[ehash]
+        except KeyError:
+            self.receiving[ehash] = [time.time(), 1]
+        else:
+            state[0], state[1] = time.time(), state[1]+1
     
     def get_receiving(self):
         now = time.time()
         receiving = list(self.receiving.items())
-        for ehash, timestamp in receiving:
-            if timestamp+60 < now:
+        for ehash, state in receiving:
+            timestamp, __ = state
+            if timestamp+settings.BLOCK_RECEIVING_TIMEOUT < now:
                 # stalled
                 self.receiving.pop(ehash)
                 entry = self.log.entries[ehash]

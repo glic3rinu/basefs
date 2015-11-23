@@ -46,6 +46,16 @@ devise a new system for decentralized cluster configuration management
 
 
 
+Related work / state of the art
+===============================
+
+IPFS
+syncthing
+btsync
+cassandra/mongo/couchdb... nosql databases
+consul/etcd
+
+
 Sync protocol
 =============
     LS = 'LS'
@@ -104,4 +114,13 @@ For small files it is not really important to give incentives for sharing becaus
 
 
 gossip layer problems: Keep track of bad behaviour and ban bad nodes.
+
+
+
+
+Biased getPeer(randomize algorithm) : network proximity, published new content
+
+gossip initial spread of information, anti-entropy is run infrequently to make sure all update are spread with probability 1.
+
+
 

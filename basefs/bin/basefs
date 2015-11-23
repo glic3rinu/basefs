@@ -10,6 +10,7 @@ import subprocess
 import sys
 import textwrap
 import threading
+import time
 from collections import OrderedDict
 
 from fuse import FUSE
@@ -27,6 +28,13 @@ pw_dir = pwd.getpwuid(os.getuid()).pw_dir
 default_keypath = os.path.join(pw_dir, '.basefs', 'id_ec')
 mount_info = utils.get_mount_info()
 default_logpath = mount_info and mount_info.logpath or os.path.join(pw_dir, '.basefs', 'log')
+
+
+def send_command(cmd, *args):
+    if mount_info is None:
+        sys.stderr.write("Error: which ?\n")
+        sys.exit(2)
+    return utils.netcat('127.0.0.1', mount_info.port, ' '.join(('c' + cmd,) + args).encode())
 
 
 def file_exists(parser, arg, name='The', exec=None):
@@ -120,11 +128,11 @@ def mount():
                 -rpc-addr=127.0.0.1:%(rpc_port)s \\
                 -replay %(debug)s \\
                 -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context
-        sys.stdout.write(cmd + '\n')
-        serf_agent = threading.Thread(target=os.system, args=(cmd,))
-        serf_agent.start()
-#        serf_agent = subprocess.Popen(cmd, shell=True)
-#        atexit.register(lambda: serf_agent.kill())
+#        sys.stdout.write(cmd + '\n')
+#        serf_agent = threading.Thread(target=os.system, args=(cmd,))
+#        serf_agent.start()
+        serf_agent = subprocess.Popen(cmd, shell=True)
+        atexit.register(lambda: serf_agent.kill())
         # Launch serf client
         logpath = os.path.normpath(logpath)
         log = Log(logpath)
@@ -264,6 +272,8 @@ log_parser = argparse.ArgumentParser(
     prog='basefs log')
 
 def log():
+    log_parser.add_argument('path', nargs='?', default=os.sep,
+        help='Path to the basefs log file, uses / by default.')
     log_parser.add_argument('logpath', nargs='?', default=default_logpath,
         help='Path to the basefs log file, uses %s by default.' % default_logpath,
         type=lambda v: file_exists(log_parser, v, name='logpath'))
@@ -276,11 +286,31 @@ def log():
     log.load()
     view = View(log)
     view.build()
-    tree = log.print_tree(view=view, color=args.color, ascii=args.ascii)
-    if args.ascii:
-        sys.stdout.buffer.write(tree.encode('ascii', errors='replace'))
+    
+    printed = False
+    def print_tree(entry):
+        tree = log.print_tree(entry=entry, view=view, color=args.color, ascii=args.ascii)
+        if args.ascii:
+            sys.stdout.buffer.write(tree.encode('ascii', errors='replace'))
+        else:
+            sys.stdout.write(tree)
+        return True
+    
+    if mount_info:
+        path = os.path.abspath(args.path)
+        path = path.replace(mount_info.mountpoint, '')
+        entry = log.find(path)
+        if entry is None:
+            entry = log.find(args.path)
+        if entry:
+            printed = print_tree(entry)
     else:
-        sys.stdout.write(tree)
+        entry = log.find(args.path)
+        if entry:
+            printed = print_tree(entry)
+    if not printed:
+        sys.stderr.write("Error: '%s' path does not exist on the log.\n" % args.path)
+        sys.exit(2)
 
 
 grant_parser = argparse.ArgumentParser(
@@ -366,6 +396,28 @@ def revert():
     sys.exit()
 
 
+blocks_parser = argparse.ArgumentParser(
+    description="Block state",
+    prog='basefs blocks')
+
+def blocks():
+    cmd = 'cBLOCKSTATE'
+    while True:
+        result = send_command('BLOCKSTATE')
+        print(result)
+        time.sleep(1)
+    sys.exit()
+
+members_parser = argparse.ArgumentParser(
+    description="List cluster members",
+    prog='basefs members')
+
+def members():
+    cmd = 'cMembers'
+    sys.stdout.write(send_command('MEMBERS') + '\n')
+    sys.exit()
+
+
 def help():
     commands = []
     max_key = 0
@@ -401,6 +453,8 @@ methods = OrderedDict([
     ('revoke', (revoke, revoke_parser)),
     ('log', (log, log_parser)),
     ('revert', (revert, revert_parser)),
+    ('blocks', (blocks, blocks_parser)),
+    ('members', (members, members_parser)),
     ('help', (help, None)),
 ])
 
