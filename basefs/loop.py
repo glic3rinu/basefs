@@ -8,7 +8,7 @@ from . import sync, commands
 logger = logging.getLogger('basefs.loop')
 
 
-def run(view, serf, port):
+def run(view, serf, port, loop_container=None):
     handlers = {
         b's': sync.SyncHandler(view, serf),
         b'c': commands.CommandHandler(view, serf),
@@ -38,6 +38,8 @@ def run(view, serf, port):
     coro = asyncio.start_server(handle_connection, '0.0.0.0', port, loop=loop)
     server = loop.run_until_complete(coro)
     asyncio.async(sync.do_full_sync(handlers[b's']))
+    if loop_container is not None:
+        loop_container.loop = loop
     try:
         loop.run_forever()
     finally:

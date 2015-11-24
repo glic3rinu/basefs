@@ -1,3 +1,11 @@
+>>> str(uuid.UUID(hashlib.md5(str(uuid.getnode()).encode()).hexdigest()))
+'fc27a92a-d0ca-6ab5-b03f-34f633f6cc92'
+
+port = int(name)
+
+
+https://docs.python.org/3/library/configparser.html
+
 make basefs to be able to run multiple times on the same machine for esay testing (solve port issuse)
 cluster discovery: /.cluster <ip, port> tuple
 WRITE vs WRITE-DELTA

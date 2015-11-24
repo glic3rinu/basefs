@@ -57,14 +57,12 @@ def netcat(host, port, content):
     s.connect((host, int(port)))
     s.sendall(content)
     s.shutdown(socket.SHUT_WR)
-    data = b''
     while True:
-        recv = s.recv(4096)
+        recv = s.recv(2048)
         if not recv:
-            break
-        data += recv
-    s.close()
-    return data.decode()
+            s.close()
+            raise StopIteration
+        yield recv.decode()
 
 
 def get_mount_info(*args):

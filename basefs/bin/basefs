@@ -2,15 +2,21 @@
 
 import argparse
 import atexit
+import ipaddress
 import logging
 import os
+import platform
 import pwd
+import signal
 import socket
+import stat
 import subprocess
 import sys
 import textwrap
 import threading
 import time
+import urllib.request
+import zipfile
 from collections import OrderedDict
 
 from fuse import FUSE
@@ -31,10 +37,11 @@ default_logpath = mount_info and mount_info.logpath or os.path.join(pw_dir, '.ba
 
 
 def send_command(cmd, *args):
-    if mount_info is None:
-        sys.stderr.write("Error: which ?\n")
-        sys.exit(2)
-    return utils.netcat('127.0.0.1', mount_info.port, ' '.join(('c' + cmd,) + args).encode())
+    port = mount_info.port if mount_info else 7374
+    data = ''
+    for part in utils.netcat('127.0.0.1', port, ' '.join(('c' + cmd,) + args).encode()):
+        data += part
+    return data
 
 
 def file_exists(parser, arg, name='The', exec=None):
@@ -93,6 +100,8 @@ def mount():
         type=lambda v: file_exists(mount_parser, v, name='keypath'))
 #    mount_parser.add_argument('--fs-handler', dest='handler', nargs=1,
 #        help='Custom handler script for filesystem update notifications')
+    mount_parser.add_argument('-i', '--ips', dest='ips',
+        help='comma separated ip:port used as boostrapping nodes.')
     mount_parser.add_argument('-p', '--port', dest='port', type=int, default=7372,
         help='Serf agent port (serf agent port port+1, sync server port+1), defaults to 7372 (7373, 7374)')
     mount_parser.add_argument('-n', '--hostname', dest='hostname', default=socket.gethostname(),
@@ -109,51 +118,74 @@ def mount():
     rpc_port = args.port+1
     sync_port = args.port+2
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
-    if args.serf:
-        # launch serf agent
-        context = {
-            'script': os.path.realpath(__file__),
-            'log': logpath,
-#            'handler': ('--fs-handler='+args.handler[0]) if args.handler else '',
-            'debug': '-log-level=debug' if args.debug else '',
-            'port': args.port,
-            'rpc_port': rpc_port,
-            'sync_port': sync_port,
-            'hostname': args.hostname,
-        }
-        cmd = textwrap.dedent("""\
-            serf agent \\
-                -node %(hostname)s \\
-                -bind 0.0.0.0:%(port)s \\
-                -rpc-addr=127.0.0.1:%(rpc_port)s \\
-                -replay %(debug)s \\
-                -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context
-#        sys.stdout.write(cmd + '\n')
-#        serf_agent = threading.Thread(target=os.system, args=(cmd,))
-#        serf_agent.start()
-        serf_agent = subprocess.Popen(cmd, shell=True)
-        atexit.register(lambda: serf_agent.kill())
-        # Launch serf client
+    try:
         logpath = os.path.normpath(logpath)
         log = Log(logpath)
         log.load()
-        key = Key.load(keypath)
-        view = View(log, key)
+        if keypath == default_keypath and not os.path.exists(keypath):
+            view = View(log)
+        else:
+            key = Key.load(keypath)
+            view = View(log, key)
         view.build()
-        blockstate = BlockState(log)
-        serf = SerfClient(log, blockstate, port=rpc_port)
-        cluster = view.get('/.cluster')
-        members = [line.strip() for line in cluster.content.splitlines() if line.strip()]
-        join_result = serf.join(members)
-        if join_result.head[b'Error']:
-            raise RuntimeError("Couldn't connect to serf cluster %s." % members)
-        # Launch event loop
-        handler = threading.Thread(target=loop.run, args=(view, serf, sync_port))
-        handler.start()
-    sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
-    fsname = '%s:%i' % (logpath, sync_port)
-    fs = FileSystem(view, serf)
-    FUSE(fs, mountpoint, fsname=fsname, nothreads=True, foreground=True)
+        serf = None
+        if args.serf:
+            # launch serf agent
+            context = {
+                'script': os.path.realpath(__file__),
+                'log': logpath,
+    #            'handler': ('--fs-handler='+args.handler[0]) if args.handler else '',
+                'log_level': 'debug' if args.debug else 'err',
+                'port': args.port,
+                'rpc_port': rpc_port,
+                'sync_port': sync_port,
+                'hostname': args.hostname,
+            }
+            cmd = textwrap.dedent("""\
+                serf agent \\
+                    -node %(hostname)s \\
+                    -bind 0.0.0.0:%(port)s \\
+                    -rpc-addr=127.0.0.1:%(rpc_port)s \\
+                    -replay \\
+                    -log-level=%(log_level)s \\
+                    -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'""") % context
+    #        sys.stdout.write(cmd + '\n')
+    #        serf_agent = threading.Thread(target=os.system, args=(cmd,))
+    #        serf_agent.start()
+            serf_agent = subprocess.Popen(cmd, shell=True)
+            time.sleep(0.1)
+#            atexit.register(lambda: serf_agent.terminate())
+            # Launch serf client
+            blockstate = BlockState(log)
+            serf = SerfClient(log, blockstate, port=rpc_port)
+            cluster = view.get('/.cluster')
+            members = []
+            if args.ips:
+                members.extend(args.ips.split(','))
+            members.extend([line.strip() for line in cluster.content.splitlines() if line.strip()])
+            join_result = serf.join(members)
+            if join_result.head[b'Error']:
+                raise RuntimeError("Couldn't connect to serf cluster %s." % members)
+            # Launch event loop
+            loop_container = utils.AttrDict()
+            handler = threading.Thread(target=loop.run, args=(view, serf, sync_port, loop_container)) , daemon=True)
+            handler.start()
+        sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
+        fsname = '%s:%i' % (logpath, sync_port)
+        fs = FileSystem(view, serf)
+        FUSE(fs, mountpoint, fsname=fsname, nothreads=True, foreground=args.debug)
+    finally:
+        if args.serf:
+            cmd = "ps -o pid --ppid %d --noheaders" % serf_agent.pid
+            ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+            gpids = ps.stdout.read().decode()
+            serf_running = ps.wait() == 0
+            if serf_running:
+                for pid in gpids.splitlines():
+                    os.kill(int(pid.strip()), signal.SIGTERM)
+            loop_container.loop.call_soon_threadsafe(loop_container.loop.stop)
+            # Killing itself because eventloop is deadlocked
+            os.kill(os.getpid(), signal.SIGKILL)
 
 
 bootstrap_parser = argparse.ArgumentParser(
@@ -413,9 +445,98 @@ members_parser = argparse.ArgumentParser(
     prog='basefs members')
 
 def members():
-    cmd = 'cMembers'
+    cmd = 'cMEMBERS'
     sys.stdout.write(send_command('MEMBERS') + '\n')
     sys.exit()
+
+
+get_parser = argparse.ArgumentParser(
+    description="Get log from peer address",
+    prog='basefs get')
+
+def get():
+    bootstrap_parser.add_argument('addr',
+        help='ip[:port] or domain name')
+    bootstrap_parser.add_argument('logpath', nargs='?', default=default_logpath,
+        help='Path to the basefs log file, uses %s by default (use - for stdout).' % default_logpath)
+    bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
+        help='Rewrite log file if present')
+    
+    args = bootstrap_parser.parse_args()
+    logpath = args.logpath
+    if logpath != '-' and os.path.exists(logpath):
+        if not args.force:
+            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
+            sys.exit(1)
+        else:
+            logdir = os.path.dirname(logpath)
+            if not os.path.exists(logdir):
+                if logpath == default_logpath:
+                    os.mkdir(logdir)
+                else:
+                    sys.stderr.write("Error: %s logpath directory doesn't exist, create it first.\n" % logdir)
+                    sys.exit(2)
+            else:
+                os.remove(logpath)
+    ip, *port = args.addr.split(':')
+    try:
+        ip = str(ipaddress.ip_address(ip))
+    except ValueError:
+        nslookup = """nslookup -q=txt %s|grep 'text =' | sed -E 's/.*text = "([^"]+)".*/\\1/'""" % ip
+        lookup = subprocess.Popen(nslookup, shell=True, stdout=subprocess.PIPE)
+        lookup = lookup.stdout.read().decode().strip()
+        if lookup:
+            ip, *port = lookup.split(':')
+    if not port:
+        port = 7374
+    else:
+        port = int(port[0])
+    sys.stderr.write("Connecting to %s:%i\n" % (ip, port))
+    received = False
+    if logpath == '-':
+        for data in utils.netcat(ip, port, b'cGET'):
+            sys.stdout.write(data)
+            received = True
+    else:
+        with open(logpath, 'w') as handler:
+            for data in utils.netcat(ip, port, b'cGET'):
+                handler.write(data)
+                received = True
+    if not received:
+        sys.stderr.write("Error: nothing has been received, bad port?\n")
+        sys.exit(2)
+    elif logpath != '-':
+            sys.stdout.write("%s log created\n" % logpath)
+
+
+installserf_parser = argparse.ArgumentParser(
+    description="installserf",
+    prog='basefs installserf')
+
+def installserf():
+    dest = '/usr/bin/'
+    architectures = {
+        'x86_64': 'amd64',
+        'AMD64': 'amd64',
+        'i386': '386',
+        'x86': '386',
+    }
+    arch = architectures[platform.machine()]
+    url = "https://releases.hashicorp.com/serf/0.6.4/serf_0.6.4_linux_%s.zip" % arch
+    sys.stdout.write("Donwloading %s ...\n" % url)
+    path, headers = urllib.request.urlretrieve(url)
+    try:
+        serf_path = os.path.join(dest, 'serf')
+        sys.stdout.write("Unpacking into %s ...\n" % serf_path)
+        if os.path.exists(serf_path):
+            os.remove(serf_path)
+        zip_ref = zipfile.ZipFile(path, 'r')
+        zip_ref.extractall(dest)
+        zip_ref.close()
+        st = os.stat(serf_path)
+        os.chmod(serf_path, st.st_mode | 0o0111)
+    finally:
+        os.remove(path)
 
 
 def help():
@@ -455,6 +576,8 @@ methods = OrderedDict([
     ('revert', (revert, revert_parser)),
     ('blocks', (blocks, blocks_parser)),
     ('members', (members, members_parser)),
+    ('get', (get, get_parser)),
+    ('installserf', (installserf, installserf_parser)),
     ('help', (help, None)),
 ])
 

@@ -65,6 +65,15 @@ class FileSystem(Operations):
         if self.serf:
             self.serf.send(node.entry)
     
+#    def destroy(self, path):
+#        with open('/tmp/0001', 'w') as h:
+#            h.write(str(os.getpid()))
+#        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', path)
+#        super().destroy(path)
+#        import sys
+#        sys.exit(0)
+#        # TODO
+    
 #    def access(self, path, mode):
 #        return super(FileSystem, self).access(path, mode)
 #        full_path = self._full_path(path)
@@ -227,9 +236,9 @@ class FileSystem(Operations):
         content = self.cache.pop(path, None)
         dirty = self.dirty.pop(path, False)
         if content is not None and dirty:
-            print('write')
-            node = self.view.write(path, content)
-            self.send(node)
+            with ViewToErrno():
+                node = self.view.write(path, content)
+                self.send(node)
 
 #    def fsync(self, path, fdatasync, fh):
 #        return self.flush(path, fh)

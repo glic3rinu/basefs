@@ -146,8 +146,8 @@ class SyncHandler:
         if not line:
             return
         while line and line != b'EOF\n':
-            print('R', line)
             line = line.decode().rstrip('\n')
+            logger.debug('R: %s', line)
             if line in self.SECTIONS:
                 section = line
                 line = yield from reader.readline()
@@ -258,7 +258,7 @@ class SyncHandler:
     def write(self, writer, line):
         if isinstance(line, str):
             line = line.encode()
-        print('W', line)
+        logger.debug('W: %s', line.decode())
         writer.write(line + b'\n')
     
     @asyncio.coroutine
