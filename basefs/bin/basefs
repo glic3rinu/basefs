@@ -168,7 +168,7 @@ def mount():
                 raise RuntimeError("Couldn't connect to serf cluster %s." % members)
             # Launch event loop
             loop_container = utils.AttrDict()
-            handler = threading.Thread(target=loop.run, args=(view, serf, sync_port, loop_container)) , daemon=True)
+            handler = threading.Thread(target=loop.run, args=(view, serf, sync_port, loop_container), daemon=True)
             handler.start()
         sys.stdout.write('Monting %s into %s\n' % (logpath, mountpoint))
         fsname = '%s:%i' % (logpath, sync_port)
