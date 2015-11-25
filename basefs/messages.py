@@ -1,14 +1,23 @@
 import binascii
+import logging
+import os
 import random
+import signal
+import subprocess
 import struct
 import sys
+import textwrap
 import time
 import zlib
 
 from serfclient import client
 
-from basefs import utils, exceptions, settings
+from basefs import utils, exceptions
 from basefs.logs import LogEntry, Block
+from basefs.state import BlockState
+
+
+logger = logging.getLogger('basefs.messages')
 
 
 class SerfClient(client.SerfClient):
@@ -25,11 +34,15 @@ class SerfClient(client.SerfClient):
         LogEntry.ACK: 'A',
     }
     ACTION_REVERSE_MAP = {v: k for k, v in ACTION_MAP.items()}
+    MAX_BLOCK_MESSAGES = 15
     
     def __init__(self, log, blockstate, *args, **kwargs):
         self.log = log
         self.blockstate = blockstate
         self.entry_received = utils.Signal()
+        config = kwargs.pop('config', None)
+        if config:
+            self.MAX_BLOCK_MESSAGES = int(config.get('max_block_messages', self.MAX_BLOCK_MESSAGES))
         super().__init__(*args, **kwargs)
     
     def join(self, location):
@@ -154,7 +167,7 @@ class SerfClient(client.SerfClient):
                 data += entry_data
             if entry.action == entry.WRITE:
                 for ix, block in enumerate(entry.get_blocks()):
-                    if ix > settings.MAX_BLOCK_MESSAGES:
+                    if ix > self.MAX_BLOCK_MESSAGES:
                         break
                     block_data = self.encode(block)
                     if len(data) + len(block_data) > 512:
@@ -191,3 +204,51 @@ class SerfClient(client.SerfClient):
                 except exceptions.Exists:
                     continue
                 self.blockstate.block_received(block)
+
+
+def run_agent(port, hostname):
+    loglevel = logger.getEffectiveLevel()
+    context = {
+        'log_level': 'debug' if loglevel == logging.DEBUG else 'err',
+        'port': port,
+        'rpc_port': port+1,
+        'sync_port': port+2,
+        'hostname': hostname,
+    }
+    cmd = textwrap.dedent("""\
+        serf agent \\
+            -node %(hostname)s \\
+            -bind 0.0.0.0:%(port)s \\
+            -rpc-addr=127.0.0.1:%(rpc_port)s \\
+            -replay \\
+            -log-level=%(log_level)s \\
+            -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'"""
+        ) % context
+    logger.debug(cmd)
+    serf_agent = subprocess.Popen(cmd, shell=True)
+    def stop(serf_agent=serf_agent):
+        cmd = "ps -o pid --ppid %d --noheaders" % serf_agent.pid
+        ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        gpids = ps.stdout.read().decode()
+        serf_running = ps.wait() == 0
+        if serf_running:
+            for pid in gpids.splitlines():
+                os.kill(int(pid.strip()), signal.SIGTERM)
+    serf_agent.stop = stop
+    time.sleep(0.1)
+#    serf_agent = threading.Thread(target=os.system, args=(cmd,))
+#    serf_agent.start()
+    return serf_agent
+
+
+def run_client(view, port, members, config=None):
+    blockstate = BlockState(view.log)
+    logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
+    serf = SerfClient(view.log, blockstate, port=port, config=config)
+    cluster = view.get('/.cluster')
+    members += [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]
+    logger.debug("Joining to %s", '\n'.join(members))
+    join_result = serf.join(members)
+    if join_result.head[b'Error']:
+        raise RuntimeError("Couldn't connect to serf cluster %s." % members)
+    return serf

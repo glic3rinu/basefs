@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import traceback
+import threading
 
 from . import sync, commands
 
@@ -8,7 +9,7 @@ from . import sync, commands
 logger = logging.getLogger('basefs.loop')
 
 
-def run(view, serf, port, loop_container=None):
+def run(view, serf, port, config=None):
     handlers = {
         b's': sync.SyncHandler(view, serf),
         b'c': commands.CommandHandler(view, serf),
@@ -37,12 +38,16 @@ def run(view, serf, port, loop_container=None):
     asyncio.set_event_loop(loop)
     coro = asyncio.start_server(handle_connection, '0.0.0.0', port, loop=loop)
     server = loop.run_until_complete(coro)
-    asyncio.async(sync.do_full_sync(handlers[b's']))
-    if loop_container is not None:
-        loop_container.loop = loop
+    asyncio.async(sync.do_full_sync(handlers[b's'], config=config))
     try:
+        logger.debug("Event loop running on port %i", port)
         loop.run_forever()
     finally:
         server.close()
         loop.run_until_complete(server.wait_closed())
         loop.close()
+
+
+def run_loop(view, serf, port, config=None):
+    handler = threading.Thread(target=run, args=(view, serf, port), kwargs={'config': config}, daemon=True)
+    handler.start()

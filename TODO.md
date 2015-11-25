@@ -1,7 +1,8 @@
->>> str(uuid.UUID(hashlib.md5(str(uuid.getnode()).encode()).hexdigest()))
-'fc27a92a-d0ca-6ab5-b03f-34f633f6cc92'
+basefs bootstrap confine -i 127.0.0.1
+basefs mount confine /tmp/ola/ -d
+basefs mount confine /tmp/rata/ -b 127.0.0.1:6776 -H rata -d
 
-port = int(name)
+
 
 
 https://docs.python.org/3/library/configparser.html

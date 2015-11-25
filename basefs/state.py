@@ -1,7 +1,7 @@
 import time
 import collections
 
-from . import utils, settings
+from . import utils
 
 
 class BlockState:
@@ -11,11 +11,15 @@ class BlockState:
     RECEIVING = 'RECEIVING'
     STALLED = 'STALLED'
     COMPLETED = 'COMPLETED'
-    
-    def __init__(self, log):
+    BLOCK_RECEIVING_BUFFER = 4096
+    BLOCK_RECEIVING_TIMEOUT = 10
+    def __init__(self, log, config=None):
         self.post_change = utils.Signal()
         self.log = log
-        self.buffer = utils.LRUCache(settings.BLOCK_RECEIVING_BUFFER)
+        if config:
+            self.BLOCK_RECEIVING_BUFFER = int(config.get('block_receiving_buffer', self.BLOCK_RECEIVING_BUFFER))
+            self.BLOCK_RECEIVING_TIMEOUT = int(config.get('block_receiving_timeout', self.BLOCK_RECEIVING_TIMEOUT))
+        self.buffer = utils.LRUCache(self.BLOCK_RECEIVING_BUFFER)
         self.incomplete = collections.defaultdict(list)
         for entry in self.log.entries.values():
             if entry.action == entry.WRITE and entry.next_block:
@@ -74,7 +78,7 @@ class BlockState:
         state = self.receiving.get(ehash, None)
         if state:
             timestamp, __ = state
-            if timestamp+settings.BLOCK_RECEIVING_TIMEOUT >= time.time():
+            if timestamp+self.BLOCK_RECEIVING_TIMEOUT >= time.time():
                 return self.RECEIVING
             else:
                 self.receiving.pop(ehash)
@@ -96,7 +100,7 @@ class BlockState:
         receiving = list(self.receiving.items())
         for ehash, state in receiving:
             timestamp, __ = state
-            if timestamp+settings.BLOCK_RECEIVING_TIMEOUT < now:
+            if timestamp+self.BLOCK_RECEIVING_TIMEOUT < now:
                 # stalled
                 self.receiving.pop(ehash)
                 entry = self.log.entries[ehash]

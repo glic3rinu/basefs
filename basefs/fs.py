@@ -8,7 +8,7 @@ import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils
+from . import exceptions, utils, loop, messages
 from .keys import Key
 from .logs import Log
 from .views import View
@@ -31,12 +31,15 @@ class ViewToErrno():
 
 
 class FileSystem(Operations):
-    def __init__(self, view, serf=None):
-        self.serf = serf
+    def __init__(self, view, port=None, hostname=None, join=None, config=None):
+        self.port = port
+        self.hostname = hostname
         self.view = view
         self.cache = {}
         self.dirty = {}
+        self.join = join if join else []
         self.loaded = view.log.loaded
+        self.config = config
     
     def __call__(self, op, path, *args):
         logger.debug('-> %s %s %s', op, path, repr(args))
@@ -49,6 +52,17 @@ class FileSystem(Operations):
             raise
         finally:
             logger.debug('<- %s %s', op, repr(ret))
+    
+    def init(self, path):
+        """ threads should start here, otherwise will not run when fuse is backgrounded """
+        if self.port and self.hostname:
+            self.serf_agent = messages.run_agent(self.port, self.hostname)
+            self.serf = messages.run_client(self.view, self.port+1, self.join, config=self.config)
+            loop.run_loop(self.view, self.serf, self.port+2, config=self.config)
+    
+    def destroy(self, path):
+        super().destroy(path)
+        self.serf_agent.stop()
     
     def get_node(self, path):
         # check if logfile has been modified
@@ -64,15 +78,6 @@ class FileSystem(Operations):
     def send(self, node):
         if self.serf:
             self.serf.send(node.entry)
-    
-#    def destroy(self, path):
-#        with open('/tmp/0001', 'w') as h:
-#            h.write(str(os.getpid()))
-#        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', path)
-#        super().destroy(path)
-#        import sys
-#        sys.exit(0)
-#        # TODO
     
 #    def access(self, path, mode):
 #        return super(FileSystem, self).access(path, mode)

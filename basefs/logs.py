@@ -107,7 +107,7 @@ class Log:
         return LogEntry(self, parent_hash, action, path, content,
             timestamp=timestamp, fingerprint=fingerprint, signature=signature)
     
-    def load(self, clear=False):
+    def load(self, clear=False, validate=False):
         """ loads logfile """
         if clear:
             self.entries_by_parent.clear()
@@ -133,9 +133,9 @@ class Log:
                         self.root_key = entry
                     elif not self.root_cluster:
                         self.root_cluster = entry
-                    # TODO option to run cleaning somehow
-#                    entry.validate()
-#                    entry.clean()
+                    if validate:
+                        entry.validate()
+                        entry.clean()
                     self.add_entry(entry)
             self.loaded = log.tell()
         if not self.root:

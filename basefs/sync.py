@@ -7,7 +7,7 @@ import random
 import traceback
 from collections import defaultdict
 
-from . import exceptions, signals, utils, settings
+from . import exceptions, signals, utils
 
 
 logger = logging.getLogger('basefs.sync')
@@ -356,11 +356,16 @@ class SyncHandler:
 
 
 @asyncio.coroutine
-def do_full_sync(sync):
+def do_full_sync(sync, config=None):
     loop = asyncio.get_event_loop()
+    FULL_SYNC_INTERVAL = 30
+    if config:
+        FULL_SYNC_INTERVAL = int(config.get('full_sync_interval', FULL_SYNC_INTERVAL))
+    deviation = int(FULL_SYNC_INTERVAL*0.1)
+    FULL_SYNC_INTERVAL = (FULL_SYNC_INTERVAL-deviation, FULL_SYNC_INTERVAL+deviation)
     while True:
         try:
-            yield from asyncio.sleep(random.randint(*settings.FULL_SYNC_INTERVAL))
+            yield from asyncio.sleep(random.randint(*FULL_SYNC_INTERVAL))
             member = sync.serf.get_random_member()
             # TODO don't make sync requests with members that which whom we're already syncing
             if member:

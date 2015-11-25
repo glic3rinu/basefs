@@ -65,6 +65,18 @@ def netcat(host, port, content):
         yield recv.decode()
 
 
+def get_mountpoint(logpath):
+    mount = subprocess.Popen('mount', stdout=subprocess.PIPE)
+    mount.wait()
+    for line in mount.stdout.readlines():
+        info, __, mountpoint = line.split()[:3]
+        info = info.decode()
+        mlogpath = ':'.join(info.split(':')[:-1])
+        if logpath == mlogpath:
+            return info, mountpoint.decode()
+    return '', ''
+
+
 def get_mount_info(*args):
     if not args:
         path = os.getcwd()
@@ -200,3 +212,30 @@ class OrderedSet(collections.MutableSet):
         if isinstance(other, OrderedSet):
             return len(self) == len(other) and list(self) == list(other)
         return set(self) == set(other)
+
+
+def tabluate(data):
+    maximmums = {}
+    for line in data:
+        for ix, row in enumerate(line):
+            try:
+                maximmums[ix] = max(maximmums[ix], len(row))
+            except KeyError:
+                maximmums[ix] = len(row)
+    for k, v in maximmums.items():
+        maximmums[k] = int((v+4)/8)+1
+    ret = []
+    for line in data:
+        tab_line = ''
+        for ix, row in enumerate(line):
+            tab_line += row + '\t'*(maximmums[ix] - int(len(row)/8))
+        ret.append(tab_line)
+    return '\n'.join(ret)
+
+
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)

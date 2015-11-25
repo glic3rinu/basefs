@@ -12,6 +12,9 @@ def dumper(obj):
 class CommandHandler:
     PERMITTED_COMMANDS = ('get',)
     
+    def __repr__(self):
+        return 'Command'
+    
     def __init__(self, view, serf):
         self.view = view
         self.serf = serf
