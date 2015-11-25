@@ -16,6 +16,7 @@ from . import utils, signals
 from .keys import Key
 from .exceptions import ValidationError, Exists
 from .utils import Candidate
+from .views import View
 
 
 class Log:
@@ -190,7 +191,6 @@ class Log:
             ip = ipaddress.ip_address(ip)
             port = int(port)
             content += '%s:%s\n' % (ip, port)
-        from .views import View
         view = View(self, root_key)
         view.build()
         view.write('/.cluster', content)

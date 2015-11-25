@@ -82,10 +82,6 @@ def send_command(cmd, *args, port=None):
     return data
 
 
-genkey_parser = argparse.ArgumentParser(
-    description='Generate a new EC private key',
-    prog='basefs genkey')
-
 def genkey():
     # genkey [<keypath>] [-f]
     genkey_parser.add_argument('keypath', nargs='?',
@@ -114,10 +110,6 @@ def genkey():
     sys.stdout.write("Generate EC key on %s\n" % keypath)
     sys.exit()
 
-
-bootstrap_parser = argparse.ArgumentParser(
-    description='Create a new self-contained filesystem',
-    prog='basefs bootstrap')
 
 def bootstrap():
     # bootsrap <name> -i <ip>[:<port>] [-l <logpath>] [-k <keypath>] [-f]
@@ -178,15 +170,11 @@ def bootstrap():
     sys.exit(0)
 
 
-mount_parser = argparse.ArgumentParser(
-    description='Mount an existing filesystem',
-    prog='basefs mount')
-
 # TODO make validators.name_or_logpath return (name, logpath) tuple for DRY-ines
 def mount():
     # mount <name/logpath> <mountpoint> [-b <ip>[:<port>]] [-i <ip>[:<port>]] [-l <logpath>] [-k <keypath/keyname>] [-H <hostname>] [-d]
     mount_parser.add_argument('logpath',
-        type=validators.name_or_logpath(mount_parser, get_or_create_config(defaults)),
+        type=validators.name_or_logpath(mount_parser, get_or_create_config(defaults), defaults),
         help='Log name or logpath')
     mount_parser.add_argument('mountpoint',
         type=validators.dir_exists(mount_parser, name='mountpoint'))
@@ -220,14 +208,14 @@ def mount():
             port = int(section['port'])
         if not hostname:
             hostname = section.get('hostname', '')
-    elif not os.path.exists(logpath) and os.path.exists(os.path.join(defaults.logs, logpath)):
-        port = get_port(logpath)
-        logpath = os.path.exists(os.path.join(defaults.logs, logpath))
-    else:
+    elif not os.path.exists(logpath) and os.path.exists(os.path.join(defaults.logdir, logpath)):
         if not port:
-            port = 7372
+            port = get_port(logpath)
+        logpath = os.path.join(defaults.logdir, logpath)
+    elif not port:
+        port = 7372
     if not hostname:
-        hostname = default_hostname
+        hostname = defaults.hostname
     rpc_port = port+1
     sync_port = port+2
     logpath = os.path.normpath(logpath)
@@ -253,10 +241,6 @@ def mount():
     FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
 
 
-keys_parser = argparse.ArgumentParser(
-    description='List keys and their directories',
-    prog='basefs keys')
-
 def keys():
     keys_parser.add_argument('logpath', nargs='?', default=default_logpath,
         help='Path to the basefs log file, uses %s by default.' % default_logpath,
@@ -276,9 +260,6 @@ def keys():
         for value in values:
             sys.stdout.write('    ' + value + '\n')
 
-list_parser = argparse.ArgumentParser(
-    description='List all available logs',
-    prog='basefs list')
 
 import datetime
 def list_cmd():
@@ -318,10 +299,6 @@ def list_cmd():
             data.append([name, logpath, port, mpoint, members, size, mtime])
     sys.stdout.write(utils.tabluate(data) + '\n')
 
-
-show_parser = argparse.ArgumentParser(
-    description='Show a log file using a tree representation',
-    prog='basefs show')
 
 def show():
     show_parser.add_argument('logpath',
@@ -371,11 +348,8 @@ def show():
         sys.exit(2)
 
 
-grant_parser = argparse.ArgumentParser(
-    description='Grant key write permission',
-    prog='basefs grant')
-
 def grant():
+    # grant <keypath/keyoneliner/keyfingerprint/keyname> <fspath>
 #    grant_parser.add_argument('logpath', nargs='?', default=default_logpath,
 #        help='Path to the basefs log file, uses %s by default.' % default_logpath,
 #        type=lambda v: file_exists(grant_parser, v, name='logpath'))
@@ -407,11 +381,8 @@ def grant():
     sys.exit()
 
 
-revoke_parser = argparse.ArgumentParser(
-    description='Revoke key write permission',
-    prog='basefs revoke')
-
 def revoke():
+    # revoke <keyfinger/keyname> <fspath>
 #    revoke_parser.add_argument('logpath', nargs='?', default=default_logpath,
 #        help='Path to the basefs log file, uses %s by default.' % default_logpath,
 #        type=lambda v: file_exists(revoke_parser, v, name='logpath'))
@@ -430,10 +401,6 @@ def revoke():
     view.revoke(args.revokepath, args.revokekey.fingerprint)
     sys.exit()
 
-
-revert_parser = argparse.ArgumentParser(
-    description="Revert object to previous state, 'log' command lists all revisions",
-    prog='basefs revert')
 
 def revert():
 #    revert_parser.add_argument('logpath', nargs='?', default=default_logpath,
@@ -462,15 +429,20 @@ def get_cmd_port(args, mount_info, defaults):
     elif not port:
         config = get_or_create_config(defaults)
         if args.name not in config:
-            sys.stderr.write("Error: unknwon logname %s\n" % args.name)
-            sys.exit(2)
-        port = int(config[args.name].get('port', get_port(args.name)))
-    return port+2
+            logpath = os.path.join(defaults.logdir, args.name)
+            if os.path.exists(logpath):
+                info, __ = utils.get_mountpoint(logpath)
+                if info:
+                    port = int(info.split(':')[1])
+                else:
+                    port = get_port(args.name)
+            else:
+                sys.stderr.write("Error: unknwon logname %s\n" % args.name)
+                sys.exit(2)
+        else:
+            port = int(config[args.name].get('port', get_port(args.name)))+2
+    return port
 
-
-blocks_parser = argparse.ArgumentParser(
-    description="Block state",
-    prog='basefs blocks')
 
 def blocks():
     blocks_parser.add_argument('name', nargs='?', help='Name')
@@ -483,10 +455,6 @@ def blocks():
     sys.exit()
 
 
-members_parser = argparse.ArgumentParser(
-    description="List cluster members",
-    prog='basefs members')
-
 def members():
     members_parser.add_argument('name', nargs='?', help='Name')
     args = members_parser.parse_args()
@@ -495,10 +463,6 @@ def members():
     sys.stdout.write(members + '\n')
     sys.exit()
 
-
-get_parser = argparse.ArgumentParser(
-    description="Get log from peer address",
-    prog='basefs get')
 
 def get():
     # get <domainTXT/domain:port/ip:port> [-l <logpath>] [-n <name>] [-p] [-f] [-d]
@@ -569,12 +533,8 @@ def get():
         sys.stdout.write("%s log created\n" % logpath)
 
 
-installserf_parser = argparse.ArgumentParser(
-    description="installserf",
-    prog='basefs installserf')
-
 def installserf():
-    installserf.add_argument('binpath', default='/usr/local/bin/',
+    installserf_parser.add_argument('binpath', default='/usr/local/bin/',
         type=validators.dir_exists(installserf, name='binpath'),
         help='Binpath for installing serf, defaults to /usr/local/bin/')
     architectures = {
@@ -583,6 +543,7 @@ def installserf():
         'i386': '386',
         'x86': '386',
     }
+    args = installserf_parser.parse_args()
     arch = architectures[platform.machine()]
     url = "https://releases.hashicorp.com/serf/0.6.4/serf_0.6.4_linux_%s.zip" % arch
     sys.stdout.write("Donwloading %s ...\n" % url)
@@ -624,6 +585,47 @@ def help():
         Run 'basefs COMMAND --help' for more information on a command
         """) % '\n'.join(commands))
     sys.exit()
+
+
+genkey_parser = argparse.ArgumentParser(
+    description='Generate a new EC private key',
+    prog='basefs genkey')
+bootstrap_parser = argparse.ArgumentParser(
+    description='Create a new self-contained filesystem',
+    prog='basefs bootstrap')
+mount_parser = argparse.ArgumentParser(
+    description='Mount an existing filesystem',
+    prog='basefs mount')
+keys_parser = argparse.ArgumentParser(
+    description='List keys and their directories',
+    prog='basefs keys')
+list_parser = argparse.ArgumentParser(
+    description='List all available logs',
+    prog='basefs list')
+show_parser = argparse.ArgumentParser(
+    description='Show a log file using a tree representation',
+    prog='basefs show')
+grant_parser = argparse.ArgumentParser(
+    description='Grant key write permission',
+    prog='basefs grant')
+revoke_parser = argparse.ArgumentParser(
+    description='Revoke key write permission',
+    prog='basefs revoke')
+revert_parser = argparse.ArgumentParser(
+    description="Revert object to previous state, 'log' command lists all revisions",
+    prog='basefs revert')
+blocks_parser = argparse.ArgumentParser(
+    description="Block state",
+    prog='basefs blocks')
+members_parser = argparse.ArgumentParser(
+    description="List cluster members",
+    prog='basefs members')
+get_parser = argparse.ArgumentParser(
+    description="Get log from peer address",
+    prog='basefs get')
+installserf_parser = argparse.ArgumentParser(
+    description="installserf",
+    prog='basefs installserf')
 
 
 methods = OrderedDict([

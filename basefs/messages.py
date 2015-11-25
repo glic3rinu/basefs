@@ -190,6 +190,7 @@ class SerfClient(client.SerfClient):
                 try:
                     entry.clean()
                 except exceptions.Exists:
+                    logger.debug('Exists %s', entry.hash)
                     continue
                 entry.validate()
                 entry.save()

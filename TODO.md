@@ -1,3 +1,5 @@
+
+
 basefs bootstrap confine -i 127.0.0.1
 basefs mount confine /tmp/ola/ -d
 basefs mount confine /tmp/rata/ -b 127.0.0.1:6776 -H rata -d
@@ -49,16 +51,6 @@ hash is used instead of uuid to avoid forging, and save some bytes on the proces
 
 LINK operation
 RENAME/MOVE: because its a allways growingg data structure, things can not be moved around, just copied
-
-
-# TODO tests
-# TODO stat times and permissions
-# TODO refine blockchain choosing strategy
-# TODO fs.create should generate a WRITE log line (touch hola)
-# TODO verify fucking keys
-# TODO lzma.compress before sending
-# TODO log hash for convinience
-
 
 
 # LZMA > size, zlib < size binary patch very large: stay with binary patch. decission algorithm:
