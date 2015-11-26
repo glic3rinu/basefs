@@ -17,7 +17,7 @@ def install_serf():
 class install(_install):
     def run(self):
         super().run()
-        self.execute(install_serf, [], msg="Installing serf")
+        self.execute(install_serf, [], msg="Installing serf ...")
 
 
 setup(

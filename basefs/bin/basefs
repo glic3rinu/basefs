@@ -538,7 +538,7 @@ def get():
 
 
 def installserf():
-    installserf_parser.add_argument('binpath', default='/usr/local/bin/',
+    installserf_parser.add_argument('binpath', nargs='?', default='/usr/local/bin/',
         type=validators.dir_exists(installserf, name='binpath'),
         help='Binpath for installing serf, defaults to /usr/local/bin/')
     architectures = {
