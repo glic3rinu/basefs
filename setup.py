@@ -8,8 +8,10 @@ from setuptools.command.install import install as _install
 
 def install_serf(self):
     serf_path = find_executable('serf')
+    print(str(self.__dict__))
+    print(dir(self))
     if not serf_path:
-        os.system('basefs installserf %s' % self.install_dir)
+        os.system('basefs installserf %s' % self.script_dir)
     else:
         sys.stdout.write("Serf is already installed in %s\n" % serf_path)
 
