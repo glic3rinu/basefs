@@ -219,6 +219,10 @@ def mount():
     rpc_port = port+1
     sync_port = port+2
     logpath = os.path.normpath(logpath)
+    info, point = utils.get_mountpoint(logpath)
+    if info:
+        sys.stderr.write("Error: log %s already mounted in %s\n" % (logpath, point))
+        sys.exit(4)
     keypath = os.path.normpath(args.keypath)
     mountpoint = args.mountpoint
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)

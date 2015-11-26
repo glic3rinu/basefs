@@ -1,4 +1,23 @@
+import os
+import sys
+from distutils import command, spawn
+from distutils.command.install import install as distutil_install
 from distutils.core import setup
+
+
+def install_serf():
+    serf_path = spawn.find_executable('serf')
+    if not serf_path:
+        os.system('basefs installserf')
+    else:
+        sys.stdout.write("Serf is already installed in %s\n" % serf_path)
+
+
+class install(distutil_install):
+    def run(self):
+        super().run()
+#        command.install.install.run(self)
+        self.execute(install_serf, [], msg="Installing serf")
 
 
 setup(
@@ -22,5 +41,3 @@ setup(
         'bsdiff4',
     ],
 )
-
-

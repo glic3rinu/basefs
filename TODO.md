@@ -1,8 +1,10 @@
+execute installserf after pip install
 
-
+basefs genkey
 basefs bootstrap confine -i 127.0.0.1
 basefs mount confine /tmp/ola/ -d
-basefs mount confine /tmp/rata/ -b 127.0.0.1:6776 -H rata -d
+basefs get confine2 127.0.0.1:13576
+basefs mount confine2 /tmp/rata/ -H rata -d
 
 
 
