@@ -1,8 +1,8 @@
 import os
 import sys
-from distutils import command, spawn
-from distutils.command.install import install as distutil_install
-from distutils.core import setup
+
+from setuptools import setup
+from setuptools.command.install import install as _install
 
 
 def install_serf():
@@ -13,10 +13,10 @@ def install_serf():
         sys.stdout.write("Serf is already installed in %s\n" % serf_path)
 
 
-class install(distutil_install):
+class install(_install):
     def run(self):
         print('aaaaaaaaaaaaaaaaaaaaaaaaaaaa')
-        super().run()
+#        super().run()
 #        distutil_install.install.run(self)
 #        self.execute(install_serf, [], msg="Installing serf")
 
