@@ -16,7 +16,7 @@ def install_serf():
 class install(distutil_install):
     def run(self):
         print('aaaaaaaaaaaaaaaaaaaaaaaaaaaa')
-#        super().run()
+        super().run()
 #        distutil_install.install.run(self)
 #        self.execute(install_serf, [], msg="Installing serf")
 
@@ -41,7 +41,7 @@ setup(
         'serfclient',
         'bsdiff4',
     ],
-    cmdclass={
-        'install': install,
-    },
+#    cmdclass={
+#        'install': install,
+#    },
 )
