@@ -41,7 +41,7 @@ setup(
         'serfclient',
         'bsdiff4',
     ],
-#    cmdclass={
-#        'install': install,
-#    },
+    cmdclass={
+        'install': install,
+    },
 )
