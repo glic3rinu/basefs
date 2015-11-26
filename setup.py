@@ -8,8 +8,8 @@ from setuptools.command.install import install as _install
 
 def install_serf(self):
     serf_path = find_executable('serf')
-    print(str(self.__dict__))
-    print(dir(self))
+    print(dir(self.install_scripts))
+    print(str(self.install_scripts.__dict__))
     if not serf_path:
         os.system('basefs installserf %s' % self.script_dir)
     else:
