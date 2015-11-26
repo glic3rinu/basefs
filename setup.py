@@ -1,12 +1,13 @@
 import os
 import sys
 
+from distutils.spawn import find_executable
 from setuptools import setup
 from setuptools.command.install import install as _install
 
 
 def install_serf():
-    serf_path = spawn.find_executable('serf')
+    serf_path = find_executable('serf')
     if not serf_path:
         os.system('basefs installserf')
     else:
@@ -15,10 +16,8 @@ def install_serf():
 
 class install(_install):
     def run(self):
-        print('aaaaaaaaaaaaaaaaaaaaaaaaaaaa')
-#        super().run()
-#        distutil_install.install.run(self)
-#        self.execute(install_serf, [], msg="Installing serf")
+        super().run()
+        self.execute(install_serf, [], msg="Installing serf")
 
 
 setup(
