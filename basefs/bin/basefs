@@ -82,6 +82,22 @@ def send_command(cmd, *args, port=None):
     return data
 
 
+def create_logdir(logpath, default_logpath, force=False):
+    logdir = os.path.dirname(logpath)
+    if not os.path.exists(logdir):
+        if logpath == default_logpath:
+            os.mkdir(logdir)
+        else:
+            sys.stderr.write("Error: %s logdir directory doesn't exist, create it first.\n" % logdir)
+            sys.exit(2)
+    if os.path.exists(logpath):
+        if not force:
+            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
+            sys.exit(1)
+        else:
+            os.remove(logpath)
+
+
 def genkey():
     # genkey [<keypath>] [-f]
     genkey_parser.add_argument('keypath', nargs='?',
@@ -131,19 +147,7 @@ def bootstrap():
     default_logpath = os.path.join(basefs_dir, 'logs', args.name)
     logpath = args.logpath or default_logpath
     port = args.port or get_port(args.name)
-    logdir = os.path.dirname(logpath)
-    if not os.path.exists(logdir):
-        if logpath == default_logpath:
-            os.mkdir(logdir)
-        else:
-            sys.stderr.write("Error: %s logdir directory doesn't exist, create it first.\n" % logdir)
-            sys.exit(2)
-    if os.path.exists(logpath):
-        if not args.force:
-            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
-            sys.exit(1)
-        else:
-            os.remove(logpath)
+    create_logdir(logpath, default_logpath, args.force)
     keys = []
     for keypath in args.keypaths.split(','):
         if not os.path.isfile(keypath):
@@ -484,20 +488,8 @@ def get():
     args = bootstrap_parser.parse_args()
     default_logpath = os.path.join(basefs_dir, 'logs', args.name)
     logpath = args.logpath or default_logpath
-    if logpath != '-' and os.path.exists(logpath):
-        if not args.force:
-            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
-            sys.exit(1)
-        else:
-            logdir = os.path.dirname(logpath)
-            if not os.path.exists(logdir):
-                if logpath == default_logpath:
-                    os.mkdir(logdir)
-                else:
-                    sys.stderr.write("Error: %s logpath directory doesn't exist, create it first.\n" % logdir)
-                    sys.exit(2)
-            else:
-                os.remove(logpath)
+    if logpath != '-':
+        create_logdir(logpath, default_logpath, args.force)
     ip, *port = args.addr.split(':')
     try:
         ip = str(ipaddress.ip_address(ip))
