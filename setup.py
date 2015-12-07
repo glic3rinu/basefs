@@ -1,6 +1,5 @@
 import os
 import sys
-
 from distutils.spawn import find_executable
 from setuptools import setup
 from setuptools.command.install import install as _install
@@ -30,10 +29,27 @@ setup(
     ],
     author = 'Marc Aymerich',
     author_email = 'glicerinu@gmail.com',
-    url = 'http://github.com/glic3rinu/basefs/tarball/master#egg=basefs',
-    download_url = 'https://github.com/glic3rinu/basefs/archive/master.zip',
-    keywords = ['filesystem', 'decentralized', 'distributed'],
-    classifiers = [],
+    url = 'http://github.com/glic3rinu/basefs',
+    download_url = 'http://github.com/glic3rinu/basefs/tarball/master#egg=basefs',
+    keywords = [
+        'filesystem',
+        'decentralized',
+        'distributed'
+    ],
+    classifiers = [
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: System :: Networking',
+        'Topic :: System :: Filesystems',
+        'Topic :: System :: Distributed Computing',
+    ],
     install_requires = [
         'ecdsa',
         'fusepy',

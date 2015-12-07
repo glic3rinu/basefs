@@ -1,10 +1,15 @@
-execute installserf after pip install
+# rename message -> gossip
+
 
 basefs genkey
 basefs bootstrap confine -i 127.0.0.1
 basefs mount confine /tmp/ola/ -d
 basefs get confine2 127.0.0.1:13576
 basefs mount confine2 /tmp/rata/ -H rata -d
+
+
+disable_name_resolution - If enabled, then Serf will not attempt to automatically resolve name conflicts. Serf relies on the each node having a unique name, but as a result of misconfiguration sometimes Serf agents have conflicting names. By default, the agents that are conflicting will query the cluster to determine which node is believed to be "correct" by the majority of other nodes. The node(s) that are in the minority will shutdown at the end of the conflict resolution. Setting this flag prevents this behavior, and instead Serf will merely log a warning. This is not recommended since the cluster will disagree about the mapping of NodeName -> IP:Port and cannot reconcile this.
+
 
 
 

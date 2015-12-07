@@ -35,6 +35,7 @@ class SerfClient(client.SerfClient):
     }
     ACTION_REVERSE_MAP = {v: k for k, v in ACTION_MAP.items()}
     MAX_BLOCK_MESSAGES = 15
+    description = 'serf event'
     
     def __init__(self, log, blockstate, *args, **kwargs):
         self.log = log

@@ -20,8 +20,11 @@ import uuid
 import zipfile
 from collections import OrderedDict
 
-from fuse import FUSE
-
+try:
+    from fuse import FUSE
+except ImportError:
+    # Running installserf
+    pass
 from basefs import loop, utils, exceptions, validators
 from basefs.fs import FileSystem
 from basefs.keys import Key
@@ -192,6 +195,8 @@ def mount():
         help='Enables debugging information.')
     mount_parser.add_argument('-s', '--single-node', dest='serf', action='store_false',
         help='Disables Serf agent (testing purposes).')
+    mount_parser.add_argument('-w', '--watcher', dest='watcher',
+        help='Handler script executed when a change occur on the filesystem (inotify substitute).')
     
     args = mount_parser.parse_args()
     ip, *port = args.bind.split(':')
@@ -236,11 +241,12 @@ def mount():
         view = View(log, key)
     view.build()
     sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
+    watcher = None
     if args.serf:
         join = args.join.split(',') if args.join else []
-        fs = FileSystem(view, port, hostname, join, config=section)
+        fs = FileSystem(view, port, hostname, join, config=section, script=args.watcher)
     else:
-        fs = FileSystem(view, config=section)
+        fs = FileSystem(view, config=section, script=args.watcher)
     fsname = '%s:%i' % (logpath, sync_port)
     FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
 
@@ -561,6 +567,7 @@ def installserf():
         zip_ref.extractall(args.binpath)
         zip_ref.close()
         st = os.stat(serf_path)
+        sys.stdout.write("changing mode of %s to 775\n" % serf_path)
         os.chmod(serf_path, st.st_mode | 0o0111)
     finally:
         os.remove(path)

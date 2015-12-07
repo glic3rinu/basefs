@@ -12,7 +12,7 @@ import time
 import zlib
 from collections import defaultdict
 
-from . import utils, signals
+from . import utils
 from .keys import Key
 from .exceptions import ValidationError, Exists
 from .utils import Candidate
@@ -40,6 +40,7 @@ class Log:
         self.blocks_by_parent = {}
         self.keys_by_name = {}
         self.post_create = utils.Signal()
+        self.post_save = utils.Signal()
     
     def print_tree(self, entry=None, indent='', view=None, color=False, ascii=False, values=None):
         if entry is None:
@@ -280,10 +281,10 @@ class Log:
         return self.do_action(parent, LogEntry.REVOKE, name, key, fingerprint, commit=commit)
     
     def save(self, entry):
-        signals.send(type(entry).save, entry)
         with open(self.logpath, 'a') as logfile:
             logfile.write(self.encode(entry) + '\n')
             self.loaded = logfile.tell()
+        self.post_save.send(entry)
     
     def find(self, path):
         return self.root.find(path)

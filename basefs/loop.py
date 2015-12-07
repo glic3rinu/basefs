@@ -28,7 +28,7 @@ def run(view, serf, port, config=None):
             logger.debug("Unknown token from %s: %s, data: %s", peername, token, data)
             writer.close()
         else:
-            logger.debug('Reciving %s from %s', handler, peername)
+            logger.debug('Reciving %s from %s', getattr(handler, 'description', handler), peername)
             try:
                 yield from handler.data_received(reader, writer, token)
             except Exception as exc:

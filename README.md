@@ -7,13 +7,15 @@ Basically Available, Soft state, Eventually consistent File System
 
 ## Quick start
 
+1. Installation
 ```bash
-# Install
-$ pip3 install basefs==1-dev \
+$ sudo pip3 install basefs==1-dev \
     --allow-external basefs \
     --allow-unverified basefs
-$ sudo basefs installserf
+```
 
+2. Bootstrap and mount
+```bash
 # Create new key
 $ basefs genkey
 
@@ -23,13 +25,18 @@ $ basefs bootstrap mylog -i <ip>
 # Mount
 $ mkdir ~/mylog
 $ basefs mount mylog ~/mylog
+```
 
+3. Distribute
+```bash
 # Get the log from another machine
-$ basefs get <ip>:<port> mylog
+$ basefs get mylog <ip>:<port>
 $ mkdir ~/mylog
 $ basefs mount mylog ~/mylog
+```
 
-# See all available commands
+4. See all possibilities
+```bash
 $ basefs help
 Usage: basefs COMMAND [arg...]
        basefs [ --help | -v | --version ]

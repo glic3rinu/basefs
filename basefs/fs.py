@@ -8,7 +8,7 @@ import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils, loop, messages
+from . import exceptions, utils, loop, messages, handlers
 from .keys import Key
 from .logs import Log
 from .views import View
@@ -31,7 +31,7 @@ class ViewToErrno():
 
 
 class FileSystem(Operations):
-    def __init__(self, view, port=None, hostname=None, join=None, config=None):
+    def __init__(self, view, port=None, hostname=None, join=None, config=None, script=None):
         self.port = port
         self.hostname = hostname
         self.view = view
@@ -40,6 +40,7 @@ class FileSystem(Operations):
         self.join = join if join else []
         self.loaded = view.log.loaded
         self.config = config
+        self.script = script
     
     def __call__(self, op, path, *args):
         logger.debug('-> %s %s %s', op, path, repr(args))
@@ -55,10 +56,16 @@ class FileSystem(Operations):
     
     def init(self, path):
         """ threads should start here, otherwise will not run when fuse is backgrounded """
+        handler_kwargs = {}
         if self.port and self.hostname:
             self.serf_agent = messages.run_agent(self.port, self.hostname)
             self.serf = messages.run_client(self.view, self.port+1, self.join, config=self.config)
             loop.run_loop(self.view, self.serf, self.port+2, config=self.config)
+            handler_kwargs = {
+                'state': self.serf.blockstate,
+            }
+        if self.script:
+            self.handler = handlers.Handler(self.script, self.view.log, **handler_kwargs)
     
     def destroy(self, path):
         super().destroy(path)

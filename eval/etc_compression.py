@@ -17,19 +17,17 @@ def compress(method):
     for path, dirs, files in os.walk(basepath):
         for file in files:
             file = os.path.join(basepath, file)
-            if os.path.islink(file):
-                packets = 1
-            else:
+            packets = 1
+            if not os.path.islink(file):
                 filename = file.split(os.sep)[-1]
                 first_packet = (355 + len(filename))/512
                 try:
                     with open(file, 'br') as handler:
                         size = len(method(handler.read()))
-                        packets = 1
                         if size > first_packet:
                             packets += math.ceil((size-first_packet)/(512-1-28))
-                        if packets > 100:
-                            packets = 100
+                        if packets > 60:
+                            packets = 60
                 except (FileNotFoundError, IsADirectoryError):
                     continue
             results.append(packets)
@@ -49,8 +47,8 @@ plt.hist(results['raw'][0], bins=1000, histtype='step', normed=True, color='y', 
 plt.hist(results['zlib'][0], bins=1000, histtype='step', normed=True, color='r', label='zlib', cumulative=True)
 plt.hist(results['bsdiff4'][0], bins=1000, histtype='step', normed=True, color='g', label='bsdiff4', cumulative=True)
 plt.hist(results['lzma'][0], bins=1000, histtype='step', normed=True, color='b', label='lzma', cumulative=True)
-plt.title("Gaussian/Uniform Histogram")
-plt.xlabel("Value")
+#plt.title("Nuber of Packets Histogram")
+plt.xlabel("Packets")
 plt.ylabel("Probability")
 plt.legend()
 plt.show()

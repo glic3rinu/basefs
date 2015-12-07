@@ -7,7 +7,7 @@ import random
 import traceback
 from collections import defaultdict
 
-from . import exceptions, signals, utils
+from . import exceptions, utils
 
 
 logger = logging.getLogger('basefs.sync')
@@ -20,35 +20,6 @@ def get_entries(entry, eq_path=False):
             yield from get_entries(child)
 
 
-def merkle_update_on_blockstate_change_factory(sync):
-    def update_merkle(entry, pre, post, sync=sync):
-        """
-        Receiving:  No hash
-        Completed:  Entry hash
-        Stalled:    Entry hash and last block hash
-               +-----------+       ehash
-        [i]--->| Receiving +------------+
-               +---+-------+            |
-                   |   ^          +-----v-----+
-             bhash |   | bhash    | Completed |
-             ehash |   | ehash    +-----------+
-                   v   |                ^
-                +------+--+       bhash |
-                | Stalled +-------------+
-                +---------+
-        """
-        blockstate = sync.blockstate
-        if blockstate.RECEIVING in (pre, post) and blockstate.STALLED in (pre, post):
-            sync.update_merkle(entry)
-            sync.update_merkle(entry, hash=entry.content)
-        if post == blockstate.COMPLETED:
-            if pre == blockstate.STALLED:
-                sync.update_merkle(entry, hash=entry.content)
-            if pre == blockstate.RECEIVING:
-                sync.update_merkle(entry)
-    return update_merkle
-
-
 class SyncHandler:
     LS = 'LS'
     ENTRY_REQ = 'E-REQ'
@@ -59,6 +30,7 @@ class SyncHandler:
     BLOCKS_REC = 'B-REC'
     BLOCK_REQ = 'B-REQ'
     SECTIONS = (BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
+    description = 'full sync'
     
     def __str__(self):
         return "Sync:%s" % self.log.logpath 
@@ -76,8 +48,8 @@ class SyncHandler:
             if entry.action == entry.WRITE and entry.next_block:
                 # Stalled
                 self.update_merkle(entry, hash=entry.content)
-        self.log.post_create.connect(lambda e: self.update_merkle(e))
-        serf.blockstate.post_change.connect(merkle_update_on_blockstate_change_factory(self))
+        self.log.post_create.connect(self.update_merkle)
+        serf.blockstate.post_change.connect(self.blockstate_change)
         serf.entry_received.connect(lambda e: e.action != e.WRITE and self.update_merkle(e))
         self.responses = {}
     
@@ -94,6 +66,32 @@ class SyncHandler:
                 self.merkle[path] = hash
                 if os.path.dirname(path) != path:
                     self.tree[os.path.dirname(path)].append(path)
+    
+    def blockstate_change(self, entry, pre, post):
+        """
+        Receiving:  No hash
+        Completed:  Entry hash
+        Stalled:    Entry hash and last block hash
+               +-----------+       ehash
+        [i]--->| Receiving +------------+
+               +---+-------+            |
+                   |   ^          +-----v-----+
+             bhash |   | bhash    | Completed |
+             ehash |   | ehash    +-----------+
+                   v   |                ^
+                +------+--+       bhash |
+                | Stalled +-------------+
+                +---------+
+        """
+        blockstate = self.blockstate
+        if blockstate.RECEIVING in (pre, post) and blockstate.STALLED in (pre, post):
+            self.update_merkle(entry)
+            self.update_merkle(entry, hash=entry.content)
+        if post == blockstate.COMPLETED:
+            if pre == blockstate.STALLED:
+                self.update_merkle(entry, hash=entry.content)
+            if pre == blockstate.RECEIVING:
+                self.update_merkle(entry)
     
     def encode_entry(self, entry):
         # TODO remove unthrosworthy shit (hash) and whatever
