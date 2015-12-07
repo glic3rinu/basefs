@@ -20,11 +20,8 @@ import uuid
 import zipfile
 from collections import OrderedDict
 
-try:
-    from fuse import FUSE
-except ImportError:
-    # Running installserf
-    pass
+from fuse import FUSE
+
 from basefs import loop, utils, exceptions, validators
 from basefs.fs import FileSystem
 from basefs.keys import Key

@@ -7,6 +7,6 @@ RUN apt-get -y update && apt-get install -y \
 #    net-tools \
 #    nano
 
-RUN pip3 install basefs==1-dev \
+RUN pip3 install basefs==1-dev  \
     --allow-external basefs \
     --allow-unverified basefs
