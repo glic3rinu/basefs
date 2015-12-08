@@ -23,12 +23,12 @@ import uuid
 import zipfile
 from collections import OrderedDict
 
-from basefs import uilts
+from basefs import utils, validators
 
 try:
     from fuse import FUSE
     
-    from basefs import loop, exceptions, validators
+    from basefs import loop, exceptions
     from basefs.fs import FileSystem
     from basefs.keys import Key
     from basefs.logs import Log
@@ -496,7 +496,6 @@ def serf():
     else:
         rpc_port = cmd_port-1
         os.system('serf %s --rpc-addr=127.0.0.1:%i "%s"' % (args.cmd, rpc_port, ' '.join(args.args)))
-
 
 
 def get():
