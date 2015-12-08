@@ -1,7 +1,10 @@
-import time
 import collections
+import logging
+import time
 
 from . import utils
+
+logger = logging.getLogger('basefs.state')
 
 
 class BlockState:
@@ -46,8 +49,10 @@ class BlockState:
         if entry.action == entry.WRITE:
             self.iterate(entry, entry.content)
             if not entry.next_block:
+                logger.debug("COMPLETED %s", entry.hash)
                 self.post_change.send(entry, self.RECEIVING, self.COMPLETED)
             else:
+                logger.debug("RECEIVING %s", entry.hash)
                 self.incomplete[entry.next_block].append(entry)
                 self.set_receiving(entry.hash)
     
@@ -66,10 +71,12 @@ class BlockState:
                     self.incomplete[entry.next_block].append(entry)
                     self.set_receiving(entry.hash)
                     if prev_state != self.RECEIVING:
+                        logger.debug("RECEIVING %s", entry.hash)
                         self.post_change.send(entry, prev_state, self.RECEIVING)
                 else:
                     # Completed
                     self.receiving.pop(entry.hash)
+                    logger.debug("COMPLETED %s", entry.hash)
                     self.post_change.send(entry, prev_state, self.COMPLETED)
         else:
             self.buffer.set(block.hash, block)
@@ -104,6 +111,7 @@ class BlockState:
                 # stalled
                 self.receiving.pop(ehash)
                 entry = self.log.entries[ehash]
+                logger.debug("STALLED %s", entry.hash)
                 self.post_change.send(entry, self.RECEIVING, self.STALLED)
             else:
                 yield ehash

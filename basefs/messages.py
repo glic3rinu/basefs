@@ -222,9 +222,10 @@ def run_agent(port, hostname):
             -node %(hostname)s \\
             -bind 0.0.0.0:%(port)s \\
             -rpc-addr=127.0.0.1:%(rpc_port)s \\
+            -profile=wan \\
             -replay \\
             -log-level=%(log_level)s \\
-            -event-handler='{ echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s'"""
+            -event-handler='[ ! $(echo $SERF_EVENT | grep "^user$") ] && true || { echo -n "$SERF_USER_EVENT" && cat -; } | nc 127.0.0.1 %(sync_port)s;'"""
         ) % context
     logger.debug(cmd)
     serf_agent = subprocess.Popen(cmd, shell=True)

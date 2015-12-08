@@ -2,6 +2,9 @@
 
 import argparse
 import atexit
+import configparser
+import datetime
+import hashlib
 import ipaddress
 import logging
 import os
@@ -20,15 +23,19 @@ import uuid
 import zipfile
 from collections import OrderedDict
 
-from fuse import FUSE
-
-from basefs import loop, utils, exceptions, validators
-from basefs.fs import FileSystem
-from basefs.keys import Key
-from basefs.logs import Log
-from basefs.messages import SerfClient
-from basefs.state import BlockState
-from basefs.views import View
+try:
+    from fuse import FUSE
+    
+    from basefs import loop, utils, exceptions, validators
+    from basefs.fs import FileSystem
+    from basefs.keys import Key
+    from basefs.logs import Log
+    from basefs.messages import SerfClient
+    from basefs.state import BlockState
+    from basefs.views import View
+except ImportError:
+    if sys.argv[1] != 'installserf':
+        raise
 
 
 basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
@@ -43,8 +50,6 @@ defaults = utils.AttrDict(**{
 })
 
 
-import configparser
-import hashlib
 
 def get_port(name):
     return 10000 + int(hashlib.md5(name.encode()).hexdigest(), 16) % (10**4)
@@ -231,7 +236,10 @@ def mount():
         sys.exit(4)
     keypath = os.path.normpath(args.keypath)
     mountpoint = args.mountpoint
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,
+        format='%(asctime)-15s [%(levelname)s] %(name)s: %(message)s',
+    )
     logpath = os.path.normpath(logpath)
     log = Log(logpath)
     log.load()
@@ -272,7 +280,6 @@ def keys():
             sys.stdout.write('    ' + value + '\n')
 
 
-import datetime
 def list_cmd():
     config = get_or_create_config(defaults)
     data = [
@@ -388,7 +395,7 @@ def grant():
     }
     grant_cmd = 'c GRANT %(path)s %(grant_key)s' % context
     response = utils.netcat('127.0.0.1', mount_info.port, grant_cmd)
-    print(response)
+    sys.stdout.write(response)
     sys.exit()
 
 
@@ -475,6 +482,21 @@ def members():
     sys.exit()
 
 
+def serf():
+    serf_parser.add_argument('name', help='Name')
+    serf_parser.add_argument('cmd', help='Serf command')
+    serf_parser.add_argument('args', metavar='N', nargs='*', help='Serf command arguments')
+    args = serf_parser.parse_args()
+    cmd_port = get_cmd_port(args, mount_info, defaults)
+    if args.cmd in ('state',):
+        result = send_command('SERF'+args.cmd.upper(), port=cmd_port)
+        sys.stdout.write(result + '\n')
+    else:
+        rpc_port = cmd_port-1
+        os.system('serf %s --rpc-addr=127.0.0.1:%i "%s"' % (args.cmd, rpc_port, ' '.join(args.args)))
+
+
+
 def get():
     # get <domainTXT/domain:port/ip:port> [-l <logpath>] [-n <name>] [-p] [-f] [-d]
     bootstrap_parser.add_argument('name')
@@ -539,6 +561,7 @@ def installserf():
     architectures = {
         'x86_64': 'amd64',
         'AMD64': 'amd64',
+        'i686': '386',
         'i386': '386',
         'x86': '386',
     }
@@ -620,11 +643,15 @@ blocks_parser = argparse.ArgumentParser(
 members_parser = argparse.ArgumentParser(
     description="List cluster members",
     prog='basefs members')
+serf_parser = argparse.ArgumentParser(
+    description="Serf RPC Command proxy",
+    prog='basefs serf'
+)
 get_parser = argparse.ArgumentParser(
     description="Get log from peer address",
     prog='basefs get')
 installserf_parser = argparse.ArgumentParser(
-    description="installserf",
+    description="Download and install Serf",
     prog='basefs installserf')
 
 
@@ -640,6 +667,7 @@ methods = OrderedDict([
     ('revert', (revert, revert_parser)),
     ('blocks', (blocks, blocks_parser)),
     ('members', (members, members_parser)),
+    ('serf', (serf, serf_parser)),
     ('get', (get, get_parser)),
     ('installserf', (installserf, installserf_parser)),
     ('help', (help, None)),
