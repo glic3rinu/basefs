@@ -23,10 +23,12 @@ import uuid
 import zipfile
 from collections import OrderedDict
 
+from basefs import uilts
+
 try:
     from fuse import FUSE
     
-    from basefs import loop, utils, exceptions, validators
+    from basefs import loop, exceptions, validators
     from basefs.fs import FileSystem
     from basefs.keys import Key
     from basefs.logs import Log
