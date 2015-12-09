@@ -208,9 +208,10 @@ class SerfClient(client.SerfClient):
                 self.blockstate.block_received(block)
 
 
-def run_agent(port, hostname):
+def run_agent(ip, port, hostname):
     loglevel = logger.getEffectiveLevel()
     context = {
+        'ip': ip,
         'log_level': 'debug' if loglevel == logging.DEBUG else 'err',
         'port': port,
         'rpc_port': port+1,
@@ -220,7 +221,7 @@ def run_agent(port, hostname):
     cmd = textwrap.dedent("""\
         serf agent \\
             -node %(hostname)s \\
-            -bind 0.0.0.0:%(port)s \\
+            -bind %(ip)s:%(port)s \\
             -rpc-addr=127.0.0.1:%(rpc_port)s \\
             -profile=wan \\
             -replay \\

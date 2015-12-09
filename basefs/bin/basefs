@@ -104,19 +104,23 @@ def create_logdir(logpath, default_logpath, force=False):
             os.remove(logpath)
 
 
-def run_processes(config, view, script, port=None, hostname=None, join=None):
+def run_processes(config, view, script, ip=None, port=None, hostname=None, join=None):
     """ threads should start here, otherwise will not run when fuse is backgrounded """
     handler_kwargs = {}
     serf = None
     serf_agent = None
     handler = None
-    if port and hostname:
-        serf_agent = gossip.run_agent(port, hostname)
-        serf = gossip.run_client(view, port+1, join or [], config=config)
-        loop.run_loop(view, serf, port+2, config=config)
-        handler_kwargs = {
-            'state': serf.blockstate,
-        }
+    if ip and port and hostname:
+        serf_agent = gossip.run_agent(ip, port, hostname)
+        try:
+            serf = gossip.run_client(view, port+1, join or [], config=config)
+            loop.run_loop(view, serf, port+2, config=config)
+            handler_kwargs = {
+                'state': serf.blockstate,
+            }
+        except:
+            serf_agent.stop()
+            raise
     if script:
         handler = handlers.Handler(script, view.log, **handler_kwargs)
     return serf, serf_agent, handler
@@ -211,6 +215,9 @@ def set_run_parser(parser):
         help='comma separated ip:port used as boostrapping nodes.')
     parser.add_argument('-b', '--bind', dest='bind', default='0.0.0.0',
         help='Basefs bind including: serf agent, serf client (port+1) and basefs server(port+2)')
+    parser.add_argument('-iface', dest='iface',
+        help='Network interface to bind to. Can be used instead of -bind if the interface is known '
+             'but not the address.')
     parser.add_argument('-H', '--hostname', dest='hostname',
         help='Name of this node. Must be unique in the cluster.')
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -229,6 +236,12 @@ def run(mount=False, parser=None):
     ip, *port = args.bind.split(':')
     if port:
         port = int(port[0])
+    if args.iface:
+        iface_ip = utils.get_ip_address(args.iface)
+        if ip != '0.0.0.0' and ip != iface_ip:
+            sys.stderr.write("-bind and -iface ip addresses do not match %s != %s\n" % (ip, iface_ip))
+            sys.exit(9)
+        ip = iface_ip
     logpath = args.logpath
     config = get_or_create_config(defaults)
     section = None
@@ -273,7 +286,7 @@ def run(mount=False, parser=None):
     if args.serf:
         join = args.join.split(',') if args.join else []
         port, hostname, 
-        init_function = functools.partial(run_processes, section, view, args.watcher, port, hostname, join)
+        init_function = functools.partial(run_processes, section, view, args.watcher, ip, port, hostname, join)
     else:
         init_function = functools.partial(run_processes, section, view, args.watcher)
     if mount:
