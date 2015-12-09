@@ -86,7 +86,7 @@ def send_command(cmd, *args, port=None):
     for part in utils.netcat('127.0.0.1', port, ' '.join(('c' + cmd,) + args).encode()):
         data += part
     if not data:
-        sys.stderr.write("No data received from 127.0.0.1:%i\n", port)
+        sys.stderr.write("No data received from 127.0.0.1:%i\n" % port)
     return data
 
 
@@ -495,6 +495,7 @@ def revert():
 
 def get_cmd_port(args, mount_info, defaults):
     port = mount_info.port if mount_info else None
+    print('zero', port)
     if not port and not args.name:
         sys.stderr.write("Error: name should be provided when not running inside a mounted basefs filesystem\n")
         sys.exit(3)
@@ -506,13 +507,16 @@ def get_cmd_port(args, mount_info, defaults):
                 info, __ = utils.get_mountpoint(logpath)
                 if info:
                     port = int(info.split(':')[1])
+                    print('first', port)
                 else:
                     port = get_port(args.name)+2
+                    print('second', port)
             else:
                 sys.stderr.write("Error: unknwon logname %s\n" % args.name)
                 sys.exit(2)
         else:
             port = int(config[args.name].get('port', get_port(args.name)))+2
+            print('last', port)
     return port
 
 
