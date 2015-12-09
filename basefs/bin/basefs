@@ -502,24 +502,29 @@ def revert():
 
 def get_cmd_port(args, mount_info, defaults):
     port = mount_info.port if mount_info else None
-    if not port and not args.name:
-        sys.stderr.write("Error: name should be provided when not running inside a mounted basefs filesystem\n")
-        sys.exit(3)
-    elif not port:
+    name = args.name
+    if not port and not name:
+        logs = os.listdir(defaults.logdir)
+        if len(logs) == 1:
+            name = logs[0]
+        else:
+            sys.stderr.write("Error: name should be provided when not running inside a mounted basefs filesystem\n")
+            sys.exit(3)
+    if not port:
         config = get_or_create_config(defaults)
-        if args.name not in config:
-            logpath = os.path.join(defaults.logdir, args.name)
+        if name not in config:
+            logpath = os.path.join(defaults.logdir, name)
             if os.path.exists(logpath):
                 info, __ = utils.get_mountpoint(logpath)
                 if info:
                     port = int(info.split(':')[1])
                 else:
-                    port = get_port(args.name)+2
+                    port = get_port(name)+2
             else:
-                sys.stderr.write("Error: unknwon logname %s\n" % args.name)
+                sys.stderr.write("Error: unknwon logname %s\n" % name)
                 sys.exit(2)
         else:
-            port = int(config[args.name].get('port', get_port(args.name)))+2
+            port = int(config[name].get('port', get_port(name)))+2
     return port
 
 
