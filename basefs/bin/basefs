@@ -492,7 +492,7 @@ def get_cmd_port(args, mount_info, defaults):
                 if info:
                     port = int(info.split(':')[1])
                 else:
-                    port = get_port(args.name)
+                    port = get_port(args.name)+2
             else:
                 sys.stderr.write("Error: unknwon logname %s\n" % args.name)
                 sys.exit(2)
