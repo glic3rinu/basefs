@@ -8,7 +8,7 @@ import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils, loop, messages, handlers
+from . import exceptions, utils, loop, gossip, handlers
 from .keys import Key
 from .logs import Log
 from .views import View
@@ -31,16 +31,14 @@ class ViewToErrno():
 
 
 class FileSystem(Operations):
-    def __init__(self, view, port=None, hostname=None, join=None, config=None, script=None):
-        self.port = port
-        self.hostname = hostname
+    def __init__(self, view, init_function=None):
         self.view = view
         self.cache = {}
         self.dirty = {}
-        self.join = join if join else []
         self.loaded = view.log.loaded
-        self.config = config
-        self.script = script
+        self.init_function = init_function
+        self.serf = None
+        self.serf_agent = None
     
     def __call__(self, op, path, *args):
         logger.debug('-> %s %s %s', op, path, repr(args))
@@ -56,20 +54,13 @@ class FileSystem(Operations):
     
     def init(self, path):
         """ threads should start here, otherwise will not run when fuse is backgrounded """
-        handler_kwargs = {}
-        if self.port and self.hostname:
-            self.serf_agent = messages.run_agent(self.port, self.hostname)
-            self.serf = messages.run_client(self.view, self.port+1, self.join, config=self.config)
-            loop.run_loop(self.view, self.serf, self.port+2, config=self.config)
-            handler_kwargs = {
-                'state': self.serf.blockstate,
-            }
-        if self.script:
-            self.handler = handlers.Handler(self.script, self.view.log, **handler_kwargs)
+        if self.init_function:
+            self.serf, self.serf_agent, __ = self.init_function()
     
     def destroy(self, path):
         super().destroy(path)
-        self.serf_agent.stop()
+        if self.serf_agent:
+            self.serf_agent.stop()
     
     def get_node(self, path):
         # check if logfile has been modified

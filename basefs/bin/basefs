@@ -4,6 +4,7 @@ import argparse
 import atexit
 import configparser
 import datetime
+import functools
 import hashlib
 import ipaddress
 import logging
@@ -28,11 +29,10 @@ from basefs import utils, validators
 try:
     from fuse import FUSE
     
-    from basefs import loop, exceptions
+    from basefs import loop, exceptions, gossip
     from basefs.fs import FileSystem
     from basefs.keys import Key
     from basefs.logs import Log
-    from basefs.messages import SerfClient
     from basefs.state import BlockState
     from basefs.views import View
 except ImportError:
@@ -50,7 +50,6 @@ defaults = utils.AttrDict(**{
     'logdir': os.path.join(basefs_dir, 'logs'),
     'hostname': "%s-%s" % (str(uuid.uuid1()).split('-')[-1], socket.gethostname()),
 })
-
 
 
 def get_port(name):
@@ -104,6 +103,24 @@ def create_logdir(logpath, default_logpath, force=False):
         else:
             os.remove(logpath)
 
+
+def run_processes(config, view, script, port=None, hostname=None, join=None):
+    """ threads should start here, otherwise will not run when fuse is backgrounded """
+    handler_kwargs = {}
+    serf = None
+    serf_agent = None
+    handler = None
+    if port and hostname:
+        serf_agent = gossip.run_agent(port, hostname)
+        serf = gossip.run_client(view, port+1, join or [], config=config)
+        loop.run_loop(view, serf, port+2, config=config)
+        handler_kwargs = {
+            'state': serf.blockstate,
+        }
+    if script:
+        handler = handlers.Handler(script, view.log, **handler_kwargs)
+    return serf, serf_agent, handler
+    
 
 def genkey():
     # genkey [<keypath>] [-f]
@@ -181,32 +198,34 @@ def bootstrap():
     sys.exit(0)
 
 
-# TODO make validators.name_or_logpath return (name, logpath) tuple for DRY-ines
-def mount():
-    # mount <name/logpath> <mountpoint> [-b <ip>[:<port>]] [-i <ip>[:<port>]] [-l <logpath>] [-k <keypath/keyname>] [-H <hostname>] [-d]
-    mount_parser.add_argument('logpath',
-        type=validators.name_or_logpath(mount_parser, get_or_create_config(defaults), defaults),
+def set_run_parser(parser):
+    # TODO make validators.name_or_logpath return (name, logpath) tuple for DRY-ines
+    parser.add_argument('logpath',
+        type=validators.name_or_logpath(parser, get_or_create_config(defaults), defaults),
         help='Log name or logpath')
-    mount_parser.add_argument('mountpoint',
-        type=validators.dir_exists(mount_parser, name='mountpoint'))
-    mount_parser.add_argument('-k', '--keys', dest='keypath',
+    parser.add_argument('-k', '--keys', dest='keypath',
         default=defaults.keypath,
         help='Path to the EC private key. %s by default. Use genkey for creating one.' % defaults.keypath,
-        type=validators.file_exists(mount_parser, name='keypath'))
-    mount_parser.add_argument('-j', '--join', dest='join',
+        type=validators.file_exists(parser, name='keypath'))
+    parser.add_argument('-j', '--join', dest='join',
         help='comma separated ip:port used as boostrapping nodes.')
-    mount_parser.add_argument('-b', '--bind', dest='bind', default='0.0.0.0',
+    parser.add_argument('-b', '--bind', dest='bind', default='0.0.0.0',
         help='Basefs bind including: serf agent, serf client (port+1) and basefs server(port+2)')
-    mount_parser.add_argument('-H', '--hostname', dest='hostname',
+    parser.add_argument('-H', '--hostname', dest='hostname',
         help='Name of this node. Must be unique in the cluster.')
-    mount_parser.add_argument('-d', '--debug', dest='debug', action='store_true',
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
         help='Enables debugging information.')
-    mount_parser.add_argument('-s', '--single-node', dest='serf', action='store_false',
+    parser.add_argument('-s', '--single-node', dest='serf', action='store_false',
         help='Disables Serf agent (testing purposes).')
-    mount_parser.add_argument('-w', '--watcher', dest='watcher',
+    parser.add_argument('-w', '--watcher', dest='watcher',
         help='Handler script executed when a change occur on the filesystem (inotify substitute).')
-    
-    args = mount_parser.parse_args()
+
+
+def run(mount=False, parser=None):
+    if parser is None:
+        set_run_parser(run_parser)
+        parser = run_parser
+    args = parser.parse_args()
     ip, *port = args.bind.split(':')
     if port:
         port = int(port[0])
@@ -237,7 +256,6 @@ def mount():
         sys.stderr.write("Error: log %s already mounted in %s\n" % (logpath, point))
         sys.exit(4)
     keypath = os.path.normpath(args.keypath)
-    mountpoint = args.mountpoint
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
         format='%(asctime)-15s [%(levelname)s] %(name)s: %(message)s',
@@ -251,15 +269,34 @@ def mount():
         key = Key.load(keypath)
         view = View(log, key)
     view.build()
-    sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
     watcher = None
     if args.serf:
         join = args.join.split(',') if args.join else []
-        fs = FileSystem(view, port, hostname, join, config=section, script=args.watcher)
+        port, hostname, 
+        init_function = functools.partial(run_processes, section, view, args.watcher, port, hostname, join)
     else:
-        fs = FileSystem(view, config=section, script=args.watcher)
-    fsname = '%s:%i' % (logpath, sync_port)
-    FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
+        init_function = functools.partial(run_processes, section, view, args.watcher)
+    if mount:
+        mountpoint = args.mountpoint
+        sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
+        fs = FileSystem(view, init_function=init_function)
+        fsname = '%s:%i' % (logpath, sync_port)
+        FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
+    else:
+        serf, serf_agent, __ = init_function()
+        try:
+            os.wait()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            serf_agent.stop()
+
+def mount():
+    # mount <name/logpath> <mountpoint> [-b <ip>[:<port>]] [-i <ip>[:<port>]] [-l <logpath>] [-k <keypath/keyname>] [-H <hostname>] [-d]
+    set_run_parser(mount_parser)
+    mount_parser.add_argument('mountpoint',
+        type=validators.dir_exists(mount_parser, name='mountpoint'))
+    run(mount=True, parser=mount_parser)
 
 
 def keys():
@@ -539,10 +576,15 @@ def get():
             sys.stdout.write(data)
             received = True
     else:
-        with open(logpath, 'w') as handler:
-            for data in utils.netcat(ip, port, b'cGET'):
-                handler.write(data)
-                received = True
+        try:
+            with open(logpath, 'w') as handler:
+                for data in utils.netcat(ip, port, b'cGET'):
+                    handler.write(data)
+                    received = True
+        except ConnectionRefusedError:
+            os.remove(logpath)
+            sys.stderr.write("Error: connection refused, bad port?\n")
+            sys.exit(3)
     if not received:
         sys.stderr.write("Error: nothing has been received, bad port?\n")
         sys.exit(2)
@@ -563,6 +605,7 @@ def installserf():
         'x86_64': 'amd64',
         'AMD64': 'amd64',
         'i686': '386',
+        'i586': '386',
         'i386': '386',
         'x86': '386',
     }
@@ -620,6 +663,9 @@ bootstrap_parser = argparse.ArgumentParser(
 mount_parser = argparse.ArgumentParser(
     description='Mount an existing filesystem',
     prog='basefs mount')
+run_parser = argparse.ArgumentParser(
+    description='Run an existing filesystem without mounting it (testing)',
+    prog='basefs run')
 keys_parser = argparse.ArgumentParser(
     description='List keys and their directories',
     prog='basefs keys')
@@ -658,6 +704,7 @@ installserf_parser = argparse.ArgumentParser(
 
 methods = OrderedDict([
     ('mount', (mount, mount_parser)),
+    ('run', (run, run_parser)),
     ('bootstrap', (bootstrap, bootstrap_parser)),
     ('genkey', (genkey, genkey_parser)),
     ('keys', (keys, keys_parser)),
