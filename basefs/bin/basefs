@@ -85,6 +85,8 @@ def send_command(cmd, *args, port=None):
     data = ''
     for part in utils.netcat('127.0.0.1', port, ' '.join(('c' + cmd,) + args).encode()):
         data += part
+    if not data:
+        sys.stderr.write("No data received from 127.0.0.1:%i\n", port)
     return data
 
 
