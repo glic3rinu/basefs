@@ -48,6 +48,6 @@ def run(view, serf, port, config=None):
         loop.close()
 
 
-def run_loop(view, serf, port, config=None):
+def run_thread(view, serf, port, config=None):
     handler = threading.Thread(target=run, args=(view, serf, port), kwargs={'config': config}, daemon=True)
     handler.start()

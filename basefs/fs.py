@@ -8,7 +8,7 @@ import threading
 
 from fuse import FuseOSError, Operations
 
-from . import exceptions, utils, loop, gossip, handlers
+from . import exceptions, utils
 from .keys import Key
 from .logs import Log
 from .views import View
@@ -31,14 +31,14 @@ class ViewToErrno():
 
 
 class FileSystem(Operations):
-    def __init__(self, view, init_function=None):
+    def __init__(self, view, serf=None, serf_agent=None, init_function=None):
         self.view = view
         self.cache = {}
         self.dirty = {}
         self.loaded = view.log.loaded
         self.init_function = init_function
-        self.serf = None
-        self.serf_agent = None
+        self.serf = serf
+        self.serf_agent = serf_agent
     
     def __call__(self, op, path, *args):
         logger.debug('-> %s %s %s', op, path, repr(args))
@@ -55,7 +55,7 @@ class FileSystem(Operations):
     def init(self, path):
         """ threads should start here, otherwise will not run when fuse is backgrounded """
         if self.init_function:
-            self.serf, self.serf_agent, __ = self.init_function()
+            self.init_function()
     
     def destroy(self, path):
         super().destroy(path)

@@ -106,28 +106,6 @@ def create_logdir(logpath, default_logpath, force=False):
             os.remove(logpath)
 
 
-def run_processes(config, view, script, ip=None, port=None, hostname=None, join=None):
-    """ threads should start here, otherwise will not run when fuse is backgrounded """
-    handler_kwargs = {}
-    serf = None
-    serf_agent = None
-    handler = None
-    if ip and port and hostname:
-        serf_agent = gossip.run_agent(ip, port, hostname)
-        try:
-            serf = gossip.run_client(view, port+1, join or [], config=config)
-            loop.run_loop(view, serf, port+2, config=config)
-            handler_kwargs = {
-                'state': serf.blockstate,
-            }
-        except:
-            serf_agent.stop()
-            raise
-    if script:
-        handler = handlers.Handler(script, view.log, **handler_kwargs)
-    return serf, serf_agent, handler
-    
-
 def genkey():
     # genkey [<keypath>] [-f]
     genkey_parser.add_argument('keypath', nargs='?',
@@ -284,27 +262,56 @@ def run(mount=False, parser=None):
         key = Key.load(keypath)
         view = View(log, key)
     view.build()
-    watcher = None
+    serf = None
+    serf_agent = None
     if args.serf:
         join = args.join.split(',') if args.join else []
-        port, hostname, 
-        init_function = functools.partial(run_processes, section, view, args.watcher, ip, port, hostname, join)
+        serf, serf_agent = gossip.run(section, view, ip, port, hostname, join)
+        if args.watcher:
+            handler = handlers.Handler(args.watcher, view.log, state=serf.blockstate)
     else:
-        init_function = functools.partial(run_processes, section, view, args.watcher)
+        if args.watcher:
+            handler = handlers.Handler(args.watcher, view.log)
     if mount:
+        init_function = lambda: None
+        if args.serf:
+            init_function = lambda: loop.run_thread(view, serf, port+2, config=section)
         mountpoint = args.mountpoint
         sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
-        fs = FileSystem(view, init_function=init_function)
+        fs = FileSystem(view, serf=serf, serf_agent=serf_agent, init_function=init_function)
         fsname = '%s:%i' % (logpath, sync_port)
         FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
     else:
-        serf, serf_agent, __ = init_function()
         try:
-            os.wait()
+            loop.run(view, serf, port+2, config=section)
         except KeyboardInterrupt:
             pass
         finally:
             serf_agent.stop()
+
+
+def run_processes(config, view, script, ip=None, port=None, hostname=None, join=None):
+    """ threads should start here, otherwise will not run when fuse is backgrounded """
+    handler_kwargs = {}
+    serf = None
+    serf_agent = None
+    handler = None
+    if ip and port and hostname:
+        serf_agent = gossip.run_agent(ip, port, hostname)
+        try:
+            serf = gossip.run_client(view, port+1, join or [], config=config)
+            loop.run_loop(view, serf, port+2, config=config)
+            handler_kwargs = {
+                'state': serf.blockstate,
+            }
+        except:
+            serf_agent.stop()
+            raise
+    if script:
+        handler = handlers.Handler(script, view.log, **handler_kwargs)
+    return serf, serf_agent, handler
+    
+
 
 def mount():
     # mount <name/logpath> <mountpoint> [-b <ip>[:<port>]] [-i <ip>[:<port>]] [-l <logpath>] [-k <keypath/keyname>] [-H <hostname>] [-d]
@@ -507,7 +514,7 @@ def get_cmd_port(args, mount_info, defaults):
                 if info:
                     port = int(info.split(':')[1])
                 else:
-                    port = get_port(args.name)+1
+                    port = get_port(args.name)+2
             else:
                 sys.stderr.write("Error: unknwon logname %s\n" % args.name)
                 sys.exit(2)

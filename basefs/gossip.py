@@ -256,3 +256,13 @@ def run_client(view, port, members, config=None):
     if join_result.head[b'Error']:
         raise RuntimeError("Couldn't connect to serf cluster %s." % members)
     return serf
+
+
+def run(config, view, ip, port, hostname, join):
+    serf_agent = run_agent(ip, port, hostname)
+    try:
+        serf = run_client(view, port+1, join or [], config=config)
+    except:
+        serf_agent.stop()
+        raise
+    return serf, serf_agent
