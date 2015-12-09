@@ -3,14 +3,15 @@ import logging
 import os
 import random
 import signal
-import subprocess
+import socket
 import struct
+import subprocess
 import sys
 import textwrap
 import time
 import zlib
 
-from serfclient import client
+from serfclient import client, connection
 
 from basefs import utils, exceptions
 from basefs.logs import LogEntry, Block
@@ -266,3 +267,21 @@ def run(config, view, ip, port, hostname, join):
         serf_agent.stop()
         raise
     return serf, serf_agent
+
+
+# MokeyPatch serfclient.connection
+def _decode_addr_key(self, obj_dict):
+    """ fixed bug when specifying address using --bind option: IPv4 instead of IPv6 """
+    key = b'Addr'
+    if key in obj_dict:
+        try:
+            ip_addr = socket.inet_ntop(socket.AF_INET6, obj_dict[key])
+        except ValueError:
+            ip_addr = socket.inet_ntop(socket.AF_INET, obj_dict[key])
+        # Check if the address is an IPv4 mapped IPv6 address:
+        # ie. ::ffff:xxx.xxx.xxx.xxx
+        if ip_addr.startswith('::ffff:'):
+            ip_addr = ip_addr.lstrip('::ffff:')
+        obj_dict[key] = ip_addr.encode('utf-8')
+    return obj_dict
+connection.SerfConnection._decode_addr_key = _decode_addr_key

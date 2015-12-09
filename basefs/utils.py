@@ -54,7 +54,7 @@ def netcat(host, port, content):
 #    loop = asyncio.get_event_loop()
 #    task = asyncio.async(coro())
 #    return loop.run_until_complete(task)
-        
+    
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect((host, int(port)))
     s.sendall(content)
