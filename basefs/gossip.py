@@ -268,9 +268,9 @@ def run_client(view, port, members, config=None):
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
     serf = SerfClient(view.log, blockstate, port=port, config=config)
-    interval = JOIN_INTERVAL
     
     def join():
+        interval = JOIN_INTERVAL
         while True:
             try:
                 joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
