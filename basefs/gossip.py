@@ -288,6 +288,8 @@ def run_client(view, port, members, config=None):
                         interval = JOIN_INTERVAL
                     else:
                         interval = JOIN_INTERVAL*2
+            except connection.SerfConnectionError:
+                logger.info('Shuting down.')
             except Exception as exc:
                 logger.error(traceback.format_exc())
             time.sleep(interval)
