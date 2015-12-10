@@ -288,7 +288,7 @@ def run_client(view, port, members, config=None):
                         interval = JOIN_INTERVAL
                     else:
                         interval = JOIN_INTERVAL*2
-            except KeyboardInterrupt:
+            except connection.SerfConnectionError:
                 return
             except Exception as exc:
                 logger.error(traceback.format_exc())
