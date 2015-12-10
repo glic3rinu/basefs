@@ -289,7 +289,8 @@ def run_client(view, port, members, config=None):
     
     serf_join = threading.Thread(target=join)
     serf_join.start()
-    return serf
+    # SerfClient is not thread-safe
+    return SerfClient(view.log, blockstate, port=port, config=config)
 
 
 def run(config, view, ip, port, hostname, join):
