@@ -288,13 +288,11 @@ def run_client(view, port, members, config=None):
                         interval = JOIN_INTERVAL
                     else:
                         interval = JOIN_INTERVAL*2
-            except connection.SerfConnectionError:
-                return
             except Exception as exc:
                 logger.error(traceback.format_exc())
             time.sleep(interval)
     
-    serf_join = threading.Thread(target=join)
+    serf_join = threading.Thread(target=join, daemon=True)
     serf_join.start()
     # SerfClient is not thread-safe
     return SerfClient(view.log, blockstate, port=port, config=config)
