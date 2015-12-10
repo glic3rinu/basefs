@@ -279,7 +279,7 @@ def run_client(view, port, members, config=None):
                         logger.debug("Joining to %s", member)
                         try:
                             serf.join(member)
-                        except serfclient.connection.SerfTimeout:
+                        except connection.SerfTimeout:
                             logger.warning("Member %s is unreachable.", member)
                 if not serf.members().body:
                     logger.warning("Running alone, couldn't join with anyone.")
