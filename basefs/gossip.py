@@ -274,19 +274,20 @@ def run_client(view, port, members, config=None):
         while True:
             try:
                 joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
-                cluster = view.get('/.cluster')
-                for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
-                    if member not in joined:
-                        logger.debug("Joining to %s", member)
-                        try:
-                            serf.join(member)
-                        except connection.SerfTimeout:
-                            logger.warning("Member %s is unreachable.", member)
-                if not serf.members().body[b'Members']:
-                    logger.warning("Running alone, couldn't join with anyone.")
-                    interval = JOIN_INTERVAL
-                else:
-                    interval = JOIN_INTERVAL*2
+                if len(joined) < 2:
+                    cluster = view.get('/.cluster')
+                    for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
+                        if member not in joined:
+                            logger.debug("Joining to %s", member)
+                            try:
+                                serf.join(member)
+                            except connection.SerfTimeout:
+                                logger.warning("Member %s is unreachable.", member)
+                    if not serf.members().body[b'Members']:
+                        logger.warning("Running alone, couldn't join with anyone.")
+                        interval = JOIN_INTERVAL
+                    else:
+                        interval = JOIN_INTERVAL*2
             except Exception as exc:
                 logger.error(traceback.format_exc())
             time.sleep(interval)
