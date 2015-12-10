@@ -8,7 +8,9 @@ import struct
 import subprocess
 import sys
 import textwrap
+import threading
 import time
+import traceback
 import zlib
 
 from serfclient import client, connection
@@ -246,16 +248,47 @@ def run_agent(ip, port, hostname):
     return serf_agent
 
 
+#def run_client(view, port, members, config=None):
+#    blockstate = BlockState(view.log)
+#    logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
+#    serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=10)
+#    cluster = view.get('/.cluster')
+#    members += [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]
+#    logger.debug("Joining to %s", '\n'.join(members))
+#    join_result = serf.join(members)
+#    if join_result.head[b'Error']:
+#        raise RuntimeError("Couldn't connect to serf cluster %s." % members)
+#    return serf
+
+
 def run_client(view, port, members, config=None):
+    JOIN_INTERVAL = 60
+    if config:
+        JOIN_INTERVAL = int(config.get('join_interval', JOIN_INTERVAL))
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
-    serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=10)
-    cluster = view.get('/.cluster')
-    members += [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]
-    logger.debug("Joining to %s", '\n'.join(members))
-    join_result = serf.join(members)
-    if join_result.head[b'Error']:
-        raise RuntimeError("Couldn't connect to serf cluster %s." % members)
+    serf = SerfClient(view.log, blockstate, port=port, config=config)
+    
+    def join():
+        while True:
+            try:
+                joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
+                cluster = view.get('/.cluster')
+                for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
+                    if member not in joined:
+                        logger.debug("Joining to %s", member)
+                        try:
+                            serf.join(member)
+                        except serfclient.connection.SerfTimeout:
+                            logger.warning("Member %s is unreachable.", member)
+                if not serf.members().body:
+                    logger.warning("Running alone, couldn't join with anyone.")
+            except Exception as exc:
+                logger.error(traceback.format_exc())
+            time.sleep(JOIN_INTERVAL)
+    
+    serf_join = threading.Thread(target=join)
+    serf_join.start()
     return serf
 
 
