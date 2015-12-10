@@ -268,6 +268,7 @@ def run_client(view, port, members, config=None):
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
     serf = SerfClient(view.log, blockstate, port=port, config=config)
+    interval = JOIN_INTERVAL
     
     def join():
         while True:
@@ -281,11 +282,14 @@ def run_client(view, port, members, config=None):
                             serf.join(member)
                         except connection.SerfTimeout:
                             logger.warning("Member %s is unreachable.", member)
-                if not serf.members().body:
+                if not serf.members().body[b'Members']:
                     logger.warning("Running alone, couldn't join with anyone.")
+                    interval = JOIN_INTERVAL
+                else:
+                    interval = JOIN_INTERVAL*2
             except Exception as exc:
                 logger.error(traceback.format_exc())
-            time.sleep(JOIN_INTERVAL)
+            time.sleep(interval)
     
     serf_join = threading.Thread(target=join)
     serf_join.start()
