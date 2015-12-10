@@ -249,7 +249,7 @@ def run_agent(ip, port, hostname):
 def run_client(view, port, members, config=None):
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
-    serf = SerfClient(view.log, blockstate, port=port, config=config)
+    serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=10)
     cluster = view.get('/.cluster')
     members += [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]
     logger.debug("Joining to %s", '\n'.join(members))
