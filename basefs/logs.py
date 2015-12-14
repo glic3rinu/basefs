@@ -399,7 +399,7 @@ class LogEntry:
             raise ValidationError("Entry %s not a valid sha224 hash" % self.parent_hash)
         if self.hash in self.log.entries:
             raise Exists("Entry %s already exists" % self.hash)
-        if self.name == '/' and self != in self.log.root:
+        if self.name == '/' and self != self.log.root:
             raise Exists("Root entry already exists")
     
     def get_key(self, keys, last_keys):
