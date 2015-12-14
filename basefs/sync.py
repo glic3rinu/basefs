@@ -154,7 +154,7 @@ class SyncHandler:
             if section == self.HASH:
                 if self.log.root.hash != line:
                     self.write(writer, self.CLOSE)
-                    self.write('Filesystem hash does not match %s != %s' % (self.log.root.hash, line))
+                    self.write(writer, 'Filesystem hash does not match %s != %s' % (self.log.root.hash, line))
                     writer.close()
                     return
             elif section == self.BLOCKS_REC:
@@ -269,12 +269,11 @@ class SyncHandler:
     def get_receiving(self):
         return [self.log.entries[ehash] for ehash in self.blockstate.get_receiving()]
     
-    def write(self, writer, *lines):
-        for line in lines:
-            if isinstance(line, str):
-                line = line.encode()
-            logger.debug('W: %s', line.decode())
-            writer.write(line + b'\n')
+    def write(self, writer, line):
+        if isinstance(line, str):
+            line = line.encode()
+        logger.debug('W: %s', line.decode())
+        writer.write(line + b'\n')
     
     @asyncio.coroutine
     def respond_sync(self, reader, writer, state):
@@ -363,7 +362,8 @@ class SyncHandler:
         logger.debug('Initiating sync with %s', peername)
         receiving = list(self.blockstate.get_receiving())
         writer.write(b's')
-        self.write(writer, self.HASH, self.log.root.hash)
+        self.write(writer, self.HASH)
+        self.write(writer, self.log.root.hash)
         if receiving:
             self.write(writer, self.BLOCKS_REC)
             for ehash in receiving:
