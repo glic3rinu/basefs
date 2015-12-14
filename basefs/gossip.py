@@ -274,7 +274,7 @@ def run_client(view, port, members, config=None):
             try:
                 joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
                 counter = len(joined)
-                while counter < 2:
+                if counter < 2:
                     cluster = view.get('/.cluster')
                     for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
                         if member not in joined:
@@ -285,6 +285,8 @@ def run_client(view, port, members, config=None):
                                 logger.warning("Member %s is unreachable.", member)
                             else:
                                 counter += 1
+                            if conter >= 2:
+                                break
                 if counter == 1:
                     logger.warning("Running alone, couldn't join with anyone.")
             except connection.SerfConnectionError:
