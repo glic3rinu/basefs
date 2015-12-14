@@ -152,9 +152,9 @@ class SyncHandler:
                 line = yield from reader.readline()
                 continue
             if section == self.HASH:
-                if self.log.hash != line:
+                if self.log.root.hash != line:
                     self.write(writer, self.CLOSE)
-                    self.write('Filesystem hash does not match %s != %s' % (self.log.hash, line))
+                    self.write('Filesystem hash does not match %s != %s' % (self.log.root.hash, line))
                     writer.close()
                     return
             elif section == self.BLOCKS_REC:
