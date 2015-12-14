@@ -76,7 +76,7 @@ class FileSystem(Operations):
     def send(self, node):
         if self.serf:
             entry = node.entry
-            logger.debug("Sending entry '%s' %s", entry.hash, entry.name))
+            logger.debug("Sending entry '%s' %s", entry.hash, entry.name)
             self.serf.send(node.entry)
     
 #    def access(self, path, mode):
