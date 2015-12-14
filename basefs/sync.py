@@ -171,15 +171,20 @@ class SyncHandler:
                     ls_path, rentries = line[0], set(line[1:])
                     ls_path = ls_path[1:]
                     ls_paths.append(ls_path)
-                    ls_entry = self.log.find(ls_path)
                     lentries = utils.OrderedSet()
-                    for lentry in get_entries(ls_entry, eq_path=True):
-                        lentries.add(lentry.hash)
-                        if (lentry.action == lentry.WRITE and
-                            lentry.next_block and (b_path is None or lentry.next_block not in rblocks) and
-                            lentry.hash in rentries and
-                            self.blockstate.get_state(lentry.hash) != self.blockstate.RECEIVING):
-                                blocks_to_request.add(lentry.next_block)
+                    try:
+                        ls_entry = self.log.find(ls_path)
+                    except exceptions.DoesNotExit:
+                        pass
+                    else:
+                        lentries = utils.OrderedSet()
+                        for lentry in get_entries(ls_entry, eq_path=True):
+                            lentries.add(lentry.hash)
+                            if (lentry.action == lentry.WRITE and
+                                lentry.next_block and (b_path is None or lentry.next_block not in rblocks) and
+                                lentry.hash in rentries and
+                                self.blockstate.get_state(lentry.hash) != self.blockstate.RECEIVING):
+                                    blocks_to_request.add(lentry.next_block)
                     entries_to_send = entries_to_send.union(lentries - rentries)
                     entries_to_request = entries_to_request.union(rentries - lentries)
                     b_path = None
@@ -243,7 +248,11 @@ class SyncHandler:
             remote_paths = paths_to_request.union(ls, verified_paths)
             paths_to_send = paths_to_send.union(local_paths - remote_paths)
         for path in paths_to_send:
-            for entry in get_entries(self.log.find(path)):
+            try:
+                lentry = self.log.find(path)
+            except exceptions.DoesNotExist:
+                lentries = get_entries(lentry)
+            for entry in lentries:
                 entries_to_send.add(entry.hash)
         if section == self.CLOSE:
             writer.close()
@@ -278,7 +287,12 @@ class SyncHandler:
                     self.write(writer, "%s %s" % (path.replace(' ', '\ '), hashes))
             self.write(writer, self.LS)
             for path in ls:
-                ls_entries = list(get_entries(self.log.find(path), eq_path=True))
+                try:
+                    lentry = self.log.find(path)
+                except exceptions.DoesNotExist:
+                    ls_entries = []
+                else:
+                    ls_entries = list(get_entries(lentry, eq_path=True))
                 incomplete_blocks = []
                 for entry in ls_entries:
                     if (entry.action == entry.WRITE and entry.next_block and

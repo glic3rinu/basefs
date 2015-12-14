@@ -267,14 +267,14 @@ def run_client(view, port, members, config=None):
         JOIN_INTERVAL = int(config.get('join_interval', JOIN_INTERVAL))
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
-    serf = SerfClient(view.log, blockstate, port=port, config=config)
     
     def join():
-        interval = JOIN_INTERVAL
+        serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=5)
         while True:
             try:
                 joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
-                if len(joined) < 2:
+                counter = len(joined)
+                while counter < 2:
                     cluster = view.get('/.cluster')
                     for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
                         if member not in joined:
@@ -283,17 +283,16 @@ def run_client(view, port, members, config=None):
                                 serf.join(member)
                             except connection.SerfTimeout:
                                 logger.warning("Member %s is unreachable.", member)
-                    if not serf.members().body[b'Members']:
-                        logger.warning("Running alone, couldn't join with anyone.")
-                        interval = JOIN_INTERVAL
-                    else:
-                        interval = JOIN_INTERVAL*2
+                            else:
+                                counter += 1
+                if len(counter) == 1:
+                    logger.warning("Running alone, couldn't join with anyone.")
             except connection.SerfConnectionError:
                 logger.info('Shutting down serf client.')
                 return
             except Exception as exc:
                 logger.error(traceback.format_exc())
-            time.sleep(interval)
+            time.sleep(JOIN_INTERVAL)
     
     serf_join = threading.Thread(target=join, daemon=True)
     serf_join.start()

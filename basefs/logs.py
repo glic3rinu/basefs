@@ -14,7 +14,7 @@ from collections import defaultdict
 
 from . import utils
 from .keys import Key
-from .exceptions import ValidationError, Exists
+from .exceptions import ValidationError, Exists, DoesNotExist
 from .utils import Candidate
 from .views import View
 
@@ -287,7 +287,9 @@ class Log:
         self.post_save.send(entry)
     
     def find(self, path):
-        return self.root.find(path)
+        entry = self.root.find(path)
+        if entry is None:
+            raise DoesNotExist("No entry found for path '%s'" % path)
 
 
 class LogEntry:

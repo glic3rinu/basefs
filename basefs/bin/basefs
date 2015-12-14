@@ -413,14 +413,18 @@ def show():
     if mount_info:
         path = os.path.abspath(args.path)
         path = path.replace(mount_info.mountpoint, '')
-        entry = log.find(path)
-        if entry is None:
+        try:
+            entry = log.find(path)
+        except exceptions.DoesNotExist:
             entry = log.find(args.path)
-        if entry:
+        else:
             printed = print_tree(entry)
     else:
-        entry = log.find(args.path)
-        if entry:
+        try:
+            entry = log.find(args.path)
+        except exceptions.DoesNotExist:
+            pass
+        else:
             printed = print_tree(entry)
     if not printed:
         sys.stderr.write("Error: '%s' path does not exist on the log.\n" % args.path)
