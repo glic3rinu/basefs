@@ -21,15 +21,16 @@ def get_entries(entry, eq_path=False):
 
 
 class SyncHandler:
+    BLOCKS_REC = 'B-REC'
+    HASH = 'HASH'
     LS = 'LS'
     ENTRY_REQ = 'E-REQ'
     PATH_REQ = 'P-REQ'
     ENTRIES = 'ENTRIES'
     CLOSE = 'CLOSE'
     BLOCKS = 'BLOCKS'
-    BLOCKS_REC = 'B-REC'
     BLOCK_REQ = 'B-REQ'
-    SECTIONS = (BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
+    SECTIONS = (HASH, BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
     description = 'full sync'
     
     def __str__(self):
@@ -150,7 +151,13 @@ class SyncHandler:
                 section = line
                 line = yield from reader.readline()
                 continue
-            if section == self.BLOCKS_REC:
+            if section == self.HASH:
+                if self.log.hash != line:
+                    self.write(writer, self.CLOSE)
+                    self.write('Filesystem hash does not match %s != %s' % (self.log.hash, line))
+                    writer.close()
+                    return
+            elif section == self.BLOCKS_REC:
                 path, *entries_hashes = self.split(line)
                 rreceiving[path].extend(entries_hashes)
             elif section == self.LS:
@@ -262,11 +269,12 @@ class SyncHandler:
     def get_receiving(self):
         return [self.log.entries[ehash] for ehash in self.blockstate.get_receiving()]
     
-    def write(self, writer, line):
-        if isinstance(line, str):
-            line = line.encode()
-        logger.debug('W: %s', line.decode())
-        writer.write(line + b'\n')
+    def write(self, writer, *lines):
+        for line in lines:
+            if isinstance(line, str):
+                line = line.encode()
+            logger.debug('W: %s', line.decode())
+            writer.write(line + b'\n')
     
     @asyncio.coroutine
     def respond_sync(self, reader, writer, state):
@@ -355,6 +363,7 @@ class SyncHandler:
         logger.debug('Initiating sync with %s', peername)
         receiving = list(self.blockstate.get_receiving())
         writer.write(b's')
+        self.write(writer, self.HASH, self.log.root.hash)
         if receiving:
             self.write(writer, self.BLOCKS_REC)
             for ehash in receiving:
