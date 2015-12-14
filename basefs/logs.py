@@ -335,6 +335,9 @@ class LogEntry:
         if not self.hash and self.signature:
             self.hash = self.get_hash()
     
+    def __eq__(self, other):
+        return isinstance(self, type(other)) and self.hash == other.hash
+    
     @property
     def parent(self):
         if self.parent_hash != self.ROOT_PARENT_HASH:
