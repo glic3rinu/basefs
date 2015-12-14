@@ -285,7 +285,7 @@ def run_client(view, port, members, config=None):
                                 logger.warning("Member %s is unreachable.", member)
                             else:
                                 counter += 1
-                            if conter >= 2:
+                            if counter >= 2:
                                 break
                 if counter == 1:
                     logger.warning("Running alone, couldn't join with anyone.")
