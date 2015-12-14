@@ -290,6 +290,7 @@ class Log:
         entry = self.root.find(path)
         if entry is None:
             raise DoesNotExist("No entry found for path '%s'" % path)
+        return entry
 
 
 class LogEntry:

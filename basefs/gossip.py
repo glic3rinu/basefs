@@ -285,7 +285,7 @@ def run_client(view, port, members, config=None):
                                 logger.warning("Member %s is unreachable.", member)
                             else:
                                 counter += 1
-                if len(counter) == 1:
+                if counter == 1:
                     logger.warning("Running alone, couldn't join with anyone.")
             except connection.SerfConnectionError:
                 logger.info('Shutting down serf client.')
