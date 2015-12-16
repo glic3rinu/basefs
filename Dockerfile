@@ -1,5 +1,7 @@
 FROM debian:latest
 
+RUN apt-get update
+
 RUN apt-get -y update && apt-get install -y \
     libfuse2 \
     python3-pip \
