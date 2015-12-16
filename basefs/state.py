@@ -15,7 +15,8 @@ class BlockState:
     STALLED = 'STALLED'
     COMPLETED = 'COMPLETED'
     BLOCK_RECEIVING_BUFFER = 4096
-    BLOCK_RECEIVING_TIMEOUT = 10
+    BLOCK_RECEIVING_TIMEOUT = 3
+    
     def __init__(self, log, config=None):
         self.post_change = utils.Signal()
         self.log = log
@@ -52,9 +53,10 @@ class BlockState:
                 logger.debug("COMPLETED %s", entry.hash)
                 self.post_change.send(entry, self.RECEIVING, self.COMPLETED)
             else:
-                logger.debug("RECEIVING %s", entry.hash)
+                logger.debug("STALLED %s", entry.hash)
                 self.incomplete[entry.next_block].append(entry)
-                self.set_receiving(entry.hash)
+                self.post_change.send(entry, self.RECEIVING, self.STALLED)
+#                self.set_receiving(entry.hash)
     
     def block_received(self, block):
         entries = self.incomplete.pop(block.hash, [])
@@ -75,7 +77,7 @@ class BlockState:
                         self.post_change.send(entry, prev_state, self.RECEIVING)
                 else:
                     # Completed
-                    self.receiving.pop(entry.hash)
+                    self.receiving.pop(entry.hash, None)
                     logger.debug("COMPLETED %s", entry.hash)
                     self.post_change.send(entry, prev_state, self.COMPLETED)
         else:
@@ -87,8 +89,6 @@ class BlockState:
             timestamp, __ = state
             if timestamp+self.BLOCK_RECEIVING_TIMEOUT >= time.time():
                 return self.RECEIVING
-            else:
-                self.receiving.pop(ehash)
         entry = self.log.entries[ehash]
         if entry.next_block is None:
             return self.COMPLETED
@@ -102,7 +102,7 @@ class BlockState:
         else:
             state[0], state[1] = time.time(), state[1]+1
     
-    def get_receiving(self):
+    def get_and_update_receiving(self):
         now = time.time()
         receiving = list(self.receiving.items())
         for ehash, state in receiving:

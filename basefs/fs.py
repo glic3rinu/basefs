@@ -208,7 +208,6 @@ class FileSystem(Operations):
         except KeyError:
             node = self.get_node(path)
             content = node.content
-        print(length, offset, content[offset:length])
         return content[offset:offset+length]
 
     def write(self, path, buf, offset, fh):

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+
+DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+. $DIR/utils.sh
+
+
+log_dir="$DIR/../env/logs/get"
+results_dir="$DIR/../env/results/$(date +%Y.%m.%d-%H:%M:%S)"
+ips_path="$DIR/../env/ips.txt"
+mkdir -p "$log_dir"
+mkdir -p "$results_dir"
+logs=''
+
+origin=$1
+
+rm $log_dir/*
+counter=1
+while read IP; do
+    log_path="$log_dir/$counter.log"
+    target=$results_dir/$counter
+    mkdir $target
+    get "$IP" "$@" "$target" &> "$log_path" &
+    counter=$(($counter+1))
+    logs="$logs $log_path"
+done < <(cat "$ips_path")
+
+echo "  ${bold}$counter operations running on the background."
+echo "  You can safely cancel this at any time ${normal}"
+taillogs $logs

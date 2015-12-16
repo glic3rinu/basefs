@@ -275,6 +275,7 @@ def run(mount=False, parser=None):
     if mount:
         init_function = lambda: None
         if args.serf:
+            # Eventloop needs to run on a separated thread when using FUSE
             init_function = lambda: loop.run_thread(view, serf, port+2, config=section)
         mountpoint = args.mountpoint
         sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))

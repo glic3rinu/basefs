@@ -358,8 +358,6 @@ class View:
                 selected.add(path)
         # Confirm valid state for all affected nodes
         for path in selected:
-            print('p', path)
             node = self.get(path)
-            print(node, fingerprint)
             self.rec_maintain_current_state(node, fingerprint)
         return ret

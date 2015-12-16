@@ -1,0 +1,72 @@
+#!/bin/bash
+
+
+function deploy () {
+    sed -i "s/wheezy/jessie/" /etc/apt/sources.list
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --force-yes locales
+    sed -i "s/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/" /etc/locale.gen
+    locale-gen
+    apt-get install -y \
+        libfuse2 \
+        python3-pip \
+        netcat-openbsd \
+        ntpdate
+    apt-get clean
+    pip3 install basefs==1-dev \
+        --allow-external basefs  \
+        --allow-unverified basefs
+}
+
+
+function run () {
+    iptables -D OUTPUT -p udp --sport 18374 -j LOG
+    iptables -D OUTPUT -p tcp --sport 18374 -j LOG
+    iptables -D OUTPUT -p tcp --sport 18376 -j LOG
+    
+    iptables -A OUTPUT -p udp --sport 18374 -j LOG
+    iptables -A OUTPUT -p tcp --sport 18374 -j LOG
+    iptables -A OUTPUT -p tcp --sport 18376 -j LOG
+    offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'}|head -n1)
+    {
+        echo -n '' > /tmp/traffic
+        while true; do
+            result=""
+            while read line; do
+                result="${result}$line "
+            done < <(iptables -n -L -v | grep "LOG .* spt:" | awk {'split($11, port, ":"); print $10":"port[2]":"$1":"$2'})
+            echo $(date '+%s' -d "+ $offset seconds") "$result" >> /tmp/traffic
+            sleep 1;
+        done
+    } &
+    {
+        basefs genkey
+        basefs get test 10.228.207.204 -f || basefs get test 147.83.168.171 -f
+        sleep 10
+        mkdir -p /tmp/test
+        echo '' > /tmp/output
+        basefs run test -d -iface pub0 &>> /tmp/output
+    } &
+}
+
+
+function collect () {
+    offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'}|head -n1)
+    echo -n '' > /tmp/results
+    grep -ah "COMPLETED " /tmp/output | while read line; do
+        linedate=$(echo "$line" | awk {'print $1 " " $2'})
+        linedate=$(date '+%s.%3N' -d "$linedate + $offset seconds")
+        entryhash=$(echo "$line" | awk {'print $6'})
+        echo "$linedate $entryhash" >> /tmp/results
+    done
+}
+
+
+if [[ $1 == '-d' ]]; then
+    deploy
+elif [[ $1 == '-r' ]]; then
+    run
+elif [[ $1 == '-c' ]]; then
+    collect
+fi

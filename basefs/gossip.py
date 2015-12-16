@@ -44,6 +44,7 @@ class SerfClient(client.SerfClient):
         self.log = log
         self.blockstate = blockstate
         self.entry_received = utils.Signal()
+        self.partial_gossip = utils.Signal()
         config = kwargs.pop('config', None)
         if config:
             self.MAX_BLOCK_MESSAGES = int(config.get('max_block_messages', self.MAX_BLOCK_MESSAGES))
@@ -73,14 +74,6 @@ class SerfClient(client.SerfClient):
             stats = self.stats()
             self._hostname = stats.body[b'agent'][b'name'].decode()
         return self._hostname
-    
-    def get_random_member(self):
-        members = self.members(status=b'alive')
-        members = members.body[b'Members']
-        random.shuffle(members)
-        for member in members:
-            if member[b'Name'] != self.hostname.encode():
-                return member[b'Addr'].decode(), member[b'Port']+2
     
     def encode(self, entry):
         if isinstance(entry, LogEntry):
@@ -172,14 +165,17 @@ class SerfClient(client.SerfClient):
             if entry.action == entry.WRITE:
                 for ix, block in enumerate(entry.get_blocks()):
                     if ix > self.MAX_BLOCK_MESSAGES:
+                        self.partial_gossip.send()
                         break
-                    block_data = self.encode(block)
-                    if len(data) + len(block_data) > 512:
-                        event = chr(data[0])
-                        self.event(event, data[1:], coalesce=False)
-                        data = block_data
-                    else:
-                        data += block_data
+                else:
+                    for block in entry.get_blocks():
+                        block_data = self.encode(block)
+                        if len(data) + len(block_data) > 512:
+                            event = chr(data[0])
+                            self.event(event, data[1:], coalesce=False)
+                            data = block_data
+                        else:
+                            data += block_data
         if data:
             event = chr(data[0])
             self.event(event, data[1:], coalesce=False)
@@ -193,8 +189,8 @@ class SerfClient(client.SerfClient):
             if isinstance(entry, LogEntry):
                 try:
                     entry.clean()
-                except exceptions.Exists:
-                    logger.debug('Exists %s', entry.hash)
+                except (exceptions.Exists, exceptions.ValidationError) as exc:
+                    logger.debug('%s: %s', str(exc), entry.hash)
                     continue
                 entry.validate()
                 entry.save()
@@ -206,7 +202,8 @@ class SerfClient(client.SerfClient):
                 block = entry
                 try:
                     block.clean()
-                except exceptions.Exists:
+                except (exceptions.Exists, exceptions.ValidationError) as exc:
+                    logger.debug('%s: %s', str(exc), entry.hash)
                     continue
                 self.blockstate.block_received(block)
 
@@ -268,27 +265,38 @@ def run_client(view, port, members, config=None):
     blockstate = BlockState(view.log)
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
     
+    def get_joined(serf):
+        return set([
+            '%s:%i' % (member[b'Addr'].decode(), member[b'Port'])
+            for member in serf.members().body[b'Members']
+            # if member[b'Name'].decode() != serf.hostname
+        ])
+    members = set(members)
     def join():
         serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=5)
         while True:
             try:
-                joined = ['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in serf.members().body[b'Members']]
+                joined = get_joined(serf)
                 counter = len(joined)
-                if counter < 2:
+                while len(joined) < 2:
                     cluster = view.get('/.cluster')
-                    for member in members + [line.decode().strip() for line in cluster.content.splitlines() if line.strip()]:
-                        if member not in joined:
-                            logger.debug("Joining to %s", member)
-                            try:
-                                serf.join(member)
-                            except connection.SerfTimeout:
-                                logger.warning("Member %s is unreachable.", member)
-                            else:
-                                counter += 1
-                            if counter >= 2:
+                    for line in cluster.content.splitlines():
+                        line = line.decode().strip()
+                        if line:
+                            members.add(line)
+                    for member in members-joined:
+                        logger.debug("Joining to %s", member)
+                        try:
+                            counter += serf.join(member).body[b'Num']
+                        except connection.SerfTimeout:
+                            logger.warning("Member %s is unreachable.", member)
+                        else:
+                            joined = get_joined(serf)
+                            if len(joined) >= 2:
                                 break
-                if counter == 1:
-                    logger.warning("Running alone, couldn't join with anyone.")
+                    if len(joined) < 2:
+                        logger.warning("Running alone, couldn't join with anyone. Retrying in 10 seconds ...")
+                        time.sleep(10)
             except connection.SerfConnectionError:
                 logger.info('Shutting down serf client.')
                 return

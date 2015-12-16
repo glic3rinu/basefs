@@ -4,6 +4,7 @@ import itertools
 import logging
 import os
 import random
+import time
 import traceback
 from collections import defaultdict
 
@@ -32,6 +33,8 @@ class SyncHandler:
     BLOCK_REQ = 'B-REQ'
     SECTIONS = (HASH, BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
     description = 'full sync'
+    SEED_NODES = 3 # TODO configure
+    members_state = {}
     
     def __str__(self):
         return "Sync:%s" % self.log.logpath 
@@ -52,7 +55,7 @@ class SyncHandler:
         self.log.post_create.connect(self.update_merkle)
         serf.blockstate.post_change.connect(self.blockstate_change)
         serf.entry_received.connect(lambda e: e.action != e.WRITE and self.update_merkle(e))
-        self.responses = {}
+        self.syncing = set()
     
     def update_merkle(self, entry, hash=None):
         if hash is None:
@@ -81,9 +84,10 @@ class SyncHandler:
              ehash |   | ehash    +-----------+
                    v   |                ^
                 +------+--+       bhash |
-                | Stalled +-------------+
+        [i]---->| Stalled +-------------+
                 +---------+
         """
+        assert pre != post
         blockstate = self.blockstate
         if blockstate.RECEIVING in (pre, post) and blockstate.STALLED in (pre, post):
             self.update_merkle(entry)
@@ -91,7 +95,7 @@ class SyncHandler:
         if post == blockstate.COMPLETED:
             if pre == blockstate.STALLED:
                 self.update_merkle(entry, hash=entry.content)
-            if pre == blockstate.RECEIVING:
+            elif pre == blockstate.RECEIVING:
                 self.update_merkle(entry)
     
     def encode_entry(self, entry):
@@ -109,12 +113,17 @@ class SyncHandler:
     
     @asyncio.coroutine
     def data_received(self, reader, writer, *token):
-        state = yield from self.read_sync(reader, writer)
-        if state is not None:
-            state = yield from self.respond_sync(reader, writer, state)
-            if state:
-                yield from self.data_received(reader, writer)
-        writer.close()
+        try:
+            peername = writer.get_extra_info('peername')
+            self.syncing.add(peername)
+            self.members_state.get(peername, time.time())
+            state = yield from self.read_sync(reader, writer)
+            if state is not None:
+                state = yield from self.respond_sync(reader, writer, state)
+                if state:
+                    yield from self.data_received(reader, writer)
+        finally:
+            self.close(writer)
     
     def split(self, line):
         """ path aware """
@@ -124,6 +133,12 @@ class SyncHandler:
             tail = tail[1:]
         tail.insert(0, path)
         return tail
+    
+    def close(self, writer):
+        peername = writer.get_extra_info('peername')
+        if peername in self.syncing:
+            self.syncing.remove(peername)
+        writer.close()
     
     @asyncio.coroutine
     def read_sync(self, reader, writer):
@@ -136,7 +151,7 @@ class SyncHandler:
         verified_paths = utils.OrderedSet()
         rreceiving = defaultdict(list)
         lreceiving = defaultdict(list)
-        for entry in self.get_receiving():
+        for entry in self.get_and_update_receiving():
             lreceiving[entry.path].append(entry.hash)
         ls = utils.OrderedSet()
         ls_paths = []
@@ -155,7 +170,7 @@ class SyncHandler:
                 if self.log.root.hash != line:
                     self.write(writer, self.CLOSE)
                     self.write(writer, 'Filesystem hash does not match %s != %s' % (self.log.root.hash, line))
-                    writer.close()
+                    self.close(writer)
                     return
             elif section == self.BLOCKS_REC:
                 path, *entries_hashes = self.split(line)
@@ -222,7 +237,8 @@ class SyncHandler:
             elif section == self.ENTRY_REQ:
                 entries_to_send.add(line)
             elif section == self.BLOCK_REQ:
-                blocks_to_send.add(line)
+                if line in self.log.blocks:
+                    blocks_to_send.add(line)
             elif section == self.PATH_REQ:
                 paths_to_send.add(line)
             elif section == self.ENTRIES:
@@ -262,12 +278,12 @@ class SyncHandler:
             for entry in lentries:
                 entries_to_send.add(entry.hash)
         if section == self.CLOSE:
-            writer.close()
+            self.close(writer)
             return
         return entries_to_send, entries_to_request, blocks_to_send, blocks_to_request, paths_to_request, ls, lreceiving
     
-    def get_receiving(self):
-        return [self.log.entries[ehash] for ehash in self.blockstate.get_receiving()]
+    def get_and_update_receiving(self):
+        return [self.log.entries[ehash] for ehash in self.blockstate.get_and_update_receiving()]
     
     def write(self, writer, line):
         if isinstance(line, str):
@@ -313,6 +329,7 @@ class SyncHandler:
                 self.write(writer, '*%s %s' % (path.replace(' ', '\ '), ' '.join(ls_ehashes)))
                 for cpath in self.tree[path]:
                     self.write(writer, '%s %s' % (cpath.replace(' ', '\ '), hex(self.merkle[cpath])[2:]))
+                yield from writer.drain()
         if entries_to_request:
             self.write(writer, self.ENTRY_REQ)
             for line in entries_to_request:
@@ -331,6 +348,7 @@ class SyncHandler:
             self.write(writer, self.ENTRIES)
             for ehash in entries_to_send:
                 self.write(writer, self.encode_entry(self.log.entries[ehash]))
+                yield from writer.drain()
         if blocks_to_send:
             self.write(writer, self.BLOCKS)
             sent_blocks = set()
@@ -340,46 +358,83 @@ class SyncHandler:
                     if next.hash in sent_blocks:
                         break
                     self.write(writer, self.encode_block(next))
+                    yield from writer.drain()
                     sent_blocks.add(next.hash)
-                    next = next.next
+                    try:
+                        next = next.next
+                    except KeyError:
+                        next = None
         if close:
             self.write(writer, self.CLOSE)
-#            yield from writer.drain()
-            writer.close()
+            self.close(writer)
         else:
             self.write(writer, 'EOF')
             return True
-#            yield from writer.drain()
-#        response = self.encode('\n'.join(response))
-#        logger.debug('Responding: %s', response.decode())
-#        transport.write(response)
-#        if close:
-#            transport.close()
+    
+    def get_random_members(self, init=time.time(), num=1):
+        """ Time-biased, older more probable """
+        members = self.serf.members(status=b'alive')
+        now = time.time()
+        total = 0
+        choices = []
+        for member in members.body[b'Members']:
+            if member[b'Name'] != self.serf.hostname.encode():
+                member = (member[b'Addr'].decode(), member[b'Port']+2)
+                if member in self.syncing:
+                    continue
+                weight = now - self.members_state.get(member, init)
+                choices.append((member, weight))
+                total += weight
+        result = []
+        while choices and len(result) < num:
+            r = random.uniform(0, total)
+            for c, w in list(choices):
+                r -= w
+                if r < 0:
+                    result.append(c)
+                    choices.remove((c, w))
+                    break
+        return result
     
     @asyncio.coroutine
     def initial_request(self, reader, writer):
         peername = writer.get_extra_info('peername')
         logger.debug('Initiating sync with %s', peername)
-        receiving = list(self.blockstate.get_receiving())
+        receiving = self.get_and_update_receiving()
         writer.write(b's')
         self.write(writer, self.HASH)
         self.write(writer, self.log.root.hash)
         if receiving:
             self.write(writer, self.BLOCKS_REC)
-            for ehash in receiving:
-                entry = self.log.entries[ehash]
+            for entry in receiving:
                 self.write(writer, '%s %s' % (entry.path.replace(' ', '\ '), entry.hash))
         self.write(writer, self.LS)
         self.write(writer, '%s %s' % (os.sep, hex(self.merkle[os.sep])[2:]))
         self.write(writer, 'EOF')
-#        yield from writer.drain()
         yield from self.data_received(reader, writer)
 
 
 @asyncio.coroutine
 def do_full_sync(sync, config=None):
     loop = asyncio.get_event_loop()
-    FULL_SYNC_INTERVAL = 30
+    
+    @asyncio.coroutine
+    def full_sync(members):
+        for member in members:
+            ip, port = member
+            reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
+            yield from sync.initial_request(reader, writer)
+    
+    @asyncio.coroutine
+    def seed_sync():
+        yield from asyncio.sleep(0.2)
+        members = sync.get_random_members(num=sync.SEED_NODES)
+        logger.debug('Seeding to %s', members)
+        yield from full_sync(members)
+    
+    sync.serf.partial_gossip.connect(lambda: loop.call_soon_threadsafe(asyncio.async, seed_sync()))
+    
+    FULL_SYNC_INTERVAL = 5
     if config:
         FULL_SYNC_INTERVAL = int(config.get('full_sync_interval', FULL_SYNC_INTERVAL))
     deviation = int(FULL_SYNC_INTERVAL*0.1)
@@ -387,11 +442,7 @@ def do_full_sync(sync, config=None):
     while True:
         try:
             yield from asyncio.sleep(random.randint(*FULL_SYNC_INTERVAL))
-            member = sync.serf.get_random_member()
-            # TODO don't make sync requests with members that which whom we're already syncing
-            if member:
-                ip, port = member
-                reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
-                yield from sync.initial_request(reader, writer)
+            members = sync.get_random_members(num=1)
+            yield from full_sync(members)
         except Exception as exc:
             logger.error(traceback.format_exc())

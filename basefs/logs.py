@@ -227,14 +227,19 @@ class Log:
         blocks = []
         if attachment:
             next_hash = None
-            first = 355 - len(name)  # 512 - (1+28+4+1+1+0+1+28+16+48 +1+28) - len(name)
             # 483 = 512 - 28 -1
-            for ix in reversed(range(first, len(attachment), 483)):
+            for ix in reversed(range(0, len(attachment), 483)):
                 block = Block(self, next_hash, attachment[ix:ix+483])
                 next_hash = block.hash
                 blocks.insert(0, block)
-            block = Block(self, next_hash, attachment[:first])
-            blocks.insert(0, block)
+#            first = 355 - len(name)  # 512 - (1+28+4+1+1+0+1+28+16+48 +1+28) - len(name)
+#            # 483 = 512 - 28 -1
+#            for ix in reversed(range(first, len(attachment), 483)):
+#                block = Block(self, next_hash, attachment[ix:ix+483])
+#                next_hash = block.hash
+#                blocks.insert(0, block)
+#            block = Block(self, next_hash, attachment[:first])
+#            blocks.insert(0, block)
         if not content:
             content = block.hash
         response = self.do_action(parent, LogEntry.WRITE, name, key, content, commit=commit)
@@ -388,7 +393,11 @@ class LogEntry:
         self.name = os.path.normpath(self.name.strip())
         if self.action not in self.ACTIONS:
             raise ValidationError("Entry with '%s' not a valid action type" % self.action)
-        if self.parent:
+        try:
+            parent = self.parent
+        except KeyError:
+            raise ValidationError("%s parent hash does not exist" % self.parent_hash)
+        if parent:
             if self.parent.action == self.WRITE:
                 if self.action == self.MKDIR:
                     raise ValidationError("'MKDIR %s' after 'WRITE %s'"

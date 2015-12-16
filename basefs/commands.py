@@ -73,8 +73,9 @@ class CommandHandler:
         cmd = data.split()[0].decode()
         if cmd in self.PERMITTED_COMMANDS:
             peername = writer.get_extra_info('peername')
-            if peername[0] != '127.0.0.1':
-                response = b"%s not authorized address\n" % peername[0]
+            # TODO
+#            if peername[0] != '127.0.0.1':
+#                response = b"%s not authorized address\n" % peername[0]
         else:
             try:
                 method = getattr(self, cmd.lower())

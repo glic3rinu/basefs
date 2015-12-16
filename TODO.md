@@ -1,5 +1,5 @@
-# rename message -> gossip
-
+# TODO include number of packets on the legend
+# TODO eof_received
 
 basefs genkey
 basefs bootstrap confine -i 127.0.0.1
