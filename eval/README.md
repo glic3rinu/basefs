@@ -1,6 +1,6 @@
 Network Evaluation
 =================
-We are going to evaluate the convergence properties and traffic usage of the gossip layer and sync protocol.
+We are going to evaluate the convergence properties and traffic usage of the gossip layer and the sync protocol.
 
 1. Convergence of Gossip layer and Sync protocol
     * How much time it needs to converge?
@@ -21,13 +21,14 @@ In two different environments:
     * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one hop distance between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.
 
 2. Ralistic environment on Confine testbed
-    * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying network we provide a network characterization to better understand the environment where the experiment is taking place.
+    * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
 
 
 
 Memory and CPU usage
 ====================
 Is the protocol appropiated for resource constrained environments?
+
 * Memory consumption of big vs small files
 * CPU consumption of read-write intensive workloads
 * Repsonse time of filesystem operations compared to other filesystems
@@ -35,6 +36,8 @@ Is the protocol appropiated for resource constrained environments?
 
 /ETC Characterization
 =====================
+Is the gossip layer a good transport protocol for configuration replication? Is BaseFS Merkle DAG consensus strategy effective enough for solving configuration conflicts?
+
 1. How many Gossip packets (512b) we will need?
 2. How many conflicts can we expect?
 

@@ -2,12 +2,10 @@
 
 import argparse
 import atexit
-import configparser
 import datetime
 import functools
 import hashlib
 import ipaddress
-import logging
 import os
 import platform
 import pwd
@@ -20,17 +18,15 @@ import textwrap
 import threading
 import time
 import urllib.request
-import uuid
 import zipfile
 from collections import OrderedDict
 
 from basefs import utils, validators
 
 try:
-    from fuse import FUSE
-    
-    from basefs import loop, exceptions, gossip
-    from basefs.fs import FileSystem
+    from basefs import exceptions
+    from basefs.config import get_or_create_config, defaults, get_port
+    from basefs.management import resources, run, mount, bootstrap, get
     from basefs.keys import Key
     from basefs.logs import Log
     from basefs.state import BlockState
@@ -40,43 +36,7 @@ except ImportError:
         raise
 
 
-basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
 mount_info = utils.get_mount_info()
-
-defaults = utils.AttrDict(**{
-    'dir': basefs_dir,
-    'config': os.path.join(basefs_dir, 'config.ini'),
-    'keypath': os.path.join(basefs_dir, 'id_ec'),
-    'logdir': os.path.join(basefs_dir, 'logs'),
-    'hostname': "%s-%s" % (str(uuid.uuid1()).split('-')[-1], socket.gethostname()),
-})
-
-
-def get_port(name):
-    return 10000 + int(hashlib.md5(name.encode()).hexdigest(), 16) % (10**4)
-
-# TODO inspect directory before configuration
-def get_or_create_config(defaults):
-    config = configparser.ConfigParser()
-    def save(config=config, defaults=defaults):
-        with open(defaults.config, 'w') as configfile:
-           config.write(configfile)
-    config.save = save
-    if not os.path.exists(defaults.config):
-        config_dir = os.path.dirname(defaults.config)
-        if not os.path.exists(config_dir):
-            os.mkdir(config_dir)
-        config['DEFAULT'] = {
-            '; block_receiving_buffer': 4096,
-            '; block_receiving_timeout': 10,
-            '; full_sync_interval': 30,
-            '; max_block_messages': 15,
-            'hostname': defaults.hostname,
-        }
-        config.save()
-    else:
-        config.read(defaults.config)
-    return config
 
 
 def send_command(cmd, *args, port=None):
@@ -88,22 +48,6 @@ def send_command(cmd, *args, port=None):
     if not data:
         sys.stderr.write("No data received from 127.0.0.1:%i\n" % port)
     return data
-
-
-def create_logdir(logpath, default_logpath, force=False):
-    logdir = os.path.dirname(logpath)
-    if not os.path.exists(logdir):
-        if logpath == default_logpath:
-            os.mkdir(logdir)
-        else:
-            sys.stderr.write("Error: %s logdir directory doesn't exist, create it first.\n" % logdir)
-            sys.exit(2)
-    if os.path.exists(logpath):
-        if not force:
-            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
-            sys.exit(1)
-        else:
-            os.remove(logpath)
 
 
 def genkey():
@@ -133,193 +77,6 @@ def genkey():
         config.save()
     sys.stdout.write("Generate EC key on %s\n" % keypath)
     sys.exit()
-
-
-def bootstrap():
-    # bootsrap <name> -i <ip>[:<port>] [-l <logpath>] [-k <keypath>] [-f]
-    bootstrap_parser.add_argument('name',
-        help='Name')
-    bootstrap_parser.add_argument('-i', '--ips', dest='ips', required=True,
-        help='Comma separated ip[:<port>] used as boostrapping nodes.')
-    bootstrap_parser.add_argument('-p', '--port', dest='port',
-        help='Default port.')
-    bootstrap_parser.add_argument('-l', '--logpath',
-        help='Path to the basefs log file')
-    bootstrap_parser.add_argument('-k', '--keys', dest='keypaths',
-        default=defaults.keypath,
-        help='Comma separated list of paths containing the root keys. %s by default.' % defaults.keypath)
-    bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
-        help='Rewrite log file if present')
-    
-    args = bootstrap_parser.parse_args()
-    default_logpath = os.path.join(basefs_dir, 'logs', args.name)
-    logpath = args.logpath or default_logpath
-    port = args.port or get_port(args.name)
-    create_logdir(logpath, default_logpath, args.force)
-    keys = []
-    for keypath in args.keypaths.split(','):
-        if not os.path.isfile(keypath):
-            sys.stderr.write("Error: bootsraping keypath %s does not exist.\n" % keypath)
-            sys.exit(2)
-        keys.append(Key.load(keypath))
-    log = Log(logpath) # TODO, name=args.name)
-    ips = []
-    for ip in args.ips.split(','):
-        if ':' not in ip:
-            ip += ':%i' % port
-        ips.append(ip)
-    log.bootstrap(keys, ips)
-    config = get_or_create_config(defaults)
-    if args.name not in config:
-        config[args.name] = {}
-    config[args.name].update({
-        'logpath': logpath,
-        'port': str(port),
-    })
-    config.save()
-    sys.stdout.write('Created log file %s\n' % logpath)
-    sys.stdout.write('Network bootstraping will happen at:\n  %s\n' % '\n  '.join(ips))
-    sys.exit(0)
-
-
-def set_run_parser(parser):
-    # TODO make validators.name_or_logpath return (name, logpath) tuple for DRY-ines
-    parser.add_argument('logpath',
-        type=validators.name_or_logpath(parser, get_or_create_config(defaults), defaults),
-        help='Log name or logpath')
-    parser.add_argument('-k', '--keys', dest='keypath',
-        default=defaults.keypath,
-        help='Path to the EC private key. %s by default. Use genkey for creating one.' % defaults.keypath,
-        type=validators.file_exists(parser, name='keypath'))
-    parser.add_argument('-j', '--join', dest='join',
-        help='comma separated ip:port used as boostrapping nodes.')
-    parser.add_argument('-b', '--bind', dest='bind', default='0.0.0.0',
-        help='Basefs bind including: serf agent, serf client (port+1) and basefs server(port+2)')
-    parser.add_argument('-iface', dest='iface',
-        help='Network interface to bind to. Can be used instead of -bind if the interface is known '
-             'but not the address.')
-    parser.add_argument('-H', '--hostname', dest='hostname',
-        help='Name of this node. Must be unique in the cluster.')
-    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
-        help='Enables debugging information.')
-    parser.add_argument('-s', '--single-node', dest='serf', action='store_false',
-        help='Disables Serf agent (testing purposes).')
-    parser.add_argument('-w', '--watcher', dest='watcher',
-        help='Handler script executed when a change occur on the filesystem (inotify substitute).')
-
-
-def run(mount=False, parser=None):
-    if parser is None:
-        set_run_parser(run_parser)
-        parser = run_parser
-    args = parser.parse_args()
-    ip, *port = args.bind.split(':')
-    if port:
-        port = int(port[0])
-    if args.iface:
-        iface_ip = utils.get_ip_address(args.iface)
-        if ip != '0.0.0.0' and ip != iface_ip:
-            sys.stderr.write("-bind and -iface ip addresses do not match %s != %s\n" % (ip, iface_ip))
-            sys.exit(9)
-        ip = iface_ip
-    logpath = args.logpath
-    config = get_or_create_config(defaults)
-    section = None
-    hostname = args.hostname
-    if logpath in config:
-        section = config[args.logpath]
-        logpath = section['logpath']
-        if not port:
-            port = int(section['port'])
-        if not hostname:
-            hostname = section.get('hostname', '')
-    elif not os.path.exists(logpath) and os.path.exists(os.path.join(defaults.logdir, logpath)):
-        if not port:
-            port = get_port(logpath)
-        logpath = os.path.join(defaults.logdir, logpath)
-    elif not port:
-        port = 7372
-    if not hostname:
-        hostname = defaults.hostname
-    rpc_port = port+1
-    sync_port = port+2
-    logpath = os.path.normpath(logpath)
-    info, point = utils.get_mountpoint(logpath)
-    if info:
-        sys.stderr.write("Error: log %s already mounted in %s\n" % (logpath, point))
-        sys.exit(4)
-    keypath = os.path.normpath(args.keypath)
-    logging.basicConfig(
-        level=logging.DEBUG if args.debug else logging.INFO,
-        format='%(asctime)-15s [%(levelname)s] %(name)s: %(message)s',
-    )
-    logpath = os.path.normpath(logpath)
-    log = Log(logpath)
-    log.load()
-    if keypath == defaults.keypath and not os.path.exists(keypath):
-        view = View(log)
-    else:
-        key = Key.load(keypath)
-        view = View(log, key)
-    view.build()
-    serf = None
-    serf_agent = None
-    if args.serf:
-        join = args.join.split(',') if args.join else []
-        serf, serf_agent = gossip.run(section, view, ip, port, hostname, join)
-        if args.watcher:
-            handler = handlers.Handler(args.watcher, view.log, state=serf.blockstate)
-    else:
-        if args.watcher:
-            handler = handlers.Handler(args.watcher, view.log)
-    if mount:
-        init_function = lambda: None
-        if args.serf:
-            # Eventloop needs to run on a separated thread when using FUSE
-            init_function = lambda: loop.run_thread(view, serf, port+2, config=section)
-        mountpoint = args.mountpoint
-        sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
-        fs = FileSystem(view, serf=serf, serf_agent=serf_agent, init_function=init_function)
-        fsname = '%s:%i' % (logpath, sync_port)
-        FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
-    else:
-        try:
-            loop.run(view, serf, port+2, config=section)
-        except KeyboardInterrupt:
-            pass
-        finally:
-            serf_agent.stop()
-
-
-def run_processes(config, view, script, ip=None, port=None, hostname=None, join=None):
-    """ threads should start here, otherwise will not run when fuse is backgrounded """
-    handler_kwargs = {}
-    serf = None
-    serf_agent = None
-    handler = None
-    if ip and port and hostname:
-        serf_agent = gossip.run_agent(ip, port, hostname)
-        try:
-            serf = gossip.run_client(view, port+1, join or [], config=config)
-            loop.run_loop(view, serf, port+2, config=config)
-            handler_kwargs = {
-                'state': serf.blockstate,
-            }
-        except:
-            serf_agent.stop()
-            raise
-    if script:
-        handler = handlers.Handler(script, view.log, **handler_kwargs)
-    return serf, serf_agent, handler
-    
-
-
-def mount():
-    # mount <name/logpath> <mountpoint> [-b <ip>[:<port>]] [-i <ip>[:<port>]] [-l <logpath>] [-k <keypath/keyname>] [-H <hostname>] [-d]
-    set_run_parser(mount_parser)
-    mount_parser.add_argument('mountpoint',
-        type=validators.dir_exists(mount_parser, name='mountpoint'))
-    run(mount=True, parser=mount_parser)
 
 
 def keys():
@@ -567,68 +324,6 @@ def serf():
         os.system('serf %s --rpc-addr=127.0.0.1:%i "%s"' % (args.cmd, rpc_port, ' '.join(args.args)))
 
 
-def get():
-    # get <domainTXT/domain:port/ip:port> [-l <logpath>] [-n <name>] [-p] [-f] [-d]
-    bootstrap_parser.add_argument('name')
-    bootstrap_parser.add_argument('addr',
-        help='ip[:port] or domain name')
-    bootstrap_parser.add_argument('-l', '--logpath', dest='logpath',
-        help='Path to the basefs log file, use - for stdout.')
-    bootstrap_parser.add_argument('-f', '--force', dest='force', action='store_true',
-        help='Rewrite log file if present')
-    
-    args = bootstrap_parser.parse_args()
-    default_logpath = os.path.join(basefs_dir, 'logs', args.name)
-    logpath = args.logpath or default_logpath
-    if logpath != '-':
-        create_logdir(logpath, default_logpath, args.force)
-    ip, *port = args.addr.split(':')
-    try:
-        ip = str(ipaddress.ip_address(ip))
-    except ValueError:
-        nslookup = """nslookup -q=txt %s|grep 'text =' | sed -E 's/.*text = "([^"]+)".*/\\1/'""" % ip
-        lookup = subprocess.Popen(nslookup, shell=True, stdout=subprocess.PIPE)
-        lookup = lookup.stdout.read().decode().strip()
-        if lookup:
-            ip, *port = lookup.split(':')
-        else:
-            nslookup = "nslookup %s -q=a | grep Address|tail -n1 | awk {'print $2'}" % ip
-            lookup = subprocess.Popen(nslookup, shell=True, stdout=subprocess.PIPE)
-            lookup = lookup.stdout.read().decode().strip()
-            if not '#' in lookup:
-                ip = lookup
-    if not port:
-        port = get_port(args.name) + 2
-    else:
-        port = int(port[0])
-    sys.stderr.write("Connecting to %s:%i\n" % (ip, port))
-    received = False
-    if logpath == '-':
-        for data in utils.netcat(ip, port, b'cGET'):
-            sys.stdout.write(data)
-            received = True
-    else:
-        try:
-            with open(logpath, 'w') as handler:
-                for data in utils.netcat(ip, port, b'cGET'):
-                    handler.write(data)
-                    received = True
-        except ConnectionRefusedError:
-            os.remove(logpath)
-            sys.stderr.write("Error: connection refused, bad port?\n")
-            sys.exit(3)
-    if not received:
-        sys.stderr.write("Error: nothing has been received, bad port?\n")
-        sys.exit(2)
-    elif logpath != '-':
-        log = Log(logpath)
-        try:
-            log.load(validate=True)
-        except exceptions.ValidationError as e:
-            sys.stderr.write(str(e) + '\n')
-        sys.stdout.write("%s log created\n" % logpath)
-
-
 def installserf():
     installserf_parser.add_argument('binpath', nargs='?', default='/usr/local/bin/',
         type=validators.dir_exists(installserf, name='binpath'),
@@ -689,15 +384,6 @@ def help():
 genkey_parser = argparse.ArgumentParser(
     description='Generate a new EC private key',
     prog='basefs genkey')
-bootstrap_parser = argparse.ArgumentParser(
-    description='Create a new self-contained filesystem',
-    prog='basefs bootstrap')
-mount_parser = argparse.ArgumentParser(
-    description='Mount an existing filesystem',
-    prog='basefs mount')
-run_parser = argparse.ArgumentParser(
-    description='Run an existing filesystem without mounting it (testing)',
-    prog='basefs run')
 keys_parser = argparse.ArgumentParser(
     description='List keys and their directories',
     prog='basefs keys')
@@ -726,18 +412,15 @@ serf_parser = argparse.ArgumentParser(
     description="Serf RPC Command proxy",
     prog='basefs serf'
 )
-get_parser = argparse.ArgumentParser(
-    description="Get log from peer address",
-    prog='basefs get')
 installserf_parser = argparse.ArgumentParser(
     description="Download and install Serf",
     prog='basefs installserf')
 
 
 methods = OrderedDict([
-    ('mount', (mount, mount_parser)),
-    ('run', (run, run_parser)),
-    ('bootstrap', (bootstrap, bootstrap_parser)),
+    ('mount', (mount.command, mount.parser)),
+    ('run', (run.command, run.parser)),
+    ('bootstrap', (bootstrap.command, bootstrap.parser)),
     ('genkey', (genkey, genkey_parser)),
     ('keys', (keys, keys_parser)),
     ('grant', (grant, grant_parser)),
@@ -748,8 +431,9 @@ methods = OrderedDict([
     ('blocks', (blocks, blocks_parser)),
     ('members', (members, members_parser)),
     ('serf', (serf, serf_parser)),
-    ('get', (get, get_parser)),
+    ('get', (get.command, get.parser)),
     ('installserf', (installserf, installserf_parser)),
+    ('resources', (resources.command, resources.parser)),
     ('help', (help, None)),
 ])
 

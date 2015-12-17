@@ -15,19 +15,20 @@ def compress(method):
     ini = time.time()
     results = []
     for path, dirs, files in os.walk(basepath):
+        results += [1 for dir in dirs]
         for file in files:
             file = os.path.join(basepath, file)
             packets = 1
             if not os.path.islink(file):
                 filename = file.split(os.sep)[-1]
-                first_packet = (355 + len(filename))/512
+                first_packet = 512-(355 + len(filename))
                 try:
                     with open(file, 'br') as handler:
                         size = len(method(handler.read()))
                         if size > first_packet:
                             packets += math.ceil((size-first_packet)/(512-1-28))
-                        if packets > 60:
-                            packets = 60
+#                        if packets > 60:
+#                            packets = 60
                 except (FileNotFoundError, IsADirectoryError):
                     continue
             results.append(packets)
