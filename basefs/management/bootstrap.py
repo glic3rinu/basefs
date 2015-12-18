@@ -2,10 +2,11 @@ import argparse
 import os
 import sys
 
-from basefs import utils
 from basefs.config import get_or_create_config, defaults, get_port
 from basefs.keys import Key
 from basefs.logs import Log
+
+from . import utils
 
 
 parser = argparse.ArgumentParser(

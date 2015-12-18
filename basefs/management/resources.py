@@ -11,7 +11,9 @@ import time
 from collections import OrderedDict
 from operator import sub
 
-from basefs.utils import sizeof_fmt
+from basefs import utils
+from basefs.config import get_defaults
+from basefs.management.utils import get_cmd_port
 
 
 """
@@ -123,26 +125,40 @@ def read_iptables(port, state={}, offset={}, reset=False):
 def read_proc(pid, state={}, offset={}, reset=False):
     with open('/proc/%s/stat' % pid, 'r') as handler:
         stat = handler.read().split()
+    status = []
+    with open('/proc/%s/status' % pid, 'r') as handler:
+        for line in handler.readlines():
+            line = line.split()
+            if line[0] == 'VmSwap:':
+                if line[-1] != 'kB':
+                    raise ValueError(line[-1])
+                status.append(int(line[1])*1000)
+            elif line[0] == 'Threads:':
+                status.insert(0, int(line[1]))
+            elif line[0] == 'voluntary_ctxt_switches:':
+                status.insert(1, int(line[1]))
+            elif line[0] == 'nonvoluntary_ctxt_switches:':
+                status.insert(2, int(line[1]))
     with open('/proc/%s/statm' % pid, 'r') as handler:
         statm = handler.read().split()
-    stat = list(map(int, stat[13:17]))
-    statm = list(map(int, statm))
-    real = sum(stat)
+    stat = list(map(int, stat[13:15]))
+    statm.pop(4)
+    statm = list(map(int, statm[:-1]))
     if reset and pid not in offset:
-        offset[pid] = [real] + stat
+        offset[pid] = stat + status
     if pid not in state:
-        state[pid] = [real] + stat + statm
+        state[pid] = stat + status + statm
     prev_state = state[pid]
-    state[pid] = [real] + stat + statm
+    state[pid] = stat + status + statm
     result = []
-    for ix,s in enumerate(state[pid]):
-        result.append(s-(offset[pid][ix] if reset and ix < 5 else 0))
+    for ix, s in enumerate(state[pid]):
+        result.append(s-(offset[pid][ix] if reset and ix < len(offset[pid])-1 else 0))
         result.append(s-prev_state[ix])
     return result
 
 
 def get_pids(port):
-    netstat = subprocess.Popen('netstat -lntp|grep ":18376 \|:18374 "', shell=True, stdout=subprocess.PIPE)
+    netstat = subprocess.Popen('netstat -lntp | grep ":18376 \|:18374 "', shell=True, stdout=subprocess.PIPE)
     pids = []
     for line in netstat.stdout.readlines():
         proc = line.decode().split()[-1]
@@ -156,43 +172,53 @@ def get_pids(port):
     return pids
 
 
-def render(name, pid, iptables, proc):
+def render(name, time, pid, iptables, proc):
     head = '%s %i' % (name, pid)
     head += '\n' + '-'*len(head)
     for ix, v in list(enumerate(proc)):
-        if ix < 10:
-            v = float(v)/SC_CLK_TCK
+        if ix < 4:
+            val = float(v)/SC_CLK_TCK
+        elif ix > 9:
+            if ix > 11:
+                v = PAGE_SIZE*v
+            val = '' if (not v and ix % 2) else utils.sizeof_fmt(v)
         else:
-            v = '' if (not v and ix % 2) else sizeof_fmt(PAGE_SIZE*v)
+            val = v
         if ix % 2:
-            proc[ix] = '+%s' % v if v else ''
+            sign = '+' if v > 0 else ''
+            proc[ix] = '%s%s' % (sign, val) if v else ''
         else:
-            proc[ix] = v
+            proc[ix] = val
     for ix, v in list(enumerate(iptables)):
         if ix in (2, 3, 6, 7):
-            v = '' if (not v and ix % 2) else sizeof_fmt(v)
+            v = '' if (not v and ix % 2) else utils.sizeof_fmt(v)
         if ix % 2:
             iptables[ix] = '+%s' % v if v else ''
         else:
             iptables[ix] = v
     result = textwrap.dedent("""\
         {head}
-         Real\t\t{proc[0]} {proc[1]}
-         User\t\t{proc[2]} {proc[3]}
-         System\t\t{proc[4]} {proc[5]}
+         Real\t\t{time:.2f}
+         User\t\t{proc[0]} {proc[1]}
+         System\t\t{proc[2]} {proc[3]}
         
-         Size\t\t{proc[10]} {proc[11]}
-         Resident\t{proc[12]} {proc[13]}
-         Shared\t\t{proc[14]} {proc[15]}
-         Text\t\t{proc[16]} {proc[17]}
-         Lib\t\t{proc[18]} {proc[19]}
+         Size\t\t{proc[12]} {proc[13]}
+         Resident\t{proc[14]} {proc[15]}
+         Shared\t\t{proc[16]} {proc[17]}
+         Text\t\t{proc[18]} {proc[19]}
          Data\t\t{proc[20]} {proc[21]}
+         Swap\t\t{proc[10]} {proc[11]}
          
-        """).format(head=head, proc=proc)
+         Threads\t{proc[4]} {proc[5]}
+         VCtxt switches\t{proc[6]} {proc[7]}
+         NCtxt switches\t{proc[8]} {proc[9]}
+         
+        """).format(head=head, time=time, proc=proc)
     if name.lower() == 'basefs':
         result += textwrap.dedent("""\
              ?Sync pkts\t{iptables[0]} {iptables[1]}
              ?Sync bytes\t{iptables[2]} {iptables[3]}
+             
              """).format(iptables=iptables).replace('?', ' ')
     else:
         result += textwrap.dedent("""\
@@ -204,33 +230,46 @@ def render(name, pid, iptables, proc):
     return result
 
 
-def main(window=None, reset=False, offset=0):
+def main(window=None, reset=False, offset=0, port=None):
+    first = True
+    output = ''
     while True:
         try:
-            timestamp = str(time.time() + offset)[:16]
+            now = time.time() + offset
+            basefs_proc = read_proc(basefs_pid, reset=reset)
+            serf_proc = read_proc(serf_pid, reset=reset)
             iptables = read_iptables(port, reset=reset)
             basefs_iptables = iptables[('tcp', port+2)]
-            basefs_proc = read_proc(basefs_pid, reset=reset)
             serf_iptables = iptables[('udp', port)] + iptables[('tcp', port)]
-            serf_proc = read_proc(serf_pid, reset=reset)
             if window:
-                output = render('BaseFS', basefs_pid, basefs_iptables, basefs_proc)
-                output += '\n' + render('Serf', serf_pid, serf_iptables, serf_proc)
-                window.addstr(0, 0, output)
+                output = render('BaseFS', now-basefs_init, basefs_pid, basefs_iptables, basefs_proc)
+                output += '\n' + render('Serf', now-serf_init, serf_pid, serf_iptables, serf_proc)
+                window.addstr(0, 0, '> Runnig\n\n' + output)
                 window.refresh()
             else:
-                output = timestamp
+                output = str(now)[:16]
                 output += ' basefs:' + ':'.join(map(str, basefs_iptables[::2] + basefs_proc[::2]))
                 output += ' serf:' + ':'.join(map(str, serf_iptables[::2] + serf_proc[::2])) + '\n'
+                if first:
+                    sys.stderr.write(
+                        "name:real:user:system:threads:vctxtswitches:nctxtswitches:"
+                        "swap:size:resident:shared:text:data:pkts:bytes[:pkts:bytes]\n")
+                    first = False
                 sys.stdout.write(output)
         except (FileNotFoundError, NameError) as e:
+            msg = "> Waitting for BaseFS to go online ...\n"
             if window:
-                window.addstr(0, 0, "Waitting for BaseFS to go online ...\n   " + str(e) +'\n' )
+                window.addstr(0, 0, msg + '\n' + output)
                 window.refresh()
+            else:
+                sys.stderr.write(msg)
             # Serf parent is basefs main thread (fuse) and then child is serf's agent
-            port = 18374
             set_iptables(port)
-            basefs_pid, serf_pid = get_pids(port)
+            pids = get_pids(port)
+            if len(pids) == 2:
+                basefs_pid, serf_pid = pids
+                basefs_init = os.stat('/proc/%i/cmdline' % basefs_pid).st_ctime
+                serf_init = os.stat('/proc/%i/cmdline' % serf_pid).st_ctime
             iptables = {}
         finally:
             time.sleep(1)
@@ -246,6 +285,8 @@ parser.add_argument('-r', '--reset', dest='reset', action='store_true',
     help='Reset resource counters')
 parser.add_argument('-n', '--ntp', dest='ntp_server',
     help='NTP server for time synchronization')
+parser.add_argument('-u', '--user', dest='user',
+    help='Username of the actual user that runs the BaseFS filesystem.')
 
 
 def command():
@@ -256,12 +297,20 @@ def command():
     offset = 0
     if args.ntp_server:
         offset = get_ntp_offset(args.ntp_server)
-    main2 = functools.partial(main, reset=args.reset, offset=offset)
+    mount_info = utils.get_mount_info()
+    port = get_cmd_port(args, mount_info, get_defaults(args.user))-2
+    main2 = functools.partial(main, reset=args.reset, offset=offset, port=port)
     if not args.log:
         stdscr = curses.initscr()
+        curses.curs_set(0)
         try:
             curses.wrapper(main2)
         except KeyboardInterrupt:
-            pass
+            i = 0
+            line = stdscr.instr(i, 0)
+            while line:
+                sys.stdout.write(line.decode()+'\n')
+                i += 1
+                line = stdscr.instr(i, 0)
     else:
         main2()

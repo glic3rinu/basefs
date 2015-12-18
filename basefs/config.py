@@ -8,14 +8,18 @@ import uuid
 from basefs import utils
 
 
-basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
-defaults = utils.AttrDict(**{
-    'dir': basefs_dir,
-    'config': os.path.join(basefs_dir, 'config.ini'),
-    'keypath': os.path.join(basefs_dir, 'id_ec'),
-    'logdir': os.path.join(basefs_dir, 'logs'),
-    'hostname': "%s-%s" % (str(uuid.uuid1()).split('-')[-1], socket.gethostname()),
-})
+def get_defaults(user=''):
+    basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
+    return utils.AttrDict(**{
+        'dir': basefs_dir,
+        'config': os.path.join(basefs_dir, 'config.ini'),
+        'keypath': os.path.join(basefs_dir, 'id_ec'),
+        'logdir': os.path.join(basefs_dir, 'logs'),
+        'hostname': "%s-%s" % (str(uuid.uuid1()).split('-')[-1], socket.gethostname()),
+    })
+
+
+defaults = get_defaults()
 
 
 # TODO inspect directory before configuration

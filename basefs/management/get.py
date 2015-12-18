@@ -6,6 +6,8 @@ import sys
 
 from basefs import utils
 from basefs.config import get_port, defaults
+from basefs.logs import Log
+from basefs.management.utils import create_logdir
 
 
 parser = argparse.ArgumentParser(
@@ -26,7 +28,7 @@ def command():
     default_logpath = os.path.join(defaults.dir, 'logs', args.name)
     logpath = args.logpath or default_logpath
     if logpath != '-':
-        utils.create_logdir(logpath, default_logpath, args.force)
+        create_logdir(logpath, default_logpath, args.force)
     ip, *port = args.addr.split(':')
     try:
         ip = str(ipaddress.ip_address(ip))

@@ -1,3 +1,4 @@
+# remove "real" cpu time
 # TODO include number of packets on the legend
 # TODO eof_received
 

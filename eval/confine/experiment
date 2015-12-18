@@ -21,24 +21,8 @@ function deploy () {
 
 
 function run () {
-    iptables -D OUTPUT -p udp --sport 18374 -j LOG
-    iptables -D OUTPUT -p tcp --sport 18374 -j LOG
-    iptables -D OUTPUT -p tcp --sport 18376 -j LOG
-    
-    iptables -A OUTPUT -p udp --sport 18374 -j LOG
-    iptables -A OUTPUT -p tcp --sport 18374 -j LOG
-    iptables -A OUTPUT -p tcp --sport 18376 -j LOG
-    offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'}|head -n1)
     {
-        echo -n '' > /tmp/traffic
-        while true; do
-            result=""
-            while read line; do
-                result="${result}$line "
-            done < <(iptables -n -L -v | grep "LOG .* spt:" | awk {'split($11, port, ":"); print $10":"port[2]":"$1":"$2'})
-            echo $(date '+%s' -d "+ $offset seconds") "$result" >> /tmp/traffic
-            sleep 1;
-        done
+        basefs resources -l -n fdf5:5351:1dfd:0:2000::1 -r > /tmp/resources
     } &
     {
         basefs genkey

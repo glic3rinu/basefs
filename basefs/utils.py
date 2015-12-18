@@ -4,7 +4,6 @@ import os
 import socket
 import struct
 import subprocess
-import sys
 
 
 class Candidate:
@@ -249,20 +248,3 @@ def get_ip_address(ifname):
         0x8915,  # SIOCGIFADDR
         struct.pack('256s', ifname[:15].encode())
     )[20:24])
-
-
-
-def create_logdir(logpath, default_logpath, force=False):
-    logdir = os.path.dirname(logpath)
-    if not os.path.exists(logdir):
-        if logpath == default_logpath:
-            os.mkdir(logdir)
-        else:
-            sys.stderr.write("Error: %s logdir directory doesn't exist, create it first.\n" % logdir)
-            sys.exit(2)
-    if os.path.exists(logpath):
-        if not force:
-            sys.stderr.write("Error: logpath %s already exists and --force argument was not provided\n" % logpath)
-            sys.exit(1)
-        else:
-            os.remove(logpath)

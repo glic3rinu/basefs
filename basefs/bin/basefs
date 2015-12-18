@@ -35,8 +35,7 @@ except ImportError:
     if sys.argv[1] != 'installserf':
         raise
 
-
-mount_info = utils.get_mount_info()
+from basefs.management.utils import get_cmd_port
 
 
 def send_command(cmd, *args, port=None):
@@ -125,8 +124,12 @@ def list_cmd():
             names.append(section)
             logpath = content['logpath']
             port = content['port']
-            mpoint, members, size, mtime = get_info(logpath)
-            data.append([section, logpath, port, mpoint, members, size, mtime])
+            try:
+                mpoint, members, size, mtime = get_info(logpath)
+            except FileNotFoundError:
+                pass
+            else:
+                data.append([section, logpath, port, mpoint, members, size, mtime])
     for log in os.listdir(defaults.logdir):
         if log not in names:
             name = log
@@ -168,6 +171,7 @@ def show():
             sys.stdout.write(tree)
         return True
     
+    mount_info = utils.get_mount_info()
     if mount_info:
         path = os.path.abspath(args.path)
         path = path.replace(mount_info.mountpoint, '')
@@ -262,37 +266,10 @@ def revert():
     sys.exit()
 
 
-def get_cmd_port(args, mount_info, defaults):
-    port = mount_info.port if mount_info else None
-    name = args.name
-    if not port and not name:
-        logs = os.listdir(defaults.logdir)
-        if len(logs) == 1:
-            name = logs[0]
-        else:
-            sys.stderr.write("Error: name should be provided when not running inside a mounted basefs filesystem\n")
-            sys.exit(3)
-    if not port:
-        config = get_or_create_config(defaults)
-        if name not in config:
-            logpath = os.path.join(defaults.logdir, name)
-            if os.path.exists(logpath):
-                info, __ = utils.get_mountpoint(logpath)
-                if info:
-                    port = int(info.split(':')[1])
-                else:
-                    port = get_port(name)+2
-            else:
-                sys.stderr.write("Error: unknwon logname %s\n" % name)
-                sys.exit(2)
-        else:
-            port = int(config[name].get('port', get_port(name)))+2
-    return port
-
-
 def blocks():
     blocks_parser.add_argument('name', nargs='?', help='Name')
     args = blocks_parser.parse_args()
+    mount_info = utils.get_mount_info()
     port = get_cmd_port(args, mount_info, defaults)
     while True:
         result = send_command('BLOCKSTATE', port=port)
@@ -304,6 +281,7 @@ def blocks():
 def members():
     members_parser.add_argument('name', nargs='?', help='Name')
     args = members_parser.parse_args()
+    mount_info = utils.get_mount_info()
     port = get_cmd_port(args, mount_info, defaults)
     members = send_command('MEMBERS', port=port)
     sys.stdout.write(members + '\n')
@@ -315,6 +293,7 @@ def serf():
     serf_parser.add_argument('cmd', help='Serf command')
     serf_parser.add_argument('args', metavar='N', nargs='*', help='Serf command arguments')
     args = serf_parser.parse_args()
+    mount_info = utils.get_mount_info()
     cmd_port = get_cmd_port(args, mount_info, defaults)
     if args.cmd in ('state',):
         result = send_command('SERF'+args.cmd.upper(), port=cmd_port)
