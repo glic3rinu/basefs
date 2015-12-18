@@ -140,7 +140,7 @@ def list_cmd():
 
 def show():
     show_parser.add_argument('logpath',
-        type=validators.name_or_logpath(mount_parser, get_or_create_config(defaults), defaults),
+        type=validators.name_or_logpath(show_parser, get_or_create_config(defaults), defaults),
         help='Log name or logpath')
     show_parser.add_argument('path', nargs='?', default=os.sep,
         help='Path to the basefs log file, uses / by default.')
@@ -303,7 +303,7 @@ def serf():
 
 def installserf():
     installserf_parser.add_argument('binpath', nargs='?', default='/usr/local/bin/',
-        type=validators.dir_exists(installserf, name='binpath'),
+        type=validators.dir_exists(installserf_parser, name='binpath'),
         help='Binpath for installing serf, defaults to /usr/local/bin/')
     architectures = {
         'x86_64': 'amd64',
