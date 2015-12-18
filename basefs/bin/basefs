@@ -396,6 +396,7 @@ installserf_parser = argparse.ArgumentParser(
 
 if __name__ == '__main__':
     if sys.argv[1] == 'installserf':
+        sys.argv.pop(1)
         installserf()
     else:
         methods = OrderedDict([

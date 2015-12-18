@@ -13,7 +13,7 @@ RUN apt-get -y update && apt-get install -y \
 #    nano
 
 RUN pip3 install basefs==1-dev \
-    --allow-external basefs   \
+    --allow-external basefs    \
     --allow-unverified basefs
 
 RUN rm -r /usr/local/lib/python3.4/dist-packages/basefs
