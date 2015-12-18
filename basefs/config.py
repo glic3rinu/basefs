@@ -4,12 +4,16 @@ import os
 import pwd
 import socket
 import uuid
+from os.path import expanduser
 
 from basefs import utils
 
 
 def get_defaults(user=''):
-    basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
+    if not user:
+        basefs_dir = os.path.join(pwd.getpwuid(os.getuid()).pw_dir, '.basefs')
+    else:
+        basefs_dir = os.path.join(expanduser("~%s" % user), '.basefs')
     return utils.AttrDict(**{
         'dir': basefs_dir,
         'config': os.path.join(basefs_dir, 'config.ini'),
