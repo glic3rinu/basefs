@@ -394,39 +394,40 @@ installserf_parser = argparse.ArgumentParser(
     prog='basefs installserf')
 
 
-methods = OrderedDict([
-    ('mount', (mount.command, mount.parser)),
-    ('run', (run.command, run.parser)),
-    ('bootstrap', (bootstrap.command, bootstrap.parser)),
-    ('genkey', (genkey, genkey_parser)),
-    ('keys', (keys, keys_parser)),
-    ('grant', (grant, grant_parser)),
-    ('revoke', (revoke, revoke_parser)),
-    ('list', (list_cmd, list_parser)),
-    ('show', (show, show_parser)),
-    ('revert', (revert, revert_parser)),
-    ('blocks', (blocks, blocks_parser)),
-    ('members', (members, members_parser)),
-    ('serf', (serf, serf_parser)),
-    ('get', (get.command, get.parser)),
-    ('installserf', (installserf, installserf_parser)),
-    ('resources', (resources.command, resources.parser)),
-    ('help', (help, None)),
-])
-
-
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        method = sys.argv.pop(1)
-        if method == '--help':
-            method = 'help'
-        try:
-            method = methods[method][0]
-        except KeyError:
-            sys.stdout.write("Error: not recognized argument %s\n" % method)
+    if sys.argv[1] == 'installserf':
+        installserf()
+    else:
+        methods = OrderedDict([
+            ('mount', (mount.command, mount.parser)),
+            ('run', (run.command, run.parser)),
+            ('bootstrap', (bootstrap.command, bootstrap.parser)),
+            ('genkey', (genkey, genkey_parser)),
+            ('keys', (keys, keys_parser)),
+            ('grant', (grant, grant_parser)),
+            ('revoke', (revoke, revoke_parser)),
+            ('list', (list_cmd, list_parser)),
+            ('show', (show, show_parser)),
+            ('revert', (revert, revert_parser)),
+            ('blocks', (blocks, blocks_parser)),
+            ('members', (members, members_parser)),
+            ('serf', (serf, serf_parser)),
+            ('get', (get.command, get.parser)),
+            ('installserf', (installserf, installserf_parser)),
+            ('resources', (resources.command, resources.parser)),
+            ('help', (help, None)),
+        ])
+        if len(sys.argv) > 1:
+            method = sys.argv.pop(1)
+            if method == '--help':
+                method = 'help'
+            try:
+                method = methods[method][0]
+            except KeyError:
+                sys.stdout.write("Error: not recognized argument %s\n" % method)
+                help()
+                sys.exit(1)
+        else:
             help()
             sys.exit(1)
-    else:
-        help()
-        sys.exit(1)
-    method()
+        method()
