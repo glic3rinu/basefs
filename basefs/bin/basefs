@@ -27,6 +27,7 @@ try:
     from basefs import exceptions
     from basefs.config import get_or_create_config, defaults, get_port
     from basefs.management import resources, run, mount, bootstrap, get
+    from basefs.management.utils import get_cmd_port
     from basefs.keys import Key
     from basefs.logs import Log
     from basefs.state import BlockState
@@ -34,9 +35,6 @@ try:
 except ImportError:
     if sys.argv[1] != 'installserf':
         raise
-
-from basefs.management.utils import get_cmd_port
-
 
 def send_command(cmd, *args, port=None):
     if not port:
