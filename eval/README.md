@@ -1,12 +1,12 @@
 Network Evaluation
 =================
-We are going to evaluate the convergence properties and traffic usage of the gossip layer and the sync protocol.
+We are going to evaluate the convergence properties and traffic usage of the gossip layer and the sync protocol. We define convergence as
 
 1. Convergence of Gossip layer and Sync protocol
-    * How much time it needs to converge?
-    * Convergence of small files vs big files
+    * Convergence time
+    * small files vs big files
     * Saturation limit of the gossip layer (number of messages)
-    * Convergence under NAT
+    * Convergence under NAT (too complex)
 
 
 2. Traffic usage of Gossip layer and Sync protocol
@@ -18,7 +18,7 @@ We are going to evaluate the convergence properties and traffic usage of the gos
 In two different environments:
 
 1. Controlled Virtual environment with Docker and TC
-    * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one hop distance between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.
+    * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one level 2 hop between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.
 
 2. Ralistic environment on Confine testbed
     * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.

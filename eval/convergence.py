@@ -6,7 +6,7 @@ import subprocess
 entryhashes = {}
 filenames = []
 for filename in sys.argv[1:]:
-    if '/0/' in filename:
+    if 'node-0' in filename:
         with open(filename, 'r') as handler:
             for line in handler:
                 timestamp, entryhash = line.split()

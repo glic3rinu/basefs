@@ -1,3 +1,5 @@
+# python3 traffic.py logs/*-resources
+
 import os
 import sys
 import tempfile
@@ -13,31 +15,18 @@ for filename in sys.argv[1:]:
         prev = [0, 0, 0, 0, 0, 0]
         result = [0, 0, 0, 0, 0, 0]
         for line in handler:
+            # name:user:system:threads:vctxtswitches:nctxtswitches:swap:size:resident:shared:text:data:pkts:bytes[:pkts:bytes]
+            # 1450808755.89306 basefs:0:0:43:0:7:325:87:0:119146:4890:1165:726:97825 serf:0:0:0:0:4:0:7:114:40:0:3160:1404:986:989:1041
             # 1449830028.574 udp:18374:0:0
-            timestamp, *args = line.split()
-            if len(args) != 3:
-                raise ValueError
-            for arg in args:
-                try:
-                    pkts, bytes = arg.split(':')[2:]
-                except ValueError:
-                    raise ValueError(arg)
-                if arg.startswith('udp:%i:' % port):
-                    protocol = serf_udp
-                elif arg.startswith('tcp:%i:' % port):
-                    protocol = serf_tcp
-                elif arg.startswith('tcp:%i:' % (port+2)):
-                    protocol = sync
-                else:
-                    sys.stderr.write("Unknown protocol '%s'\n" % arg)
-                    continue
-                if bytes.endswith(('K', 'M')):
-                    bytes = int(bytes[:-1])*1000
-                elif bytes.endswith('M'):
-                    bytes = int(butes[:-1])*1000
-                else:
-                    bytes = int(bytes)
-                pkts = int(pkts)
+            timestamp, basefs, serf = line.split()
+            data = (
+                (serf_udp, serf.split(':')[-4:-2]),
+                (serf_tcp, serf.split(':')[-2:]),
+                (sync, basefs.split(':')[-2:]),
+            )
+            
+            for protocol, values in data:
+                pkts, bytes = map(int, values)
                 result[protocol] = pkts - prev[protocol]
                 result[protocol+1] = bytes - prev[protocol+1]
                 prev[protocol] = pkts
@@ -53,6 +42,7 @@ with open('/tmp/traffic.csv', 'w') as handler:
     handler.write("Timestamp,Serf UDP pkts,Serf UDP bytes,Serf TCP pkts,Serf TCP bytes,Sync pkts,Sync bytes\n")
     for k, v in dataset.items():
         handler.write(','.join([k] + list(map(str, v)))+'\n')
+
 
 r = textwrap.dedent("""\
     library("ggthemes")

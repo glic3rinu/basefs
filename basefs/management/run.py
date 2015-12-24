@@ -6,7 +6,7 @@ import sys
 from fuse import FUSE
 
 from basefs import utils, validators, gossip, loop
-from basefs.config import get_or_create_config, defaults
+from basefs.config import get_or_create_config, defaults, get_port
 from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log

@@ -37,7 +37,7 @@ class SerfClient(client.SerfClient):
         LogEntry.ACK: 'A',
     }
     ACTION_REVERSE_MAP = {v: k for k, v in ACTION_MAP.items()}
-    MAX_BLOCK_MESSAGES = 15
+    MAX_BLOCK_MESSAGES = 99999
     description = 'serf event'
     
     def __init__(self, log, blockstate, *args, **kwargs):
@@ -155,6 +155,7 @@ class SerfClient(client.SerfClient):
     def send(self, *entries):
         data = b''
         for entry in entries:
+            blocks = 0
             entry_data = self.encode(entry)
             if len(data) + len(entry_data) > 512:
                 event = chr(data[0])
@@ -168,14 +169,17 @@ class SerfClient(client.SerfClient):
                         self.partial_gossip.send()
                         break
                 else:
+                    blocks = 0
                     for block in entry.get_blocks():
                         block_data = self.encode(block)
                         if len(data) + len(block_data) > 512:
+                            blocks += 1
                             event = chr(data[0])
                             self.event(event, data[1:], coalesce=False)
                             data = block_data
                         else:
                             data += block_data
+                    logger.debug("Sending %s block messages for entry %s", blocks, entry.hash)
         if data:
             event = chr(data[0])
             self.event(event, data[1:], coalesce=False)
@@ -284,7 +288,8 @@ def run_client(view, port, members, config=None):
                         line = line.decode().strip()
                         if line:
                             members.add(line)
-                    for member in members-joined:
+                    to_join = members-joined
+                    for member in to_join:
                         logger.debug("Joining to %s", member)
                         try:
                             counter += serf.join(member).body[b'Num']
@@ -294,6 +299,8 @@ def run_client(view, port, members, config=None):
                             joined = get_joined(serf)
                             if len(joined) >= 2:
                                 break
+                    if not to_join:
+                        joined = get_joined(serf)
                     if len(joined) < 2:
                         logger.warning("Running alone, couldn't join with anyone. Retrying in 10 seconds ...")
                         time.sleep(10)

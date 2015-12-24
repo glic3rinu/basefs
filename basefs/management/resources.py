@@ -248,14 +248,15 @@ def main(window=None, reset=False, offset=0, port=None):
                 window.refresh()
             else:
                 output = str(now)[:16]
-                output += ' basefs:' + ':'.join(map(str, basefs_iptables[::2] + basefs_proc[::2]))
-                output += ' serf:' + ':'.join(map(str, serf_iptables[::2] + serf_proc[::2])) + '\n'
+                output += ' basefs:' + ':'.join(map(str, basefs_proc[::2] + basefs_iptables[::2]))
+                output += ' serf:' + ':'.join(map(str, serf_proc[::2] + serf_iptables[::2])) + '\n'
                 if first:
                     sys.stderr.write(
-                        "name:real:user:system:threads:vctxtswitches:nctxtswitches:"
+                        "name:user:system:threads:vctxtswitches:nctxtswitches:"
                         "swap:size:resident:shared:text:data:pkts:bytes[:pkts:bytes]\n")
                     first = False
                 sys.stdout.write(output)
+                sys.stdout.flush()
         except (FileNotFoundError, NameError) as e:
             msg = "> Waitting for BaseFS to go online ...\n"
             if window:

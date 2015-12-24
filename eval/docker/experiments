@@ -1,0 +1,53 @@
+#!/bin/bash
+
+
+export BASEFSPATH=/home/glic3/Dropbox/basefs/
+export PYTHONPATH=$BASEFSPATH
+
+
+if [[ $(whoami) != 'root' ]]; then
+    echo "Root permissions are required for running basefs resources"
+    exit 3
+fi
+
+
+function gossipconv () {
+    . ./utils.sh
+    nodes=1
+    rounds=( 0 1 ) # 2 4 8 11 16 24 32 52 64 85 128 170 200 256 )
+    mkdir -p /tmp/testpoint
+    for round in ${rounds[@]}; do
+        bwrite $round /tmp/testpoint/testfile-$round
+    done
+    for i in $(seq 0 30); do
+        bstart $nodes &
+        pid=$!
+        cpid=$(pgrep -P $pid basefs)
+        trap "kill -INT $cpid; kill $pid 2> /dev/null; bstop; kill $$ 2> /dev/null; kill $cpid; killall basefs" INT
+        sleep 10
+        sleep $(( $nodes*2 ))
+        rounds=( 0 1 2 4 8 11 16 24 32 52 64 85 128 170 200 256 )
+        for j in ${rounds[@]}; do
+            cp /tmp/testpoint/testfile-$j /tmp/test/
+            sleep 10
+            sleep $j
+        done
+        kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
+        sleep 1
+        kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
+        bstop
+        sleep 5
+        killall basefs
+        cp -a $BASEFSPATH/tmp/logs/ $BASEFSPATH/tmp/rounds/logs-$i
+    done
+}
+
+
+
+if [[ $1 -eq 1 ]]; then
+    gossipconv
+elif [[ $1 -eq 2 ]]; then
+    run
+elif [[ $1 -eq 3 ]]; then
+    collect
+fi
