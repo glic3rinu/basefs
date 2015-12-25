@@ -22,7 +22,7 @@ class install(_install):
 setup(
     name = 'basefs',
     packages = ['basefs'],
-    version = '0.5.4',
+    version = '0.6',
     description = 'Basically Available, Soft state, Eventually consistent File System',
     scripts=[
         'basefs/bin/basefs',

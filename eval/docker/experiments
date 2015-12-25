@@ -13,8 +13,8 @@ fi
 
 function gossipconv () {
     . ./utils.sh
-    nodes=1
-    rounds=( 0 1 ) # 2 4 8 11 16 24 32 52 64 85 128 170 200 256 )
+    nodes=29
+    rounds=( 0 1 2 4 8 11 16 24 32 52 64 85 128 170 200 256 )
     mkdir -p /tmp/testpoint
     for round in ${rounds[@]}; do
         bwrite $round /tmp/testpoint/testfile-$round

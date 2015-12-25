@@ -22,9 +22,11 @@ function bstart () {
         echo "Root permissions are required for running basefs resources"
         exit 3
     fi
+    basefs genkey;
+    docker_ip=$(ip -f inet -o addr show docker0 | awk {'print $4'} | cut -d'/' -f1)
+    basefs bootstrap test -i ${docker_ip} -f;
     basefs resources test -l -r > $BASEFSPATH/tmp/logs/node-0-resources &
     trap "kill $! 2> /dev/null; bstop; kill $$ 2> /dev/null" INT
-    docker_ip=$(ip -f inet -o addr show docker0 | awk {'print $4'} | cut -d'/' -f1)
     for ix in $(seq 1 $num); do
         docker run -v $BASEFSPATH:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -t basefs /bin/bash -c "
             sleep 5;
@@ -36,7 +38,6 @@ function bstart () {
             mkdir -p /tmp/test;
             basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix" &
     done
-    basefs bootstrap test -i ${docker_ip} -f;
     mkdir -p /tmp/test;
     basefs mount test /tmp/test/ -iface docker0 -d 2>&1 | tee $BASEFSPATH/tmp/logs/node-0
 }
