@@ -29,8 +29,9 @@ File Operations Performance
 Read/write performance compared to traditional filesystems (ext4) [script](docker/performance.sh)
 
 
-1. Write perfoance ![Write performance](docker/write_performance.png width=100)
-2. Read performance <img src="docker/read_performance.png" width="100">
+1. Write perfoance <img src="docker/write_performance.png" width="400">
+2. Read performance 
+<img src="docker/read_performance.png" width="400">
 
 
 
