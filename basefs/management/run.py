@@ -42,6 +42,8 @@ def set_parser(parser):
         help='Disables Serf agent (testing purposes).')
     parser.add_argument('-w', '--watcher', dest='watcher',
         help='Handler script executed when a change occur on the filesystem (inotify substitute).')
+    parser.add_argument('-f', '--foreground', dest='foreground', action='store_true', default=False,
+        help='Stays in foreground.')
 
 
 def command(mount=False, arg_parser=None):
@@ -117,7 +119,8 @@ def command(mount=False, arg_parser=None):
         sys.stdout.write('Mounting %s into %s\n' % (logpath, mountpoint))
         fs = FileSystem(view, serf=serf, serf_agent=serf_agent, init_function=init_function)
         fsname = '%s:%i' % (logpath, sync_port)
-        FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=args.debug)
+        foreground = args.foreground or args.debug
+        FUSE(fs, mountpoint, fsname=fsname, nothreads=False, foreground=foreground)
     else:
         try:
             loop.run(view, serf, port+2, config=section)

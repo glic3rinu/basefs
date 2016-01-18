@@ -1,5 +1,13 @@
-export BASEFSPATH=/home/glic3/Dropbox/basefs/
+#!/bin/bash
+
+
+if [[ -e /home/glic3/Dropbox/basefs/ ]]; then
+    export BASEFSPATH=/home/glic3/Dropbox/basefs/
+else
+    export BASEFSPATH=/root/basefs/
+fi
 export PYTHONPATH=$BASEFSPATH
+
 
 
 function build () {
@@ -16,8 +24,7 @@ function bstop () {
 }
 
 
-function bstart () {
-    num=${1:-3}
+function dock () {
     if [[ $(whoami) != 'root' ]]; then
         echo "Root permissions are required for running basefs resources"
         exit 3
@@ -27,19 +34,29 @@ function bstart () {
     basefs bootstrap test -i ${docker_ip} -f;
     basefs resources test -l -r > $BASEFSPATH/tmp/logs/node-0-resources &
     trap "kill $! 2> /dev/null; bstop; kill $$ 2> /dev/null" INT
-    for ix in $(seq 1 $num); do
-        docker run -v $BASEFSPATH:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -t basefs /bin/bash -c "
-            sleep 5;
+    cmd="$1"
+    if [[ "$cmd" == "" || $(echo "$cmd" | grep '[0-9][0-9]*') ]]; then
+        cmd='sleep 5;
             basefs genkey;
             basefs get test ${docker_ip};
             basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
             #tc qdisc add dev eth0 root handle 1:0 netem delay 100ms 20ms distribution normal reorder 25% 50% loss 20% 25%;
             #tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 10mbit buffer 75000 latency 5ms;
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix" &
+            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix'
+    fi
+    num=${2:-3}
+    for ix in $(seq 1 $num); do
+        cmd=$(eval "echo \"${cmd}\"")
+        docker run -v $BASEFSPATH:/mnt --privileged --cap-add SYS_ADMIN --device /dev/fuse -t basefs /bin/bash -c "$cmd" &
     done
     mkdir -p /tmp/test;
     basefs mount test /tmp/test/ -iface docker0 -d 2>&1 | tee $BASEFSPATH/tmp/logs/node-0
+}
+
+
+function bstart () {
+    dock $@
 }
 
 
@@ -68,11 +85,12 @@ function bread () {
     done
 }
 
+
 function bcsv () {
     echo "Messages,Node,Time"
     for file in "$@"; do
         dir=$(dirname $file)
-        grep -ha " basefs.messages: Sending " $file | awk {'print $1 " " $2 " " $(NF-5) " " $(NF)'} | while read line; do
+        grep -ha " basefs.messages: Sending " $file | sed "s#\s*2016/01/.*2016-01-#2016-01-#" | awk {'print $1 " " $2 " " $(NF-5) " " $(NF)'} | while read line; do
             line=( $line )
             start=$(date -d "${line[0]} ${line[1]} $(date '+%Z')" +'%s.%3N')
             grep -Ta "COMPLETED ${line[3]}" $dir/node-* | awk {'print $1 " " $2 " " $3'} | while read nodeline; do
@@ -83,3 +101,5 @@ function bcsv () {
         done
     done
 }
+
+

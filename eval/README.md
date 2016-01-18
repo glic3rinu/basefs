@@ -24,14 +24,13 @@ In two different environments:
     * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
 
 
+File Operations Performance
+===========================
+Read/write performance compared to traditional filesystems (ext4) [script](docker/performance.sh)
 
-Memory and CPU usage
-====================
-Is the protocol appropiated for resource constrained environments?
+1. Write perfoance ![Write performance](docker/write_performance.png)
+2. Read performance ![Read performance](docker/read_performance.png)
 
-* Memory consumption of big vs small files
-* CPU consumption of read-write intensive workloads
-* Repsonse time of filesystem operations compared to other filesystems
 
 
 /ETC Characterization
