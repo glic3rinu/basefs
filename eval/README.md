@@ -32,10 +32,10 @@ Read/write performance compared to traditional filesystems (ext4) [script](docke
 bash experiment 2
 bash performance.sh
 ```
-
-1. Write perfoance
+#### Write performance
 <img src="docker/write_performance.png" width="400">
-2. Read performance 
+
+#### Read performance
 <img src="docker/read_performance.png" width="400">
 
 
