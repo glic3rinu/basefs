@@ -1,5 +1,6 @@
 import binascii
 import copy
+import logging
 import os
 import sys
 from collections import defaultdict
@@ -8,6 +9,9 @@ import bsdiff4
 
 from basefs import exceptions
 from basefs.utils import Candidate, issubdir
+
+
+logger = logging.getLogger('basefs.view')
 
 
 class ViewNode:
@@ -37,20 +41,24 @@ class ViewNode:
     def content(self):
         if not hasattr(self, '_content'):
             content = b""
-            ancestor = self.entry
-            ancestors = [ancestor]
-            while True:
-                ancestor = ancestor.parent
-                if ancestor is None or ancestor.action != self.entry.action:
-                    break
-                ancestors.insert(0, ancestor)
-            for ancestor in ancestors:
-                ancestor_content = ancestor.get_content()
-                if not ancestor_content:
-                    content = ancestor_content
-                else:
-                    content = bsdiff4.patch(content, ancestor_content)
+            if self.entry.action == self.entry.WRITE:
+                logger.debug("Uncached BSDIFF4 of %s", self.entry.path)
+                ancestor = self.entry
+                ancestors = [ancestor]
+                while True:
+                    ancestor = ancestor.parent
+                    if ancestor is None or ancestor.action != self.entry.action:
+                        break
+                    ancestors.insert(0, ancestor)
+                for ancestor in ancestors:
+                    ancestor_content = ancestor.get_content()
+                    if not ancestor_content:
+                        content = ancestor_content
+                    else:
+                        content = bsdiff4.patch(content, ancestor_content)
             self._content = content
+        else:
+            logger.debug("Cached BSDIFF4 %s", self.entry.path)
         return self._content
     
     @property

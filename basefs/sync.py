@@ -434,7 +434,7 @@ def do_full_sync(sync, config=None):
     
     sync.serf.partial_gossip.connect(lambda: loop.call_soon_threadsafe(asyncio.async, seed_sync()))
     
-    FULL_SYNC_INTERVAL = 5*60*5
+    FULL_SYNC_INTERVAL = 5*60*5*10
     if config:
         FULL_SYNC_INTERVAL = int(config.get('full_sync_interval', FULL_SYNC_INTERVAL))
     deviation = int(FULL_SYNC_INTERVAL*0.1)

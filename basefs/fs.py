@@ -65,6 +65,7 @@ class FileSystem(Operations):
     def get_node(self, path):
         # check if logfile has been modified
         if self.loaded != self.view.log.loaded:
+            logger.debug('-> %s rebuild', path)
             self.view.build()
             self.loaded = self.view.log.loaded
         with ViewToErrno():

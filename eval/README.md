@@ -24,8 +24,26 @@ In two different environments:
     * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
 
 
+/ETC Characterization
+=====================
+Is the gossip layer a good transport protocol for configuration replication? Is BaseFS Merkle DAG consensus strategy effective enough for solving configuration conflicts?
+
+1. How many Gossip packets (512b) we will need?
+BSDIFF4 produces very space-efficient patches 
+
+<img src="etc_time.png" width="400">
+<img src="etc_packets.png" width="400">
+
+2. How many conflicts can we expect?
+
 File Operations Performance
 ===========================
+
+In order to understand the read and write perfomance characteristics we compare BaseFS with a more traditional and popular file system (EXT4). This experiment shows how file updates affects read/write completion time. The experiemnt consists on copying up to 30 times the entire content of the `/etc/` root directoy (files, directories and simbolic links). The idea is to put a lot of stress on to the weakes performance points of our BaseFS implementation; the view and the binary difference computations.
+
+# TODO meassure context switches: use perf: sudo perf stat -a echo Hi;
+# TODO why content cache is not used during writes?
+
 Read/write performance compared to traditional filesystems (ext4) [script](docker/performance.sh)
 
 ```bash
@@ -35,19 +53,20 @@ bash performance.sh
 #### Write performance
 <img src="docker/write_performance.png" width="400">
 
+Two costly operations:
+    compute the view
+    apply every binary difference patch for each file
+
+
+Cache invalidation is a hard problem to takle and its effectively limiting what we are able to cache without paying too much on implementation complexity. For one, the conflict-free view of the entire filesystem is recomputed on reads that come after writes. On the other hand, the file content is also invalidated on a write operation and the binary difference has to be computed using all the BSDIFF4 patches that have been generated since file creation, increassing the cost on each update.
+
+We have made the choice of using BSDIFF4 binary deltas on the grounds that write-intensive workloads are not expected for a cluster configuration tool and a faster convergence time (less messages to gossip) is a more desirable characteristic. 
+
+
 #### Read performance
 <img src="docker/read_performance.png" width="400">
 
-
-
-/ETC Characterization
-=====================
-Is the gossip layer a good transport protocol for configuration replication? Is BaseFS Merkle DAG consensus strategy effective enough for solving configuration conflicts?
-
-1. How many Gossip packets (512b) we will need?
-2. How many conflicts can we expect?
-
-
+Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
 
 
 NOTES

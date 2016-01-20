@@ -10,7 +10,7 @@
 #export PYTHONPATH=$BASEFSPATH
 
 
-. ./utils.sh
+. $(dirname "${BASH_SOURCE[0]}")/utils.sh
 
 if [[ $(whoami) != 'root' ]]; then
     echo "Root permissions are required for running basefs resources"
@@ -27,30 +27,84 @@ function gossipconv () {
             bwrite $round $BASEFSPATH/tmp/testpoint/testfile-$round
         done
     }
-    for i in $(seq 0 ${2:-30}); do
+    repetitions=${2:-30}
+    for i in $(seq 1 $repetitions); do
         mkdir -p $BASEFSPATH/tmp/logs
         echo "$1" "$nodes"
         dock "$1" "$nodes" &
         pid=$!
         cpid=$(pgrep -P $pid basefs)
-        trap "kill -INT $cpid; kill $pid 2> /dev/null; bstop; kill $$ 2> /dev/null; kill $cpid; killall basefs" INT
+        trap "kill -INT $cpid; kill $pid 2> /dev/null; bstop; killall basefs; kill $$ 2> /dev/null; kill $cpid;" INT
         sleep 10
         sleep $(( $nodes*2 ))
         for j in ${rounds[@]}; do
+            echo "cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/" >> /tmp/eval_status
             cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/
-            sleep 10
-            sleep $j
+            sleep 3
+            counter=0
+            uid=$(grep " basefs.gossip: Sending " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $11'})
+            while [[ $(grep "COMPLETED $uid" $BASEFSPATH/tmp/logs/node-* | wc -l) -lt $nodes && $counter -lt 500 ]]; do
+                sleep 3
+                counter=$(($counter+1))
+            done
         done
-        sleep 300
         kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
         sleep 1
         kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
         bstop
-        sleep 5
+        sleep 3
         bstop
         killall basefs
         mv $BASEFSPATH/tmp/logs $BASEFSPATH/tmp/rounds/logs-$i
     done
+    trap - INT
+}
+
+
+function fullgossipconv2 () {
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scenario-0
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem delay 10ms 5ms distribution normal reorder 10% 25% loss 10% 25%;
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 100mbit buffer 75000 latency 10ms;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scenario-1
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem delay 50ms 10ms distribution normal reorder 20% 25% loss 20% 25%;
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 10mbit buffer 75000 latency 20ms;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scenario-2
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem delay 100ms 20ms distribution normal reorder 40% 25% loss 40% 25%;
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 5mbit buffer 75000 latency 40ms;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scenario-3
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem delay 300ms 70ms distribution normal reorder 70% 25% loss 70% 25%;
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 100kbit buffer 75000 latency 100ms;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scenario-4
 }
 
 
@@ -59,46 +113,74 @@ function fullgossipconv () {
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem delay 300ms 100ms distribution normal reorder 70% 90% loss 80% 95%;
-        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 100kbit buffer 75000 latency 100ms;
+        tc qdisc add dev eth0 root handle 1:0 netem loss 10% 25%;
         mkdir -p /tmp/test;
         basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/rounds-4
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-10
     gossipconv 'sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem delay 200ms 40ms distribution normal reorder 50% 80% loss 40% 50%;
-        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 5mbit buffer 75000 latency 40ms;
+        tc qdisc add dev eth0 root handle 1:0 netem loss 35% 25%;
         mkdir -p /tmp/test;
         basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/rounds-3
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-30
     gossipconv 'sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem loss 35% 25%;
         mkdir -p /tmp/test;
         basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/rounds-0
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-40
     gossipconv 'sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem delay 10ms 5ms distribution normal reorder 10% 20% loss 10% 15%;
-        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 100mbit buffer 75000 latency 10ms;
+        tc qdisc add dev eth0 root handle 1:0 netem loss 50% 25%;
         mkdir -p /tmp/test;
         basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/rounds-1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-50
     gossipconv 'sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem delay 100ms 20ms distribution normal reorder 25% 50% loss 20% 25%;
-        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 10mbit buffer 75000 latency 20ms;
+        tc qdisc add dev eth0 root handle 1:0 netem loss 50% 25%;
         mkdir -p /tmp/test;
         basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/rounds-2
-
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-60
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem loss 70% 25%;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-70
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 root handle 1:0 netem loss 80% 25%;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-loss-80
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 128kbit;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-bw-128kbit-default
+    gossipconv 'sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+        tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 56kbit;
+        mkdir -p /tmp/test;
+        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+    mv $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/gossip-bw-56kbit-default
 }
 
 
@@ -132,11 +214,11 @@ function resourceusage () {
     echo '' > $BASEFSPATH/tmp/perf/basefs-read
     for i in $(seq 1 30); do
 #        echo "WRITE TEST $i" >> $BASEFSPATH/tmp/perf/node-0-resources
-        { time cp -r /etc/* /tmp/test/ > /dev/null; } 2>&1 | grep -v 'cp: cannot create symbolic link' >> $BASEFSPATH/tmp/perf/basefs-write
+        { perf stat cp -r /etc/* /tmp/test/ > /dev/null; } 2>&1 | grep -v 'cp: cannot create symbolic link' >> $BASEFSPATH/tmp/perf/basefs-write
         # Cold read
-        { time grep -R "*" /tmp/test > /dev/null; } 2>> $BASEFSPATH/tmp/perf/basefs-read
+        { perf stat grep -R "*" /tmp/test > /dev/null; } 2>> $BASEFSPATH/tmp/perf/basefs-read
         # Cached read
-        { time grep -R "*" /tmp/test > /dev/null; } 2>> $BASEFSPATH/tmp/perf/basefs-read2
+        { perf stat grep -R "*" /tmp/test > /dev/null; } 2>> $BASEFSPATH/tmp/perf/basefs-read2
     done
     killall basefs
     
@@ -147,11 +229,11 @@ function resourceusage () {
     echo '' > $BASEFSPATH/tmp/perf/ext4-read
     echo '' > $BASEFSPATH/tmp/perf/ext4-read2
     for i in $(seq 1 30); do
-        { time cp -r /etc/* /media/data/tmp/test2; } 2>> $BASEFSPATH/tmp/perf/ext4-write
+        { perf stat -a cp -r /etc/* /media/data/tmp/test2; } 2>> $BASEFSPATH/tmp/perf/ext4-write
         # cold start
         sync && echo 3 > /proc/sys/vm/drop_caches
-        { time grep -R "*" /media/data/tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/ext4-read
-        { time grep -R "*" /media/data/tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/ext4-read2
+        { perf stat -a grep -R "*" /media/data/tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/ext4-read
+        { perf stat -a grep -R "*" /media/data/tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/ext4-read2
         sleep 2
     done
     # in-memory EXT4
@@ -160,11 +242,11 @@ function resourceusage () {
     echo '' > $BASEFSPATH/tmp/perf/mem-ext4-read
     echo '' > $BASEFSPATH/tmp/perf/mem-ext4-read2
     for i in $(seq 1 30); do
-        { time cp -r /etc/* /tmp/test2/; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-write
+        { perf stat -a cp -r /etc/* /tmp/test2/; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-write
         # cold start
         sync && echo 3 > /proc/sys/vm/drop_caches
-        { time grep -R "*" /tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-read
-        { time grep -R "*" /tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-read2
+        { perf stat -a grep -R "*" /tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-read
+        { perf stat -a grep -R "*" /tmp/test2 > /dev/null; } 2>> $BASEFSPATH/tmp/perf/mem-ext4-read2
         sleep 3
     done
 }

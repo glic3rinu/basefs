@@ -20,7 +20,7 @@ from basefs.logs import LogEntry, Block
 from basefs.state import BlockState
 
 
-logger = logging.getLogger('basefs.messages')
+logger = logging.getLogger('basefs.gossip')
 
 
 class SerfClient(client.SerfClient):

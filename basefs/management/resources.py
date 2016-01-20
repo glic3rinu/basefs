@@ -80,20 +80,8 @@ def set_iptables(port):
         })
 
 
-def to_int(value):
-    conversion = {
-        'K': 1000,
-        'M': 1000000,
-        'G': 1000000000,
-        'T': 1000000000000,
-    }
-    if value.endswith(('K', 'M', 'G', 'T')):
-        return int(value[:-1])*conversion[value[-1]]
-    return int(value)
-
-
 def read_iptables(port, state={}, offset={}, reset=False):
-    iptables = subprocess.Popen('iptables -n -L OUTPUT -v', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    iptables = subprocess.Popen('iptables -nvxL OUTPUT', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stderr = iptables.stderr.read()
     if stderr:
         sys.stderr.buffer.write(stderr)
@@ -107,7 +95,7 @@ def read_iptables(port, state={}, offset={}, reset=False):
             flow, iport = iport.split(':')
             iport = int(iport)
             if iport in (port, port+2) and flow == 'spt':
-                pkts, bytes = map(to_int, line[:2])
+                pkts, bytes = map(int, line[:2])
                 prot = line[3]
                 if (prot, iport) not in inspected:
                     if reset and (prot, iport) not in offset:
