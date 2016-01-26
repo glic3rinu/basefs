@@ -78,7 +78,7 @@ function dock () {
             mkdir -p /tmp/test;
             basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix'
     fi
-    num=${2:-3}
+    num=${2:-29}
     for ix in $(seq 1 $num); do
         evaluated=$(eval "echo \"${cmd}\"")
         echo "$ix $evaluated" >> /tmp/eval_status
@@ -136,4 +136,49 @@ function bcsv () {
     done
 }
 
+function readscenarios () {
+    echo "scenario,size,messages,node,time,completed"
+    echo "scenario,size,messages,completed" >&2
+    name=${1:-"scenario"}
+    for scenario in $(ls -d ${name}-*); do
+        scenario_name=$(echo "$scenario" | sed "s/$name-//")
+        for log in $(ls  -d $BASEFSPATH/tmp/$scenario/logs-*); do
+            grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
+                line=( $line )
+                messages=$(grep " basefs.gossip: Sending .* ${line[2]}" $log/node-0 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $(NF-5)'})
+                messages=${messages:-0}
+                start=$(date -d "${line[0]} ${line[1]} $(date '+%Z')" +'%s.%3N' || echo "$line" >&2)
+                completed=1
+                size=$(echo ${line[3]} | sed -E "s/.*-([0-9]+)'/\1/")
+                while read nodeline; do
+                    linedate="$(echo $nodeline | cut -d':' -f2 | awk {'print $1'}) $(echo $nodeline | awk {'print $2'})"
+                    node=$(echo "$nodeline" | cut -d':' -f1)
+                    node=${node##*/}
+                    echo $scenario_name,${size},$messages,$node,$(echo $(date -d "$linedate UTC" +'%s.%3N' || echo "$nodeline ${line[2]}" >&2)-$start | bc | awk '{printf "%f\n", $0}'),$completed
+                    completed=$(($completed+1))
+                done < <(grep -a "COMPLETED ${line[2]}" $log/node-* | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#"| sed "s/:.*2016-01/:2016-01/" | awk {'print $1 " " $2'})
+                echo $scenario_name,${size},$messages,$completed >&2
+            done
+        done
+    done
+}
+
+
+function readtraffic () {
+    echo "scenario,node,bps"
+    name=${1:-"scenario"}
+    for scenario in $(ls -d ${name}-*); do
+        scenario_name=$(echo "$scenario" | sed "s/$name-//")
+        size=${scenario//*-}
+        for log in $(ls  -d $BASEFSPATH/tmp/$scenario/logs-*); do
+            for node in $(ls $log/node-*-resources); do
+                ini=$(head -n1 $node | awk {'print $1'})
+                end=$(tail -n1 $node | awk {'print $1'})
+                traffic=$(tail -n1 $node | awk {'print $2'} | cut -d':' -f14)
+                node_name=$(echo "$node" | sed -E "s#.*/(node-[0-9]+)-resources#\1#")
+                echo $scenario_name,$node_name,$(echo "$traffic/($end-$ini)" | bc)
+            done
+        done
+    done
+}
 

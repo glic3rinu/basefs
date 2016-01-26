@@ -21,7 +21,10 @@ class install(_install):
 
 setup(
     name = 'basefs',
-    packages = ['basefs'],
+    packages = [
+        'basefs',
+        'basefs/management'
+    ],
     version = '0.6',
     description = 'Basically Available, Soft state, Eventually consistent File System',
     scripts=[

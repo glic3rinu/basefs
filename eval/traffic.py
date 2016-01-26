@@ -2,6 +2,7 @@
 
 import os
 import re
+import statistics
 import sys
 import tempfile
 import textwrap
@@ -41,7 +42,10 @@ for filename in sys.argv[1:]:
             dataset[timestamp] = [r+a for r,a in zip(result, aggregate)]
     # Last traffic value is the total one
     node = re.findall(r'.*-([0-9]+)-.*', filename)[0]
-    total_bytes[node] = [prev[1], prev[3], prev[5]]
+    try:
+        total_bytes[node].append((prev[1], prev[3], prev[5]))
+    except KeyError:
+        total_bytes[node] = [(prev[1], prev[3], prev[5])]
 
 
 with open('/tmp/traffic.csv', 'w') as handler:
@@ -53,7 +57,9 @@ with open('/tmp/traffic.csv', 'w') as handler:
 with open('/tmp/traffic-distribution.csv', 'w') as handler:
     handler.write("Node,Serf UDP bytes,Serf TCP bytes,Sync bytes\n")
     for k in sorted(total_bytes.keys()):
-        v = total_bytes[k]
+        v = [0, 0, 0]
+        for ix in (0, 1, 2):
+            v[ix] = map(statistics.mean, [b[ix] for b in total_bytes[k]])
         handler.write(','.join([k] + list(map(str, v)))+'\n')
 
 

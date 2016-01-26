@@ -14,27 +14,34 @@ function stop () {
 
 function sshc () {
     CMD=$@
-    echo "Going to run glic3rinu@calmisko.org $CMD" >&2
-    ssh -o stricthostkeychecking=no \
-        -o BatchMode=yes \
-        -o EscapeChar=none \
-        -o ControlMaster=auto \
-        -o ControlPersist=yes \
-        -o ControlPath=~/.ssh/confine-%r-%h-%p \
-        glic3rinu@calmisko.org "$@"
+    if [[ $(hostname) == "bestia" ]]; then
+        echo "Going to run bash -c \"$CMD\"" >&2
+        bash -c "$@"
+    else
+        echo "Going to run glic3rinu@calmisko.org $CMD" >&2
+        ssh -o stricthostkeychecking=no \
+            -o BatchMode=yes \
+            -o EscapeChar=none \
+            -o ControlMaster=auto \
+            -o ControlPersist=yes \
+            -o ControlPath=~/.ssh/confine-%r-%h-%p \
+            glic3rinu@calmisko.org "$@"
+    fi
 }
 
 function scpc () {
     origin="${@:1:$#-1}"
     target="${@: -1}"
-    echo "Going to copy glic3rinu@calmisko.org:$origin $target" >&2
-    scp -o stricthostkeychecking=no \
-        -o BatchMode=yes \
-        -o EscapeChar=none \
-        -o ControlMaster=auto \
-        -o ControlPersist=yes \
-        -o ControlPath=~/.ssh/confine-%r-%h-%p \
-        glic3rinu@calmisko.org:"$origin" "$target"
+    if [[ $(hostname) != "bestia" ]]; then
+        echo "Going to copy glic3rinu@calmisko.org:$origin $target" >&2
+        scp -o stricthostkeychecking=no \
+            -o BatchMode=yes \
+            -o EscapeChar=none \
+            -o ControlMaster=auto \
+            -o ControlPersist=yes \
+            -o ControlPath=~/.ssh/confine-%r-%h-%p \
+            glic3rinu@calmisko.org:"$origin" "$target"
+    fi
 }
 
 
@@ -46,7 +53,7 @@ function pipinstall {
 function bootstrap {
     ips=$(grep -h 'inet addr' logs/ifconfig/*|cut -d':' -f2|awk {'print $1'}|tr '\n' ',')
     cat << EOF | sshc
-        basefs bootstrap test -i 10.228.207.204,${ips::-1} -f
+        basefs bootstrap test -i $CONFINEIP,${ips::-1} -f
         mkdir -p /tmp/{test,logs}
 EOF
 }
@@ -79,8 +86,9 @@ EOF
 
 
 function characterize () {
+    ips=$(grep -h 'inet addr' logs/ifconfig/*|cut -d':' -f2|awk {'print $1'}|tr '\n' ' ')
     cmd=$(cat << EOF
-        ips=( 10.228.207.204 $(grep -h 'inet addr' logs/ifconfig/*|cut -d':' -f2|awk {'print $1'}|tr '\n' ' ') );
+        ips=( $CONFINEIP $ips );
         self=\$({ ip -f inet -o addr show pub0 || ip -f inet -o addr show tap0; }|awk {'print \$4'}|cut -d'/' -f1);
         echo -n '' > /tmp/traceroute;
         for ip in \${ips[@]}; do
@@ -99,6 +107,7 @@ EOF
     sshc $cmd
     results_dir="results/$(date +%Y.%m.%d-%H:%M:%S)"
     get /tmp/traceroute
+    [[ ! -d $DIR/$results_dir/ ]] && results_dir=$(echo "$results_dir"|cut -d':' -f1,2):$((${results_dir##*:}+1))
     mkdir $DIR/$results_dir/0
     scpc /tmp/traceroute $results_dir/0/traceroute
 }
@@ -133,7 +142,7 @@ function experiment1 () {
         pid=$!;
         trap "kill $pid; echo aaaaaaa" INT;
         su - glic3rinu bash -c '
-            basefs bootstrap test -i 10.228.207.204,10.159.1.124 -f;
+            basefs bootstrap test -i $CONFINEIP,10.159.1.124 -f;
             mkdir -p /tmp/test;
             echo '' > /tmp/output
             basefs mount test /tmp/test/ -iface tap0 -d 2>&1 | tee /tmp/output;';

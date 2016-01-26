@@ -33,7 +33,7 @@ class SyncHandler:
     BLOCK_REQ = 'B-REQ'
     SECTIONS = (HASH, BLOCKS_REC, LS, ENTRY_REQ, BLOCK_REQ, PATH_REQ, ENTRIES, BLOCKS, CLOSE)
     description = 'full sync'
-    SEED_NODES = 3 # TODO configure
+    SEED_NODES = 4 # TODO configure
     members_state = {}
     
     def __str__(self):
@@ -274,9 +274,11 @@ class SyncHandler:
             try:
                 lentry = self.log.find(path)
             except exceptions.DoesNotExist:
+                pass
+            else:
                 lentries = get_entries(lentry)
-            for entry in lentries:
-                entries_to_send.add(entry.hash)
+                for entry in lentries:
+                    entries_to_send.add(entry.hash)
         if section == self.CLOSE:
             self.close(writer)
             return

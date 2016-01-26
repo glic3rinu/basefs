@@ -3,8 +3,8 @@
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 . $DIR/utils.sh
 
-log_dir="$DIR/../env/logs/$1"
-ips_path="$DIR/../env/ips.txt"
+log_dir="$DIR/../logs/$1"
+ips_path="$DIR/../ips.txt"
 mkdir -p "$log_dir"
 logs=''
 

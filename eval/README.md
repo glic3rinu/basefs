@@ -1,27 +1,94 @@
 Network Evaluation
-=================
-We are going to evaluate the convergence properties and traffic usage of the gossip layer and the sync protocol. We define convergence as
-
-1. Convergence of Gossip layer and Sync protocol
-    * Convergence time
-    * small files vs big files
-    * Saturation limit of the gossip layer (number of messages)
-    * Convergence under NAT (too complex)
+==================
+We are going to evaluate the convergence properties and traffic characteristics usage of the gossip layer and the sync protocol. We define convergence as te time required for a log entry to spread to the entire cluster.
 
 
-2. Traffic usage of Gossip layer and Sync protocol
-    * How much overhead?
-    * Is the traffic usage well balance between nodes?
-    * Saturation limit of sync protocol (minimum time before adding too much overhead)
+First we will study the gossip layer and the sync protocol independently. We will see how network conditions like delay, packet loss, packet reordering or bandwith limitations affects the spread of log entries using the gossip layer, and we will see how the synchronization interval affects the convergence time and traffic usage of the synchronization protocol.
+
+assumptions: all writes com from the same node
 
 
-In two different environments:
+== Gossip Layer ==
 
-1. Controlled Virtual environment with Docker and TC
+=== Delay effects ===
+
+
+By default, Basefs is configured for using Serf WAN profile, which a ProbeTimeout of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge.
+
+https://github.com/hashicorp/memberlist/blob/master/config.go#L178
+
+TODO delay 1500
+
+=== Packet loss effects ===
+
+Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
+
+
+sustained packet loss convergence problems:
+
+
+
+=== Packet reordering effects ===
+
+Packet reordering does not have any significant effect on our experiments becuase messages are generated in bursts, and they will not be gossiped in order anyway.
+
+
+=== Bandwith limitations effects ===
+
+TODO bw 32kbps and 16kbps
+
+
+=== Conclusions ===
+
+Determine the max number of messages based on saturation obvservations
+
+== Sync Protocol ==
+
+=== Interval effects sync protocol ===
+
+
+=== Conclusions ===
+
+Determine the max number of messages based on saturation obvservations
+
+== BaseFS ==
+
+Now we study the BaseFS behaviour, gossip and sync protocols working in tandem in two different envirnoments. First using a simulated perfect environment using Docker, and then we replicate the experiment on COnfine testbed.
+
+=== Docker ===
+ Controlled Virtual environment with Docker and TC
     * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one level 2 hop between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.
 
-2. Ralistic environment on Confine testbed
-    * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
+==== Convergence Time ====
+
+write messages every 6 seconds and check convergence
+
+
+==== Traffic usage ====
+    * How much overhead?
+
+
+
+==== Traffic balance ====
+    * Is the traffic usage well balance between nodes?
+
+
+
+=== CommunityLab testbed ===
+ Ralistic environment on Confine testbed
+    * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All our nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
+
+==== Network characterization ====
+Because we run the experiment on a pre-existing and not configurable network topology we need to characterize and discover the propertires of the network to have a better understanding of the experimental results.
+
+==== Convergence Time ====
+
+==== Traffic usage ====
+
+==== Traffic balance ====
+
+
+
 
 
 /ETC Characterization
@@ -72,6 +139,7 @@ Read performance is also linearly affected by the number of patches that are req
 NOTES
 =====
 
+http://www.linuxfoundation.org/collaborate/workgroups/networking/netem
     tc -s qdisc ls dev eth0
 
 netem provides Network Emulation functionality for testing protocols by emulating the properties of wide area networks.

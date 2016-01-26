@@ -1,3 +1,6 @@
+# pip install -Iv https://pypi.python.org/packages/source/p/pyparsing/pyparsing-1.5.7.tar.gz#md5=9be0fcdcc595199c646ab317c1d9a709
+# python traceroure.py results/2016.01.21-18\:29\:13/*/traceroute
+
 import sys
 
 import matplotlib.pyplot as plt
@@ -10,13 +13,22 @@ latencies = []
 nhops = []
 origins = set()
 for filename in sys.argv[1:]:
+    if '/0/' in filename:
+        with open(filename, 'r') as handler:
+            mainip = handler.readline().split()[0]
+
+sys.stdout.write("Main IP: %s\n" % mainip)
+
+good_nodes = 0
+for filename in sys.argv[1:]:
     with open(filename, 'r') as handler:
         good = False
         for line in handler:
-            if '10.228.207.204' == line.split()[1]:
+            if mainip == line.split()[1]:
                 good = True
         if not good:
             continue
+        good_nodes += 1
         handler.seek(0)
         for line in handler:
             origin, target, latency = line.split()[:3]
@@ -31,13 +43,14 @@ for filename in sys.argv[1:]:
                 G.add_edge(origin, hop, weight=0.2, color='blue')
                 origin = hop
 
+sys.stdout.write("Good nodes: %s\n" % good_nodes)
 
 pos = nx.graphviz_layout(G, scale=3, prog='circo')
 
-origins.remove('10.228.207.204')
+origins.remove(mainip)
 # nodes
 nx.draw_networkx_nodes(G, pos, node_size=10, node_color='y')
-nx.draw_networkx_nodes(G, pos, nodelist=['10.228.207.204'], node_size=60, node_color='r')
+nx.draw_networkx_nodes(G, pos, nodelist=[mainip], node_size=60, node_color='r')
 nx.draw_networkx_nodes(G, pos, nodelist=origins, node_size=30,node_color='b')
 
 
