@@ -19,36 +19,40 @@ function deploy () {
 
 
 function run () {
+    IP=$1
     {
-        basefs resources -l -n fdf5:5351:1dfd:0:2000::1 -r > /tmp/resources
-    } &
-    {
+        sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" /usr/local/lib/python3.4/dist-packages/basefs/gossip.py
+        sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" /usr/local/lib/python3.4/dist-packages/basefs/sync.py
         basefs genkey
-        basefs get test 10.228.207.204 -f || basefs get test 147.83.168.171 -f
-        sleep 10
+        basefs get test $IP -f
+        basefs resources -l -n fdf5:5351:1dfd:0:2000::1 -r > /tmp/resources &
         mkdir -p /tmp/test
-        echo '' > /tmp/output
-        basefs run test -d -iface pub0 &>> /tmp/output
+        basefs run test -d -iface pub0 &> /tmp/output
     } &
 }
 
 
 function collect () {
-    offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'}|head -n1)
-    echo -n '' > /tmp/results
-    grep -ah "COMPLETED " /tmp/output | while read line; do
+    offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'} | head -n1)
+    grep -ah "COMPLETED " /tmp/output | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | sed "s/:.*2016-01/:2016-01/" | while read line; do
         linedate=$(echo "$line" | awk {'print $1 " " $2'})
-        linedate=$(date '+%s.%3N' -d "$linedate + $offset seconds")
-        entryhash=$(echo "$line" | awk {'print $6'})
-        echo "$linedate $entryhash" >> /tmp/results
-    done
+        fixeddate=$(date "+%Y-%m-%d %H:%M:%S,%3N" -d "$linedate + $offset seconds")
+        echo "$line" | sed "s/$linedate/$fixeddate/"
+    done > /tmp/results
+}
+
+
+function stope () {
+    killall basefs bash python python3 serf
 }
 
 
 if [[ $1 == '-d' ]]; then
     deploy
 elif [[ $1 == '-r' ]]; then
-    run
+    run $2
 elif [[ $1 == '-c' ]]; then
     collect
+elif [[ $1 == '-s' ]]; then
+    stope
 fi

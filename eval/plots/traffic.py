@@ -48,13 +48,13 @@ for filename in sys.argv[1:]:
         total_bytes[node] = [(prev[1], prev[3], prev[5])]
 
 
-with open('../datasets/traffic.csv', 'w') as handler:
+with open('datasets/traffic.csv', 'w') as handler:
     handler.write("Timestamp,Serf UDP pkts,Serf UDP bytes,Serf TCP pkts,Serf TCP bytes,Sync pkts,Sync bytes\n")
     for k, v in dataset.items():
         handler.write(','.join([k] + list(map(str, v)))+'\n')
 
 
-with open('../datasets/traffic-distribution.csv', 'w') as handler:
+with open('datasets/traffic-distribution.csv', 'w') as handler:
     handler.write("Node,Serf UDP bytes,Serf TCP bytes,Sync bytes\n")
     for k in sorted(total_bytes.keys()):
         v = [0, 0, 0]
@@ -68,7 +68,7 @@ r = textwrap.dedent("""\
     library("ggplot2")
     library("tidyr")
     library("reshape2")
-    xx = read.csv("../datasets/traffic.csv")
+    xx = read.csv("datasets/traffic.csv")
     traffic = gather(xx, "variable", "value", -Timestamp)
     traffic$Bytes = grepl("bytes", traffic$variable)
     traffic$Bytes = factor(ifelse(traffic$Bytes, "Bytes", "Packets"))
@@ -83,7 +83,7 @@ r = textwrap.dedent("""\
         scale_fill_tableau()
     ggsave("traffic.png", dpi=600)
     
-    xx = read.csv("../datasets/traffic-distribution.csv")
+    xx = read.csv("datasets/traffic-distribution.csv")
     traffic<- melt(xx, id.var="Node")
     ggplot(traffic, aes(x = Node, y = value, fill = variable)) + 
       geom_bar(stat = "identity")

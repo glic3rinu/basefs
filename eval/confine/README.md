@@ -36,7 +36,7 @@ mv good.ips.txt ips.txt
 
 # Internet selection
 rm logs/ping/*
-run ping -c 1 -w 4 8.8.8.8
+run ping -c 1 -w 4 $CONFINEIP
 grep -l ' 0% packet loss,' logs/ping/*|cut -d'/' -f3|cut -d'.' -f1|xargs -i sed -n {}p ips.txt | tee good.ips.txt
 mv good.ips.txt ips.txt
 
@@ -44,8 +44,7 @@ mv good.ips.txt ips.txt
 . ./utils.sh
 characterize
 
-python traceroure.py results/$(ls -tr results | tail -n1)/*/traceroute
-
+python traceroure.py results/$(find results/|grep trace|sort -n|tail -n1|cut -d'/' -f2)/*/traceroute
 
 
 ping -c 1 -w 3 \$IP &> /dev/null && HOP=\$(traceroute -w 1 -n \$IP | tail -n1 | awk {'print \$1'} 2> /dev/null)
@@ -58,29 +57,30 @@ run ../src/deploy
 ^C
 
 # Run the experiment
-ips=$(grep -h 'inet addr' logs/ifconfig/*|cut -d':' -f2|awk {'print $1'}|tr '\n' ',')
-ssh glic3rinu@calmisko.org "basefs bootstrap test -i $CONFINEIP,${ips::-1} -f"
-ssh glic3rinu@calmisko.org "basefs bootstrap test -i $CONFINEIP,10.159.1.124 -f"
-ssh root@calmisko.org
-openntpd -f /etc/ntpd.conf
-su - glic3rinu
-mkdir -p /tmp/{test,logs}
-basefs mount test /tmp/test/ -iface tap0 -d 2>&1 | tee /tmp/output -
+### start
+bash conv.sh
+### stop
+run bash experiment -s
+### collect
+run bash experiment -c
+get /tmp/{results,resources}
+rpath="results/$(ls -tr results/ | tail -n1)"
+rm -fr $BASEFSPATH/tmp/confine-conv/logs-1
+mkdir -p $BASEFSPATH/tmp/confine-conv/logs-1
+for num in $(ls "$rpath"); do
+    mv "$rpath/$num/results" $BASEFSPATH/tmp/confine-conv/logs-1/node-$num
+    mv "$rpath/$num/resources" $BASEFSPATH/tmp/confine-conv/logs-1/node-$num-resources
+done
+cp $BASEFSPATH/tmp/logs/node-0* $BASEFSPATH/tmp/confine-conv/logs-1/
 
 
+cd ../../tmp/
+readscenarios confine > /tmp/confine.csv
 
-run basefs get test 147.83.168.171 -f
-run mkdir /tmp/test
-run basefs run test /tmp/test -d &> /tmp/results &
-
-watch -n 1 tail -n 40 /tmp/results
-
-run ../src/experiment
 
 
 
 # Characterize latency and hops
-
 
 
 ^C

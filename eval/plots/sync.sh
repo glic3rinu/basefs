@@ -12,12 +12,12 @@ function graphscenarios () {
     grep -v '^1,\|^2,' /tmp/sync-traffic.csv > /tmp/sync-traffic.csv.tmp
     mv /tmp/sync-traffic.csv.tmp /tmp/sync-traffic.csv
     
-    cat << 'EOF' | Rscript -
+    cat << 'EOF' | Rscript --vanilla - $BASEFSPATH
     library(ggplot2)
     library(ggthemes)
     library(Hmisc)
 
-    scenarios = read.csv("/tmp/sync.csv")
+    scenarios = read.csv(paste0(args[1], "/eval/datasets/sync.csv"))
 
     plt1 <- ggplot(data=scenarios, aes(x=scenario, y=time))+
       geom_point(alpha=0.5) +
@@ -31,8 +31,7 @@ function graphscenarios () {
 #      scale_x_log10()
 #    ggsave("sync.png", dpi=600)
 
-    traffic = read.csv("/tmp/sync-traffic.csv")
-
+    traffic = read.csv(paste0(args[1], "/eval/datasets/sync-traffic.csv"))
 
     plt2 <- ggplot(data=traffic, aes(x=scenario, y=bps))+
       geom_point(alpha=0.5) +
@@ -81,17 +80,15 @@ function graphscenarios () {
         }
       }
     }
-    
-    png("sync-traffic.png",width=8,height=6,units="in",res=600)
+    png(paste0(args[1], "/eval/plots/sync-traffic.png"),width=8,height=6,units="in",res=600)
+    print(paste0("eog ", args[1], "/eval/plots/sync-traffic.png"))
     multiplot(plt1, plt2, cols=2);
     dev.off()
 
 EOF
+
 }
 
 
 
 graphscenarios
-
-
-

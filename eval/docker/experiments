@@ -126,62 +126,62 @@ function fullgossipconv () {
 function basefsloss () {
     sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" /root/basefs/basefs/gossip.py
     sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" /root/basefs/basefs/sync.py
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 10% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-10
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 20% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-20
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 30% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-30
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 40% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-40
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 50% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-50
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 60% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-60
-    conv 'sleep 5;
-        basefs genkey;
-        basefs get test ${docker_ip};
-        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
-        tc qdisc add dev eth0 root handle 1:0 netem loss 70% 25%;
-        mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-70
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 10% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-10
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 20% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-20
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 30% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-30
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 40% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-40
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 50% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-50
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 60% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-60
+#    conv 'sleep 5;
+#        basefs genkey;
+#        basefs get test ${docker_ip};
+#        basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+#        tc qdisc add dev eth0 root handle 1:0 netem loss 70% 25%;
+#        mkdir -p /tmp/test;
+#        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+#    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs-loss-70
     conv 'sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
@@ -331,7 +331,6 @@ function resourceusage () {
 }
 
 
-
 function basefsconv () {
     sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" /root/basefs/basefs/gossip.py
     sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" /root/basefs/basefs/sync.py
@@ -366,7 +365,7 @@ function basefsconv () {
             counter=$(($counter+1))
         done
     done
-    sleep
+    sleep 300
     kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
     sleep 1
     kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)

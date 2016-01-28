@@ -6,13 +6,14 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
 
 log_dir="$DIR/../logs/get"
+origin=$1
 results_dir="$DIR/../results/$(date +%Y.%m.%d-%H:%M:%S)"
 ips_path="$DIR/../ips.txt"
 mkdir -p "$log_dir"
 mkdir -p "$results_dir"
 logs=''
 
-origin=$1
+
 
 rm $log_dir/*
 counter=1
@@ -27,4 +28,6 @@ done < <(cat "$ips_path")
 
 echo "  ${bold}$counter operations running on the background."
 echo "  You can safely cancel this at any time ${normal}"
+echo "RESULTS DIR: $results_dir"
 taillogs $logs
+

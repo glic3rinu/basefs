@@ -7,6 +7,7 @@ First we will study the gossip layer and the sync protocol independently. We wil
 
 assumptions: all writes com from the same node
 
+Serf claims of convergense under packet loss does not hold
 
 == Gossip Layer ==
 

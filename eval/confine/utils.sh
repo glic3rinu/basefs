@@ -97,7 +97,7 @@ function characterize () {
                 if [[ \$? -eq 0 ]]; then
                     avg_latency=\$(echo "\$latency" | tail -n 1 | cut -d'/' -f5);
                     hops=\$(traceroute -w 1 -n \$ip | awk {'print \$2'} | grep -v 'to' | tr '\n' ' ');
-                    echo \$self \$ip \$avg_latency \$hops >> /tmp/traceroute;
+                    echo "\$self \$ip \$avg_latency \$hops" >> /tmp/traceroute;
                 fi;
             fi;
         done
