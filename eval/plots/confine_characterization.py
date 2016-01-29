@@ -1,6 +1,9 @@
+#!/usr/bin/python
+
 # pip install -Iv https://pypi.python.org/packages/source/p/pyparsing/pyparsing-1.5.7.tar.gz#md5=9be0fcdcc595199c646ab317c1d9a709
 # python traceroure.py results/2016.01.21-18\:29\:13/*/traceroute
 
+import os
 import copy
 import sys
 import matplotlib
@@ -10,21 +13,28 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+from scipy import stats
 
 G = nx.Graph()
+
+basefspath = os.getenv('BASEFSPATH')
 
 latencies = []
 nhops = []
 origins = set()
-for filename in sys.argv[1:]:
-    if '/0/' in filename:
-        with open(filename, 'r') as handler:
-            mainip = handler.readline().split()[0]
+
+trace_path = os.path.join(basefspath, 'eval/datasets/confine-traceroute')
+plot_path = os.path.join(basefspath, 'eval/plots')
+
+
+with open(os.path.join(trace_path, '0', 'traceroute'), 'r') as handler:
+    mainip = handler.readline().split()[0]
 
 print("Main IP: %s" % mainip)
 
 good_nodes = 0
-for filename in sys.argv[1:]:
+for node in os.listdir(trace_path):
+    filename = os.path.join(trace_path, str(node), 'traceroute')
     with open(filename, 'r') as handler:
         good = False
         for line in handler:
@@ -66,11 +76,11 @@ nx.draw_networkx_edges(G, pos)
 nx.draw_networkx_labels(G, pos, font_size=5, font_family='sans-serif')
 
 plt.axis('off')
-plt.savefig("weighted_graph_neato.png", dpi=300) # save as png
-print("Created weighted_graph_neato.png")
+weighted_graph_neato_path = os.path.join(plot_path, "weighted_graph_neato.png")
+plt.savefig(weighted_graph_neato_path, dpi=300) # save as png
+print("eog " + weighted_graph_neato_path)
 
 plt.clf()
-from scipy import stats
 latencies = sorted(latencies)
 density = stats.kde.gaussian_kde(latencies)
 plt.plot(latencies, density(latencies))
@@ -79,13 +89,15 @@ plt.ylabel('Density')
 plt.title('Latency Density')
 #plt.hist(latencies, bins=30) #np.logspace(0.01, 0.5, 50))
 #plt.gca().set_xscale("log")
-plt.savefig('latencies.png', dpi=300)
-print("Created latencies.png")
+latencies_path = os.path.join(plot_path, "latencies.png")
+plt.savefig(latencies_path, dpi=300)
+print("eog " + latencies_path)
 
 plt.clf()
 plt.hist(nhops, bins=15)
 plt.title('Hops per link')
 plt.ylabel('Number of links')
 plt.xlabel('Number of hops')
-plt.savefig('hops.png', dpi=300)
-print("Created hops.png")
+hops_path = os.path.join(plot_path, "hops.png")
+plt.savefig(hops_path, dpi=300)
+print("eog " + hops_path)

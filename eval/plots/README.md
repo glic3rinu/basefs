@@ -1,38 +1,42 @@
 
 ```bash
 rsync -avhP --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3/Dropbox/basefs root@calmisko.org:
+rsync -avhP --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3rinu/Dropbox/basefs /root
 
 rsync -avhP --exclude=__pycache__ root@calmisko.org:basefs/eval/datasets/ /home/glic3/Dropbox/basefs/eval/datasets/
+rsync -avhP --exclude=__pycache__ /root/basefs/eval/datasets/ /home/glic3rinu/Dropbox/basefs/eval/datasets/
 ```
 
 
 ```bash
-if [[ -e /home/glic3/Dropbox/basefs/ ]]; then
-    export BASEFSPATH=/home/glic3/Dropbox/basefs/
-else
-    export BASEFSPATH=/root/basefs/
-fi
-
-. $BASEFSPATH/eval/plots/read.sh
+. ../env.sh
 cd $BASEFSPATH/tmp
 
-# BaseFS convergence
-readscenarios basefseval > $BASEFSPATH/eval/datasets/basefs.csv 2> $BASEFSPATH/eval/basefs-completed.csv
-bash $BASEFSPATH/eval/plots/basefs.sh
-eog $BASEFSPATH/eval/plots/basefseval.png
-
-# Gossip convergence
+# Gossip Layer
 readscenarios gossip > $BASEFSPATH/eval/datasets/gossip.csv 2> $BASEFSPATH/eval/datasets/gossip-completed.csv
 readscenarios basefs > $BASEFSPATH/eval/datasets/basefs-loss.csv 2> $BASEFSPATH/eval/datasets/basefs-loss-completed.csv
-bash $BASEFSPATH/eval/plots/conv.sh
+$BASEFSPATH/eval/plots/conv.R
 
-# Sync Convergence
+# Sync Protocol
 readscenarios sync > $BASEFSPATH/eval/datasets/sync.csv
 readtotaltraffic sync > $BASEFSPATH/eval/datasets/sync-traffic.csv
-bash $BASEFSPATH/eval/plots/sync.sh
+$BASEFSPATH/eval/plots/sync.R
 
+# Confine Characterization
+$BASEFSPATH/eval/plots/confine_characterization.py
+
+# BaseFS convergence docker/confine
+readscenarios basefsdocker > $BASEFSPATH/eval/datasets/basefs-docker.csv
+readscenarios basefsconfine > $BASEFSPATH/eval/datasets/basefs-confine.csv
+$BASEFSPATH/eval/plots/basefs.R
+
+# Traffic usage/balance
+readtraffic basefsdocker/*/*-resources > $BASEFSPATH/eval/datasets/basefs-docker-traffic.csv 2> $BASEFSPATH/eval/datasets/basefs-docker-traffic-distribution.csv
+readtraffic basefsconfine/*/*-resources > $BASEFSPATH/eval/datasets/basefs-confine-traffic.csv 2> $BASEFSPATH/eval/datasets/basefs-confine-traffic-distribution.csv
+$BASEFSPATH/eval/plots/traffic.R
 
 # Perfomance
 readperformance > $BASEFSPATH/eval/datasets/performance.csv
-bash $BASEFSPATH/eval/plots/performance.sh
+$BASEFSPATH/eval/plots/performance.R
+
 ```

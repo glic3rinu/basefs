@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import time
 import sys
 import os
@@ -69,3 +71,4 @@ plt.title('/etc Compression Time')
 plt.savefig('etc_time.png', dpi=300)
 
 #print(json.dumps(results, indent=4))
+

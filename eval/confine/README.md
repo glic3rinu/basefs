@@ -12,20 +12,9 @@ git clone https://github.com/glic3rinu/basefs.git
 ```
 
 ```bash
-if [[ -e /home/glic3/Dropbox/basefs/ ]]; then
-    export BASEFSPATH=/home/glic3/Dropbox/basefs/
-    export CONFINEIP=$(ssh root@calmisko.org ifconfig tap0 | grep "inet addr:"|awk {'print $2'}|cut -d':' -f2)
-else
-    export BASEFSPATH=/root/basefs/
-    export CONFINEIP=$(ip addr|grep tap0|grep inet|sed -E "s#.* inet ([^/]+)/.*#\1#")
-fi
-export PYTHONPATH=$BASEFSPATH
-export PATH=$PATH:$(realpath $BASEFSPATH/eval/confine/src)
-[[ "$CONFINEIP" == "" ]] && echo "CONFINEIP not set"
+. ../env.sh
 cd $BASEFSPATH/eval/confine
-
 # Collect all the slivers IP addresses
-export SLICE_ID=2948
 getips | tee ips.txt
 
 # Public interface selection

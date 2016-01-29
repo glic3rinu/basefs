@@ -12,7 +12,7 @@ function readscenarios () {
     echo "scenario,size,messages,node,time,filename,completed"
     echo "scenario,size,messages,filename,completed" >&2
     name=${1:-"scenario"}
-    for scenario in $(ls -d ${name}-*); do
+    for scenario in $(ls -d ${name}-* 2> /dev/null || ls -d ${name}); do
         scenario_name=$(echo "$scenario" | sed "s/$name-//")
         for log in $(ls  -d $BASEFSPATH/tmp/$scenario/logs-*); do
             grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
@@ -62,7 +62,7 @@ function readtotaltraffic () {
 
 
 function readtraffic () {
-cat << 'EOF' | python 
+cat << 'EOF' | python3 - $@
 import os
 import re
 import statistics
@@ -70,12 +70,12 @@ import sys
 import tempfile
 import textwrap
 import subprocess
+import glob
 
 port = 18374
 serf_udp, serf_tcp, sync = 0, 2, 4
 dataset = {}
 total_bytes = {}
-
 
 for filename in sys.argv[1:]:
     with open(filename, 'r') as handler:
@@ -117,13 +117,12 @@ for k, v in dataset.items():
     sys.stdout.write(','.join([k] + list(map(str, v)))+'\n')
 
 
-sys.stdout.write("Node,Serf UDP bytes,Serf TCP bytes,Sync bytes\n")
+sys.stderr.write("Node,Serf UDP bytes,Serf TCP bytes,Sync bytes\n")
 for k in sorted(total_bytes.keys()):
     v = [0, 0, 0]
     for ix in (0, 1, 2):
-        v[ix] = map(statistics.mean, [b[ix] for b in total_bytes[k]])
-    sys.stdout.write(','.join([k] + list(map(str, v)))+'\n')
-
+        v[ix] = statistics.mean([b[ix] for b in total_bytes[k]])
+    sys.stderr.write(','.join([k] + list(map(str, v)))+'\n')
 
 EOF
 }
@@ -133,33 +132,33 @@ EOF
 function readperformance () {
     echo "fs,operation,round,time"
     num=1
-    grep real basefs-write | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/basefs-write | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "basefs,write,$num,$line";
         num=$(($num+1));
     done
     num=1
-    grep real basefs-read | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/basefs-read | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "basefs,read,$num,$line";
         num=$(($num+1));
     done
     num=1
-    grep real basefs-read2 | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/basefs-read2 | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "basefs,read-cached,$num,$line";
         num=$(($num+1));
     done
 
     num=1
-    grep real ext4-write | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/ext4-write | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "ext4,write,$num,$line";
         num=$(($num+1));
     done
     num=1
-    grep real ext4-read | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/ext4-read | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "ext4,read,$num,$line";
         num=$(($num+1));
     done
     num=1
-    grep real ext4-read2 | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
+    grep real perf/ext4-read2 | awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}' | while read line; do
         echo "ext4,read-cached,$num,$line";
         num=$(($num+1));
     done

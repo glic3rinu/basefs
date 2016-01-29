@@ -46,3 +46,4 @@ r = textwrap.dedent("""\
     ggsave("convergence.png", dpi=600)
     """)
 subprocess.Popen("echo '%s' | Rscript -" % r, shell=True)
+
