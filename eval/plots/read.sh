@@ -1,13 +1,5 @@
 #!/bin/bash
 
-if [[ -e /home/glic3/Dropbox/basefs/ ]]; then
-    export BASEFSPATH=/home/glic3/Dropbox/basefs/
-else
-    export BASEFSPATH=/root/basefs/
-fi
-export PYTHONPATH=$BASEFSPATH
-
-
 function readscenarios () {
     echo "scenario,size,messages,node,time,filename,completed"
     echo "scenario,size,messages,filename,completed" >&2

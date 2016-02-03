@@ -1,15 +1,6 @@
 #!/bin/bash
 
 
-if [[ -e /home/glic3/Dropbox/basefs/ ]]; then
-    export BASEFSPATH=/home/glic3/Dropbox/basefs/
-else
-    export BASEFSPATH=/root/basefs/
-fi
-export PYTHONPATH=$BASEFSPATH
-
-
-
 function build () {
     docker build -t basefs $BASEFSPATH
 }
@@ -133,5 +124,63 @@ function bcsv () {
                 echo ${line[2]},${node},$(echo $(date -d "${nodeline[1]:2} ${nodeline[2]} UTC" +'%s.%3N') $start | awk '{printf "%f", $1 - $2}')
             done
         done
+    done
+}
+
+
+function populate () {
+    basefs bootstrap test -i $CONFINEIP -f
+    basefs mount test /tmp/test -d > /dev/null 2> /tmp/testlog &
+    sleep 4
+    pid=$!
+    ones=0
+    twos=0
+    fours=0
+    sixteen=0
+    rounds=( 1 1 1 1 1 1 1 1 1 1 1 1 1 5 6 6 7 7 8 7 7 7 16 20 15 10 16 20 16 20 1 1 1 1 1 1 1 1 24 20 20 32 30 )
+    counter=0
+    while true; do
+        for i in ${rounds[@]}; do 
+            cat /dev/urandom | fold -w 700 | head -n $i > /tmp/t;
+            cp /tmp/t /tmp/test/gtestfile-1-$counter
+            sleep 0.1
+            messages=$(grep 'basefs.gossip: Sending [0-9]* block messages' /tmp/testlog | tail -n1 | sed -E "s/.*Sending ([0-9]+) block.*/\1/")
+            echo "$i, $messages"
+            e=true
+            if [[ $ones -lt 160 ]]; then
+                e=false
+                if [[ $messages -eq 1 ]]; then
+                    cp /tmp/t $BASEFSPATH/tmp/testpoint/testfile-1-$ones
+                    ones=$(($ones+1))
+                fi
+            fi
+            if [[ $twos -lt 40 ]]; then
+                e=false
+                if [[ $messages -eq 2 ]]; then
+                    cp /tmp/t $BASEFSPATH/tmp/testpoint/testfile-2-$twos
+                    twos=$(($twos+1))
+                fi
+            fi
+            if [[ $fours -lt 20 ]]; then
+                e=false
+                if [[ $messages -eq 4 ]]; then
+                    cp /tmp/t $BASEFSPATH/tmp/testpoint/testfile-4-$fours
+                    fours=$(($fours+1))
+                fi
+            fi
+            if [[ $sixteen -lt 20 ]]; then
+                e=false
+                if [[ $messages -eq 16 ]]; then
+                    cp /tmp/t $BASEFSPATH/tmp/testpoint/testfile-16-$sixteen
+                    sixteen=$(($sixteen+1))
+                fi
+            fi
+            counter=$(($counter+1))
+            if [[ $e == true ]]; then
+                kill $pid
+                exit
+            fi
+        done
+        echo $ones $twos $fours $sixteen
     done
 }

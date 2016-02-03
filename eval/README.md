@@ -56,6 +56,15 @@ Determine the max number of messages based on saturation obvservations
 
 Now we study the BaseFS behaviour, gossip and sync protocols working in tandem in two different envirnoments. First using a simulated perfect environment using Docker, and then we replicate the experiment on COnfine testbed.
 
+The generated workload consists of 560 writes separated by 3 seconds. The writes are crafted in order to generate predetermined amount of gossip packets, simulating a workload typical configuration management operations. We have erred on the side of more packets than those we believe will be acctually needed on real scenario, since configuration updates usually involves a really small amount of data that can easily fit into a single gossip message.
+
+0:     340 0.60
+1:     160 0.28
+2:      20 0.03
+4:      20 0.03
+16:     20 0.03
+total: 560 writes
+
 === Docker ===
  Controlled Virtual environment with Docker and TC
     * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one level 2 hop between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.

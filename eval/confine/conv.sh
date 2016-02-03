@@ -45,15 +45,40 @@ function runconfineexperiment () {
     echo "$(date) sleep 20" >> /tmp/eval_conv
     sleep 20
     repetitions=${2:-20}
-    rounds=( 0 0 1 0 0 0 0 2 1 4 16 1 0 0 1 0 0 1 1 0 0 0 1 1 0 0 0 0 )
+    rounds=( 0 0 1 16 0 0 0 0 2 1 4 1 0 0 1 0 0 1 1 0 0 0 1 1 0 0 0 0 )
     counter=0
+    ones=0
+    twos=0
+    fours=0
+    sixteens=0
     for i in $(seq 1 $repetitions); do
         echo "$(date) Repetition $i" >> /tmp/eval_conv
         sleep 10
         for j in ${rounds[@]}; do
             # CP and sleep for 6 seconds
-            echo "$(date) cp $BASEFSPATH/tmp/testpoint/testfile2-$j /tmp/test/testfile$counter-$i-$j" >> /tmp/eval_status
-            cp $BASEFSPATH/tmp/testpoint/testfile2-$j /tmp/test/testfile$counter-$i-$j
+            case $j in
+                0)
+                    origin=$BASEFSPATH/tmp/testpoint/testfile2-0
+                    ;;
+                1)
+                    origin=$BASEFSPATH/tmp/testpoint/testfile-1-$ones
+                    ones=$(($ones+1))
+                    ;;
+                2)
+                    origin=$BASEFSPATH/tmp/testpoint/testfile-2-$twos
+                    twos=$(($twos+1))
+                    ;;
+                4)
+                    origin=$BASEFSPATH/tmp/testpoint/testfile-4-$fours
+                    fours=$(($fours+1))
+                    ;;
+                16)
+                    origin=$BASEFSPATH/tmp/testpoint/testfile-16-$sixteens
+                    sixteens=$(($sixteens+1))
+                    ;;
+            esac
+            echo "$(date) cp $origin /tmp/test/testfile$counter-$i-$j" >> /tmp/eval_status
+            cp $origin /tmp/test/testfile$counter-$i-$j
             sleep 3
             uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $7'})
             echo "UID $uid" >> /tmp/eval_conv

@@ -10,10 +10,11 @@ do_graphs <- function (dataset, dataset_completed, var, name) {
     current <- dataset[grepl(var, dataset$scenario) | dataset$scenario=="baseline",]
     ggplot(data=current, aes(x=messages+1, y=time, color=factor(scenario))) +
       geom_point(alpha=0.5) +
-      stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.5) +
+      stat_summary(fun.data="mean_cl_boot", size=1, alpha=0.5) +
       scale_x_log10()
     
     ggsave(paste0(basefspath, "/eval/plots/", name, "-", var, ".png"), dpi=600)
+    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var, ".png"))
     
     current <- dataset_completed[grepl(var,dataset_completed$scenario) | dataset_completed$scenario=="baseline",]
     ggplot(data=current, aes(x=messages+1, y=completed, color=factor(scenario))) +

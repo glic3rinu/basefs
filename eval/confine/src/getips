@@ -4,7 +4,7 @@ import requests
 import json
 import os
 
-SLICE_ID=int(os.environ.get('SLICE_ID', 1514))
+SLICE_ID=int(os.environ.get('SLICE_ID', 2948))
 
 
 slice_req = requests.get('https://controller.community-lab.net/api/slices/%i' % SLICE_ID)
