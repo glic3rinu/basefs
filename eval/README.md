@@ -1,4 +1,17 @@
+# Evaluation
+
+BaseFS implementation has been extensively tested in multiple ways. In this section we present an evaluation of the BaseFS network properties and IO performance. For the validation of the Merkle DAG conflict resolution and permissions the reader can refere to the [unit and functional tests](https://github.com/glic3rinu/basefs/tree/master/basefs/tests) shiped with BaseFS source code.
+
+We have developed our own [test suit](https://github.com/glic3rinu/basefs/tree/master/eval) and all test scenarios have been fully automated for easily reproducability. The test suite is based on Docker containers and TC. Docker builds on top of the Linux kernel resource isolation features to provide operating-system-level virtualization, providing abstraction and automation. On the other hand, TC (Linux Traffic Control), is a shell utility that can be used for configuring the kernel network scheduler and shape the traffic characteristics at will, like packet loss and delay.
+
+It is also worth mentioning that we also have implemented a BaseFS [built-in profiler](https://github.com/glic3rinu/basefs/blob/master/basefs/management/resources.py), it keeps track of resource usage and other metrics like memory, CPU, network usage or context switches.
+
+
 # Network Evaluation
+
+The network evaluation is separated in three subsections. The first two are independent evaluations of the gossip layer and the sync protocol on a virtual environment using Docker and TC. By shaping the traffic we are able to see how differnet network conditions affects the convergence characteristics and traffic usage of both protocols. With that information we will be able to do an informed decission about the prefered values for `MAX_GOSSIPED_BLOCKS` and `SYNC_RUNNING_INTERVAL`. Then we will configure BaseFS and evaluate the behaviour of both protocols working togerther. BaseFS will be tested with a virtual environment with more ideal conditions and compared with the results of the same experiment using Community-Lab test.
+
+For all experiments we define a set of 30 nodes, we perform all writes on the same machine, and then we collect the time at with the other nodes have received all related messages.
 
 We are going to evaluate the convergence properties and traffic characteristics usage of the gossip layer and the sync protocol. We define convergence as te time required for a log entry to spread to the entire cluster.
 
@@ -10,6 +23,9 @@ assumptions: all writes com from the same node
 Serf claims of convergense under packet loss does not hold
 
 ## Gossip Layer
+
+For settings this experiment we have disabled the sync protocol and configured `max_gissiped_blocks` to an arbitrary large number, the only communications between basefs instances will be by means of the gossip layer.
+
 
 ### Delay effects
 
@@ -27,7 +43,8 @@ TODO delay 1500
 Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
 
 
-sustained packet loss convergence problems:
+TODO strech time and make the gossip layer converge
+sustained packet loss convergence problems: UDP messages are lost and Serf TCP sync has great difficulty of making the cluster converge on a reasonable amount of time. Probably given enough time all scenarios will finally converge.
 
 
 <img src="plots/gossip-loss.png" width="400">
@@ -42,23 +59,27 @@ Packet reordering does not have any significant effect on our experiments becuas
 ### Bandwith limitations effects
 
 
+
+TODO repeate 56 32kbps give it more time for final convergion. 
+Serf gossip protocol behaves decently under high constrained bandwith conditions. It is not until we reduce the traffic to 56kbps and generate a burst of 100 messages 
+
+
+
+
 <img src="plots/gossip-bw.png" width="400">
 <img src="plots/gossip-bw-completed.png" width="400">
-
-### Conclusions
-
-Determine the max number of messages based on saturation obvservations
 
 ## Sync Protocol
 
 ### Interval effects sync protocol
-<img src="plots/sync.png" width="400">
-
-### Conclusions
-
-Determine the max number of messages based on saturation obvservations
+<img src="plots/sync.png" width="800">
 
 ## BaseFS
+
+
+Define a realistic scenario, tune the max_gossiped_blocks and sync_interval to a reasonable values.
+
+
 
 Now we study the BaseFS behaviour, gossip and sync protocols working in tandem in two different envirnoments. First using a simulated perfect environment using Docker, and then we replicate the experiment on COnfine testbed.
 
