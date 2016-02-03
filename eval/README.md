@@ -1,4 +1,4 @@
-= Network Evaluation =
+# Network Evaluation
 
 We are going to evaluate the convergence properties and traffic characteristics usage of the gossip layer and the sync protocol. We define convergence as te time required for a log entry to spread to the entire cluster.
 
@@ -9,9 +9,9 @@ assumptions: all writes com from the same node
 
 Serf claims of convergense under packet loss does not hold
 
-== Gossip Layer ==
+## Gossip Layer
 
-=== Delay effects ===
+### Delay effects
 
 By default, Basefs is configured for using Serf WAN profile, which a ProbeTimeout of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge.
 
@@ -22,7 +22,7 @@ TODO delay 1500
 <img src="plots/gossip-delay.png" width="400">
 <img src="plots/gossip-delay-completed.png" width="400">
 
-=== Packet loss effects ===
+### Packet loss effects
 
 Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
 
@@ -34,31 +34,31 @@ sustained packet loss convergence problems:
 <img src="plots/gossip-loss-completed.png" width="400">
 
 
-=== Packet reordering effects ===
+### Packet reordering effects
 
 Packet reordering does not have any significant effect on our experiments becuase messages are generated in bursts, and they will not be gossiped in order anyway.
 <img src="plots/gossip-reorder.png" width="400">
 
-=== Bandwith limitations effects ===
+### Bandwith limitations effects
 
 
 <img src="plots/gossip-bw.png" width="400">
 <img src="plots/gossip-bw-completed.png" width="400">
 
-=== Conclusions ===
+### Conclusions
 
 Determine the max number of messages based on saturation obvservations
 
-== Sync Protocol ==
+## Sync Protocol
 
-=== Interval effects sync protocol ===
+### Interval effects sync protocol
 <img src="plots/sync.png" width="400">
 
-=== Conclusions ===
+### Conclusions
 
 Determine the max number of messages based on saturation obvservations
 
-== BaseFS ==
+## BaseFS
 
 Now we study the BaseFS behaviour, gossip and sync protocols working in tandem in two different envirnoments. First using a simulated perfect environment using Docker, and then we replicate the experiment on COnfine testbed.
 
@@ -71,35 +71,35 @@ The generated workload consists of 560 writes separated by 3 seconds. The writes
 16:     20 0.03
 total: 560 writes
 
-=== Docker ===
+### Docker
  Controlled Virtual environment with Docker and TC
     * Each node runs on a Debian 6 Docker container with a virtual ethernet device. Nodes are connected with one level 2 hop between them. This is a controlled environment and we use Linux traffic control to emulate variable delay, packet loos, duplication and re-ordering, in order to understand its effects on BaseFS's communication protocols.
 
-==== Convergence Time ====
+#### Convergence Time
 
 <img src="plots/basefs-docker.png" width="400">
 
 
-==== Packet loss =====
+#### Packet loss
 
 <img src="plots/basefs-loss.png" width="400">
 <img src="plots/basefs-loss-completed.png" width="400">
 
-==== Traffic usage ====
+#### Traffic usage
     * How much overhead?
 <img src="plots/basefs-docker-traffic.png" width="400">
 
 
-==== Traffic balance ====
+#### Traffic balance
     * Is the traffic usage well balance between nodes?
 
 <img src="plots/basefs-docker-traffic-distribution.png" width="400">
 
-=== CommunityLab testbed ===
+### CommunityLab testbed
  Ralistic environment on Confine testbed
     * Each BaseFS node runs on a Debian LXC container on top of a Confine Node. Confine Nodes are heterogeneous devices and resources are share with other ongoing experiments, which makes for a very inconsistent performance characteristics. All our nodes are connected using the native IP network provided by different community networks where Confine nodes are deployed. Since we don't have much control of the underlying infraestructure we provide a network characterization to better understand the environment where the experiment is taking place.
 
-==== Network characterization ====
+#### Network characterization
 Because we run the experiment on a pre-existing and not configurable network topology we need to characterize and discover the propertires of the network to have a better understanding of the experimental results.
 
 <img src="plots/hops.png" width="400">
@@ -107,20 +107,19 @@ Because we run the experiment on a pre-existing and not configurable network top
 <img src="plots/weighted_graph_neato.png" width="400">
 <img src="plots/weighted_graph_neato_cluster.png" width="400">
 
-==== Convergence Time ====
+#### Convergence Time
 <img src="plots/basefs-confine.png" width="400">
 
-==== Traffic usage ====
+#### Traffic usage
 
 <img src="plots/basefs-confine-traffic.png" width="400">
-==== Traffic balance ====
+#### Traffic balance
 <img src="plots/basefs-confine-traffic-distribution.png" width="400">
 
 
 
 
-/ETC Characterization
-=====================
+# /ETC Characterization
 Is the gossip layer a good transport protocol for configuration replication? Is BaseFS Merkle DAG consensus strategy effective enough for solving configuration conflicts?
 
 1. How many Gossip packets (512b) we will need?
@@ -136,8 +135,8 @@ BSDIFF4 produces very space-efficient patches
 
 In order to understand the read and write perfomance characteristics we compare BaseFS with a more traditional and popular file system (EXT4). This experiment shows how file updates affects read/write completion time. The experiemnt consists on copying up to 30 times the entire content of the `/etc/` root directoy (files, directories and simbolic links). The idea is to put a lot of stress on to the weakes performance points of our BaseFS implementation; the view and the binary difference computations.
 
-# TODO meassure context switches: use perf: sudo perf stat -a echo Hi;
-# TODO why content cache is not used during writes?
+TODO meassure context switches: use perf: sudo perf stat -a echo Hi;
+TODO why content cache is not used during writes?
 
 Read/write performance compared to traditional filesystems (ext4) [script](docker/performance.sh)
 
@@ -145,7 +144,7 @@ Read/write performance compared to traditional filesystems (ext4) [script](docke
 bash experiment 2
 bash performance.sh
 ```
-#### Write performance
+### Write performance
 <img src="plots/write_performance.png" width="400">
 
 Two costly operations:
@@ -158,7 +157,7 @@ Cache invalidation is a hard problem to takle and its effectively limiting what 
 We have made the choice of using BSDIFF4 binary deltas on the grounds that write-intensive workloads are not expected for a cluster configuration tool and a faster convergence time (less messages to gossip) is a more desirable characteristic. 
 
 
-#### Read performance
+### Read performance
 <img src="plots/read_performance.png" width="400">
 
 Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
