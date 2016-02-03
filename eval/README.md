@@ -20,6 +20,9 @@ https://github.com/hashicorp/memberlist/blob/master/config.go#L178
 
 TODO delay 1500
 
+<img src="plots/gossip-delay.png" width="400">
+<img src="plots/gossip-completed.png" width="400">
+
 === Packet loss effects ===
 
 Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
@@ -28,16 +31,20 @@ Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messa
 sustained packet loss convergence problems:
 
 
+<img src="plots/gossip-loss.png" width="400">
+<img src="plots/gossip-loss.png" width="400">
+
 
 === Packet reordering effects ===
 
 Packet reordering does not have any significant effect on our experiments becuase messages are generated in bursts, and they will not be gossiped in order anyway.
-
+<img src="plots/gossip-reorder.png" width="400">
 
 === Bandwith limitations effects ===
 
-TODO bw 32kbps and 16kbps
 
+<img src="plots/gossip-bw.png" width="400">
+<img src="plots/gossip-bw-completed.png" width="400">
 
 === Conclusions ===
 
@@ -46,7 +53,7 @@ Determine the max number of messages based on saturation obvservations
 == Sync Protocol ==
 
 === Interval effects sync protocol ===
-
+<img src="plots/sync.png" width="400">
 
 === Conclusions ===
 
@@ -71,18 +78,23 @@ total: 560 writes
 
 ==== Convergence Time ====
 
-write messages every 6 seconds and check convergence
+<img src="plots/basefs-docker.png" width="400">
 
+
+==== Packet loss =====
+
+<img src="plots/basefs-loss.png" width="400">
+<img src="plots/basefs-loss-completed.png" width="400">
 
 ==== Traffic usage ====
     * How much overhead?
-
+<img src="plots/basefs-docker-traffic.png" width="400">
 
 
 ==== Traffic balance ====
     * Is the traffic usage well balance between nodes?
 
-
+<img src="plots/basefs-docker-traffic-distribution.png" width="400">
 
 === CommunityLab testbed ===
  Ralistic environment on Confine testbed
@@ -91,12 +103,19 @@ write messages every 6 seconds and check convergence
 ==== Network characterization ====
 Because we run the experiment on a pre-existing and not configurable network topology we need to characterize and discover the propertires of the network to have a better understanding of the experimental results.
 
+<img src="plots/hops.png" width="400">
+<img src="plots/latencies.png" width="400">
+<img src="plots/weighted_graph_neato.png" width="400">
+<img src="plots/weighted_graph_neato_cluster.png" width="400">
+
 ==== Convergence Time ====
+<img src="plots/basefs-confine.png" width="400">
 
 ==== Traffic usage ====
 
+<img src="plots/basefs-confine-traffic.png" width="400">
 ==== Traffic balance ====
-
+<img src="plots/basefs-confine-traffic-distribution.png" width="400">
 
 
 
@@ -128,7 +147,7 @@ bash experiment 2
 bash performance.sh
 ```
 #### Write performance
-<img src="docker/write_performance.png" width="400">
+<img src="plots/write_performance.png" width="400">
 
 Two costly operations:
     compute the view
@@ -141,7 +160,7 @@ We have made the choice of using BSDIFF4 binary deltas on the grounds that write
 
 
 #### Read performance
-<img src="docker/read_performance.png" width="400">
+<img src="plots/read_performance.png" width="400">
 
 Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
 
