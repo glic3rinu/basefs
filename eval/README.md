@@ -1,5 +1,5 @@
-Network Evaluation
-==================
+= Network Evaluation =
+
 We are going to evaluate the convergence properties and traffic characteristics usage of the gossip layer and the sync protocol. We define convergence as te time required for a log entry to spread to the entire cluster.
 
 
@@ -13,7 +13,6 @@ Serf claims of convergense under packet loss does not hold
 
 === Delay effects ===
 
-
 By default, Basefs is configured for using Serf WAN profile, which a ProbeTimeout of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge.
 
 https://github.com/hashicorp/memberlist/blob/master/config.go#L178
@@ -21,7 +20,7 @@ https://github.com/hashicorp/memberlist/blob/master/config.go#L178
 TODO delay 1500
 
 <img src="plots/gossip-delay.png" width="400">
-<img src="plots/gossip-completed.png" width="400">
+<img src="plots/gossip-delay-completed.png" width="400">
 
 === Packet loss effects ===
 
@@ -32,7 +31,7 @@ sustained packet loss convergence problems:
 
 
 <img src="plots/gossip-loss.png" width="400">
-<img src="plots/gossip-loss.png" width="400">
+<img src="plots/gossip-loss-completed.png" width="400">
 
 
 === Packet reordering effects ===
@@ -132,8 +131,8 @@ BSDIFF4 produces very space-efficient patches
 
 2. How many conflicts can we expect?
 
-File Operations Performance
-===========================
+= File Operations Performance =
+
 
 In order to understand the read and write perfomance characteristics we compare BaseFS with a more traditional and popular file system (EXT4). This experiment shows how file updates affects read/write completion time. The experiemnt consists on copying up to 30 times the entire content of the `/etc/` root directoy (files, directories and simbolic links). The idea is to put a lot of stress on to the weakes performance points of our BaseFS implementation; the view and the binary difference computations.
 
@@ -165,8 +164,8 @@ We have made the choice of using BSDIFF4 binary deltas on the grounds that write
 Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
 
 
-NOTES
-=====
+= NOTES = 
+
 
 http://www.linuxfoundation.org/collaborate/workgroups/networking/netem
     tc -s qdisc ls dev eth0
