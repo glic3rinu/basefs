@@ -49,8 +49,8 @@ Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 
 Serf perform surprisingly well under very large delays. 
 
-<img src="plots/gossip-delay.png" width="500">
-<img src="plots/gossip-delay-completed.png" width="500">
+<img src="plots/gossip-delay.png" width="450">
+<img src="plots/gossip-delay-completed.png" width="450">
 
 ### Packet loss effects
 
@@ -68,8 +68,8 @@ memberlist: Failed to receive remote state: read tcp 172.17.0.15:57790: i/o time
 serf: attempting reconnect to 0242ac11001a-2f526234b0ed 172.17.0.26:18374
 
 
-<img src="plots/gossip-loss.png" width="500">
-<img src="plots/gossip-loss-completed.png" width="500">
+<img src="plots/gossip-loss.png" width="450">
+<img src="plots/gossip-loss-completed.png" width="450">
 
 
 `netem loss 70% 25%` 
@@ -106,8 +106,8 @@ Serf gossip protocol behaves decently under high constrained bandwith conditions
 * burst, also known as buffer or maxburst. Size of the bucket, in bytes. This is the maximum amount of bytes that tokens can be available for instantaneously. In general, larger shaping rates require a larger buffer. For 10mbit/s on Intel, you need at least 10kbyte buffer if you want to reach your configured rate!
  https://en.wikipedia.org/wiki/Token_bucket
 * limit or latency Limit is the number of bytes that can be queued waiting for tokens to become available. latency parameter, which specifies the maximum amount of time a packet can sit in the TBF
-<img src="plots/gossip-bw.png" width="500">
-<img src="plots/gossip-bw-completed.png" width="500">
+<img src="plots/gossip-bw.png" width="450">
+<img src="plots/gossip-bw-completed.png" width="450">
 
 ## Sync Protocol
 
@@ -218,7 +218,7 @@ BaseFS makes extensive use of concurrency including processes, threads and an ev
 
 
 ### Write performance
-<img src="plots/write_performance.png" width="400">
+<img src="plots/write_performance.png" width="600">
 
 Two costly operations:
     compute the view
@@ -231,7 +231,7 @@ We have made the choice of using BSDIFF4 binary deltas on the grounds that write
 
 
 ### Read performance
-<img src="plots/read_performance.png" width="400">
+<img src="plots/read_performance.png" width="600">
 
 Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
 
