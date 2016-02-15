@@ -46,8 +46,8 @@ memberlist: Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 memberlist: Push/Pull with 0242ac11000c-933a0c4aa9ca failed: Reading remote state failed: read tcp 172.17.0.12:18374: i/o timeout
 Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 
-<img src="plots/gossip-delay.png" width="400">
-<img src="plots/gossip-delay-completed.png" width="400">
+<img src="plots/gossip-delay.png" width="500">
+<img src="plots/gossip-delay-completed.png" width="500">
 
 ### Packet loss effects
 
