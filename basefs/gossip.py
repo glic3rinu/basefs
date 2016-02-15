@@ -14,7 +14,6 @@ import traceback
 import zlib
 
 from serfclient import client, connection
-
 from basefs import utils, exceptions
 from basefs.logs import LogEntry, Block
 from basefs.state import BlockState
@@ -270,14 +269,16 @@ def run_client(view, port, members, config=None):
     logger.debug("Serf client conneting to with 127.0.0.1:%i", port)
     
     def get_joined(serf):
-        return set([
-            '%s:%i' % (member[b'Addr'].decode(), member[b'Port'])
-            for member in serf.members().body[b'Members']
-            # if member[b'Name'].decode() != serf.hostname
-        ])
+        try:
+            members = serf.members().body[b'Members']
+        except KeyError:
+            return set()
+        else:
+            return set(['%s:%i' % (member[b'Addr'].decode(), member[b'Port']) for member in members])
     members = set(members)
     def join():
         serf = SerfClient(view.log, blockstate, port=port, config=config, timeout=5)
+        retries = 3
         while True:
             try:
                 joined = get_joined(serf)
@@ -295,6 +296,8 @@ def run_client(view, port, members, config=None):
                             counter += serf.join(member).body[b'Num']
                         except connection.SerfTimeout:
                             logger.warning("Member %s is unreachable.", member)
+                        except KeyError:
+                            pass
                         else:
                             joined = get_joined(serf)
                             if len(joined) >= 2:
@@ -305,8 +308,11 @@ def run_client(view, port, members, config=None):
                         logger.warning("Running alone, couldn't join with anyone. Retrying in 10 seconds ...")
                         time.sleep(10)
             except connection.SerfConnectionError:
-                logger.info('Shutting down serf client.')
-                return
+                if retries <= 0:
+                    logger.info('Shutting down serf client.')
+                    time.sleep(1)
+                    return
+                retries -= 1
             except Exception as exc:
                 logger.error(traceback.format_exc())
             time.sleep(JOIN_INTERVAL)
@@ -319,12 +325,22 @@ def run_client(view, port, members, config=None):
 
 def run(config, view, ip, port, hostname, join):
     serf_agent = run_agent(ip, port, hostname)
-    try:
-        serf = run_client(view, port+1, join or [], config=config)
-    except:
-        serf_agent.stop()
-        raise
-    return serf, serf_agent
+    retry = 4
+    while True:
+        try:
+            serf = run_client(view, port+1, join or [], config=config)
+        except connection.SerfConnectionError as e:
+            retry =- 1
+            time.sleep(1)
+            if retry < 0:
+                serf_agent.stop()
+                raise e
+            exception = e
+        except:
+            serf_agent.stop()
+            raise
+        else:
+            return serf, serf_agent
 
 
 # MokeyPatch serfclient.connection

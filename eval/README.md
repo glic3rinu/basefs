@@ -1,75 +1,116 @@
 # Evaluation
 
-BaseFS implementation has been extensively tested in multiple ways. In this section we present an evaluation of the BaseFS network properties and IO performance. For the validation of the Merkle DAG conflict resolution and permissions the reader can refere to the [unit and functional tests](https://github.com/glic3rinu/basefs/tree/master/basefs/tests) shiped with BaseFS source code.
+In this section we present an evaluation of the BaseFS network properties and IO performance. For the validation of the Merkle DAG conflict resolution and permissions the reader can refere to the [unit and functional tests](https://github.com/glic3rinu/basefs/tree/master/basefs/tests) shiped with BaseFS source code.
 
-We have developed our own [test suit](https://github.com/glic3rinu/basefs/tree/master/eval) and all test scenarios have been fully automated for easily reproducability. The test suite is based on Docker containers and TC. Docker builds on top of the Linux kernel resource isolation features to provide operating-system-level virtualization, providing abstraction and automation. On the other hand, TC (Linux Traffic Control), is a shell utility that can be used for configuring the kernel network scheduler and shape the traffic characteristics at will, like packet loss and delay.
 
-It is also worth mentioning that we also have implemented a BaseFS [built-in profiler](https://github.com/glic3rinu/basefs/blob/master/basefs/management/resources.py), it keeps track of resource usage and other metrics like memory, CPU, network usage or context switches.
+All test scenarios have been fully automated for easily reproducability. For that we have developed our own [test suit](https://github.com/glic3rinu/basefs/tree/master/eval). The test suite has support for virtual environments based on Docker containers and TC, as well as support for Community-Lab testbed. Docker builds on top of the Linux kernel resource isolation features to provide operating-system-level virtualization. On the other hand, TC (Linux Traffic Control), is a shell utility that can be used for configuring the kernel network scheduler and shape the traffic characteristics at will, like packet loss and delay. Community-Lab is Community Netwotk Testbed by the CONFINE project that provides a global facility for experimentation with network technologies and services for community networks. Support for deploying, orchestrating and collecting experimental data on Community-Lab is provided by utilities written in Bash and Python, using concurrent [multiplexed](https://en.wikibooks.org/wiki/OpenSSH/Cookbook/Multiplexing) SSH sessions underneeth.
+
+It is also worth mentioning that BaseFS has a [built-in profiler](https://github.com/glic3rinu/basefs/blob/master/basefs/management/resources.py) that keeps track of resource usage and other metrics like memory, CPU, network usage or context switches.
 
 
 # Network Evaluation
 
-The network evaluation is separated in three subsections. The first two are independent evaluations of the gossip layer and the sync protocol on a virtual environment using Docker and TC. By shaping the traffic we are able to see how differnet network conditions affects the convergence characteristics and traffic usage of both protocols. With that information we will be able to do an informed decission about the prefered values for `MAX_GOSSIPED_BLOCKS` and `SYNC_RUNNING_INTERVAL`. Then we will configure BaseFS and evaluate the behaviour of both protocols working togerther. BaseFS will be tested with a virtual environment with more ideal conditions and compared with the results of the same experiment using Community-Lab test.
+The network evaluation is separated into three main phases. The first two are independent evaluations of the *gossip layer* and the *sync protocol* on a virtual environment using Docker and TC. By shaping the traffic we are able to see how differnet network conditions affect the convergence characteristics and traffic usage of both protocols. With that information we will move to the next phase and make an informed decission about the prefered values for `MAX_BLOCK_MESSAGES` and `FULL_SYNC_INTERVAL`. Then we will evaluate the behaviour of both protocols working togerther. In this phase, BaseFS will be additionally tested on Community-Lab.
 
-For all experiments we define a set of 30 nodes, we perform all writes on the same machine, and then we collect the time at with the other nodes have received all related messages.
+Each experiment is performed on a cluster of 30 nodes. For each experiment a new *BaseFS log* is bootstraped. Nodes get and mount this freshly created BaseFS filesystem. We leave a few seconds for the cluster members to find each other. We simulate configuration updates by copying a set of pre-created files into one of the nodes BaseFS mounted partition. Then we meassure the time it takes for the configuration file to propagate to the rest of the cluster. The test files are the same on all experiments, so the results are comparable. We monitor the number of converged nodes in real time, so the experiment can advance as soon as all nodes have received the updates. We define a maximum waitting time of 100 minutes between files, with an additional maximum of 150 minuts at the end of each experiment.
 
-We are going to evaluate the convergence properties and traffic characteristics usage of the gossip layer and the sync protocol. We define convergence as te time required for a log entry to spread to the entire cluster.
-
-
-First we will study the gossip layer and the sync protocol independently. We will see how network conditions like delay, packet loss, packet reordering or bandwith limitations affects the spread of log entries using the gossip layer, and we will see how the synchronization interval affects the convergence time and traffic usage of the synchronization protocol.
-
-assumptions: all writes com from the same node
-
-Serf claims of convergense under packet loss does not hold
 
 ## Gossip Layer
 
-For settings this experiment we have disabled the sync protocol and configured `max_gissiped_blocks` to an arbitrary large number, the only communications between basefs instances will be by means of the gossip layer.
+For the gossip layer experiments we have disabled the sync protocol and configured `MAX_BLOCK_MESSAGES` to an arbitrary large number, enssuring that the only communications between BaseFS nodes will be by means of the gossip layer. We will see how network conditions like delay, packet loss, packet reordering or bandwith limitations affects the convergence time of the cluster. We define convergence as te time required for a log entry and its related blocks to spread to the entire cluster.
 
+Serf WAN
+```golang
+conf.TCPTimeout = 30 * time.Second
+conf.SuspicionMult = 6
+conf.PushPullInterval = 60 * time.Second
+conf.ProbeTimeout = 3 * time.Second
+conf.ProbeInterval = 5 * time.Second
+conf.GossipNodes = 4 // Gossip less frequently, but to an additional node
+conf.GossipInterval = 500 * time.Millisecond
+```
 
 ### Delay effects
 
-By default, Basefs is configured for using Serf WAN profile, which a ProbeTimeout of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge.
+TC netem discipline provides Network Emulation functionality for testing protocols by emulating the properties of wide area networks. Typically, the delay in a network is not uniform. It is more common to use a something like a normal distribution to describe the variation in delay. We use a mean delay +- 20% For example:
+
+`netem delay 100ms 20ms distribution normal`
+
+Serf is configured to use the *WAN profile*. This means that it uses a `ProbeTimeout` of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge. This is further confirmed by looked at Serf debugging messages, we start to get some `Marking 0242ac110014-8ab678bdbfa1 as failed, suspect timeout reached` from delay mean starting from 1280ms.
 
 https://github.com/hashicorp/memberlist/blob/master/config.go#L178
 
-TODO delay 1500
+this is where the limitations of the gossip protocol start to show up
+
+memberlist: Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
+memberlist: Push/Pull with 0242ac11000c-933a0c4aa9ca failed: Reading remote state failed: read tcp 172.17.0.12:18374: i/o timeout
+Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 
 <img src="plots/gossip-delay.png" width="400">
 <img src="plots/gossip-delay-completed.png" width="400">
 
 ### Packet loss effects
 
-Serf WAN profile is configured with GossipNodes of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
+Serf WAN profile is configured with `GossipNodes` of 4 nodes. Because gossip messages are transported over UDP, without acknowledgment of received data, packet loss will have a large impact on the convergence time of the gossip layer. Under significant packet loss scenarios, Serf full sync TCP protocol will have the job of delivering most of the messages. Under heavy packet loss conditions convergence will be extremly difficult because of the added problem of detecting nodes as failing.
 
 
 TODO strech time and make the gossip layer converge
 sustained packet loss convergence problems: UDP messages are lost and Serf TCP sync has great difficulty of making the cluster converge on a reasonable amount of time. Probably given enough time all scenarios will finally converge.
 
 
+memberlist: Suspect 001b212c68e0-bestia has failed, no acks received
+memberlist: Push/Pull with 001b212c68e0-bestia failed: write tcp 172.17.0.1:18374: i/o timeout
+memberlist: Marking 001b212c68e0-bestia as failed, suspect timeout reached
+memberlist: Failed to receive remote state: read tcp 172.17.0.15:57790: i/o timeout
+serf: attempting reconnect to 0242ac11001a-2f526234b0ed 172.17.0.26:18374
+
+
 <img src="plots/gossip-loss.png" width="400">
 <img src="plots/gossip-loss-completed.png" width="400">
 
 
+`netem loss 70% 25%` 
+
+An optional correlation may also be added. This causes the random number generator to be less random and can be used to emulate packet burst losses.
+This will cause 0.3% of packets to be lost, and each successive probability depends by a quarter on the last one.
+Probn = .25 * Probn-1 + .75 * Random
+
 ### Packet reordering effects
 
-Packet reordering does not have any significant effect on our experiments becuase messages are generated in bursts, and they will not be gossiped in order anyway.
+Packet reordering happens naturally during the execution of a gossip protocol; nodes are expected to receive messages from different nodes at different order. This is why our simulated packet reordering has no effect on the convergence time of the gossip layer.
+
 <img src="plots/gossip-reorder.png" width="400">
+
 
 ### Bandwith limitations effects
 
 
+For rate control we use HTB queueing dicipline, becuase of its simplicity. With `htb rate 32kbit` we define a maximum rate of 32kbps. Things to consider is 
 
+
+The results are consistent from what is expected from Serf. Using the [simulator](https://www.serfdom.io/docs/internals/simulator.html) with [WAN parameters](https://github.com/hashicorp/memberlist/blob/master/config.go#L196) Gossip Fanout of 4, Gossip Interval of 0.5 seconds and a number of 30 nodes, we get an estimated max bandwidth: 175 kbps/node
+
+Received event: member-failed
+Suspect 0242ac110012-e98725c7c319 has failed, no acks received
+ 
 TODO repeate 56 32kbps give it more time for final convergion. 
 Serf gossip protocol behaves decently under high constrained bandwith conditions. It is not until we reduce the traffic to 56kbps and generate a burst of 100 messages 
 
 
-
-
+ There is no rate control built-in to the netem discipline, instead use one of the other disciplines that does do rate control. In this example, we use Token Bucket Filter (TBF) to limit output.
+ 50 packets buffer (seems to be the deafult, 75000bytes, )
+ 
+* burst, also known as buffer or maxburst. Size of the bucket, in bytes. This is the maximum amount of bytes that tokens can be available for instantaneously. In general, larger shaping rates require a larger buffer. For 10mbit/s on Intel, you need at least 10kbyte buffer if you want to reach your configured rate!
+ https://en.wikipedia.org/wiki/Token_bucket
+* limit or latency Limit is the number of bytes that can be queued waiting for tokens to become available. latency parameter, which specifies the maximum amount of time a packet can sit in the TBF
 <img src="plots/gossip-bw.png" width="400">
 <img src="plots/gossip-bw-completed.png" width="400">
 
 ## Sync Protocol
+
+
+The key characteristic for the sync protocol is how the synchronization interval affects the convergence time and traffic usage of the synchronization protocol
+
 
 ### Interval effects sync protocol
 <img src="plots/sync.png" width="800">
@@ -77,7 +118,7 @@ Serf gossip protocol behaves decently under high constrained bandwith conditions
 ## BaseFS
 
 
-Define a realistic scenario, tune the max_gossiped_blocks and sync_interval to a reasonable values.
+Define a realistic scenario, tune the `MAX_BLOCK_MESSAGES` and `FULL_SYNC_INTERVAL` to a reasonable values.
 
 
 
@@ -103,6 +144,7 @@ total: 560 writes
 
 #### Packet loss
 
+*Sync protocol depends on the gossip layer for membership* if members are reported as failed by serf the sync protocol will not contact them.
 <img src="plots/basefs-loss.png" width="400">
 <img src="plots/basefs-loss-completed.png" width="400">
 
@@ -190,30 +232,6 @@ Read performance is also linearly affected by the number of patches that are req
 http://www.linuxfoundation.org/collaborate/workgroups/networking/netem
     tc -s qdisc ls dev eth0
 
-netem provides Network Emulation functionality for testing protocols by emulating the properties of wide area networks.
 
-Delay
------
-Typically, the delay in a network is not uniform. It is more common to use a something like a normal distribution to describe the variation in delay. The netem discipline can take a table to specify a non-uniform distribution.
+[WARN] serf: Event queue depth: 797
 
-100ms ± 20ms
-
-Reorder
--------
-In this example, 25% of packets (with a correlation of 50%) will get sent immediately, others will be delayed by 10ms.
-tc qdisc change dev eth0 root netem delay 10ms reorder 25% 50%
-
-Packet loss
------------
-An optional correlation may also be added. This causes the random number generator to be less random and can be used to emulate packet burst losses.
-This will cause 0.3% of packets to be lost, and each successive probability depends by a quarter on the last one.
-Probn = .25 * Probn-1 + .75 * Random
-
-Bandwidth
---------
- There is no rate control built-in to the netem discipline, instead use one of the other disciplines that does do rate control. In this example, we use Token Bucket Filter (TBF) to limit output.
- 50 packets buffer (seems to be the deafult, 75000bytes, )
- 
-* burst, also known as buffer or maxburst. Size of the bucket, in bytes. This is the maximum amount of bytes that tokens can be available for instantaneously. In general, larger shaping rates require a larger buffer. For 10mbit/s on Intel, you need at least 10kbyte buffer if you want to reach your configured rate!
- https://en.wikipedia.org/wiki/Token_bucket
-* limit or latency Limit is the number of bytes that can be queued waiting for tokens to become available. latency parameter, which specifies the maximum amount of time a packet can sit in the TBF

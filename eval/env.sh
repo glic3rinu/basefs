@@ -19,3 +19,4 @@ export PATH=$PATH:$(realpath $BASEFSPATH/eval/confine/src)
 export SLICE_ID=2948
 
 . $BASEFSPATH/eval/plots/read.sh
+. $BASEFSPATH/eval/docker/utils.sh

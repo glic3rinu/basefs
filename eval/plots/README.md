@@ -14,7 +14,7 @@ cd $BASEFSPATH/tmp
 
 # Gossip Layer
 readscenarios gossip > $BASEFSPATH/eval/datasets/gossip.csv 2> $BASEFSPATH/eval/datasets/gossip-completed.csv
-readscenarios basefs > $BASEFSPATH/eval/datasets/basefs-loss.csv 2> $BASEFSPATH/eval/datasets/basefs-loss-completed.csv
+readscenarios basefs > $BASEFSPATH/eval/datasets/basefs.csv 2> $BASEFSPATH/eval/datasets/basefs-completed.csv
 $BASEFSPATH/eval/plots/conv.R
 
 # Sync Protocol

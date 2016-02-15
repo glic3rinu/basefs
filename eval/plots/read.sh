@@ -1,15 +1,21 @@
 #!/bin/bash
 
 function readscenarios () {
-    echo "scenario,size,messages,node,time,filename,completed"
-    echo "scenario,size,messages,filename,completed" >&2
+    echo "scenario,round,size,messages,node,time,filename,completed"
+    echo "scenario,round,size,messages,filename,completed" >&2
     name=${1:-"scenario"}
     for scenario in $(ls -d ${name}-* 2> /dev/null || ls -d ${name}); do
         scenario_name=$(echo "$scenario" | sed "s/$name-//")
+        if [[ "$scenario_name" == "baseline-" ]]; then
+            scenario_name="baseline"
+            round="baseline"
+        else
+            round=$(echo "$scenario_name" | sed -E "s/.*-([0-9]+).*/\1/")
+        fi
         for log in $(ls  -d $BASEFSPATH/tmp/$scenario/logs-*); do
-            grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
+            grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
                 line=( $line )
-                messages=$(grep " basefs.gossip: Sending .* ${line[2]}" $log/node-0 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $(NF-5)'})
+                messages=$(grep " basefs.gossip: Sending .* ${line[2]}" $log/node-0 | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#" | awk {'print $(NF-5)'})
                 messages=${messages:-"-1"}
                 start=$(date -d "${line[0]} ${line[1]} $(date '+%Z')" +'%s.%3N' || echo "$line" >&2)
                 size=$(echo ${line[3]} | sed -E "s/.*-([0-9]+)'/\1/")
@@ -20,14 +26,14 @@ function readscenarios () {
                     node=$(echo "$nodeline" | cut -d':' -f1)
                     node=${node##*/}
                     complition_time=$(echo $(date -d "$linedate UTC" +'%s.%3N' || echo "$nodeline ${line[2]}" >&2)-$start | bc | awk '{printf "%f\n", $0}')
-                    output="$output$complition_time $scenario_name,${size},$messages,$node,$complition_time,$filename\n"
-                done < <(grep -a "COMPLETED ${line[2]}" $log/node-* | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#"| sed "s/:.*2016-01/:2016-01/" | awk {'print $1 " " $2'})
+                    output="$output$complition_time $scenario_name,$round,${size},$messages,$node,$complition_time,$filename\n"
+                done < <(grep -a "COMPLETED ${line[2]}" $log/node-* | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#"| sed "s/:.*2016-02/:2016-02/" | awk {'print $1 " " $2'})
                 completed=1
                 while read line; do
                     echo $line,$completed
                     completed=$(($completed+1))
                 done < <(echo -ne "$output" | sort -n | awk {'print $2'})
-                echo $scenario_name,${size},$messages,$filename,$completed >&2
+                echo $scenario_name,$round,${size},$messages,$filename,$completed >&2
             done
         done
     done

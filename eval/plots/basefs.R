@@ -14,9 +14,7 @@ do_graph <- function(name, verbose) {
       stat_ecdf(size=1, alpha=0.7) +
       ggtitle(paste0("BaseFS Convergence - ", verbose)) +
       xlim(0, 5) +
-      labs(x="Time in seconds", y="Convergence %", colour="Num mesg") +
-
-
+      labs(x="Time in seconds", y="Convergence %", colour="Num mesg")
 
     ggsave(paste0(basefspath, "/eval/plots/basefs-", name, ".png"), dpi=600)
     print(paste0("eog ", basefspath, "/eval/plots/basefs-", name, ".png"))

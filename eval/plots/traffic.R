@@ -30,7 +30,7 @@ do_graph <- function(name) {
     xx = read.csv(paste0(basefspath, "eval/datasets/basefs-", name, "-traffic-distribution.csv"))
     traffic<- melt(xx, id.var="Node")
     ggplot(traffic, aes(x = Node, y = value, fill = variable)) + 
-      geom_bar(stat = "identity")
+        geom_bar(stat = "identity")
     traffic_distribution_path = paste0(basefspath, "eval/plots/basefs-", name, "-traffic-distribution.png")
     ggsave(traffic_distribution_path, dpi=600)
     print(paste0('eog ', traffic_distribution_path))

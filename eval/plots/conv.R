@@ -4,35 +4,109 @@
 library(ggplot2)
 library(ggthemes)
 library(Hmisc)
+library(scales)
 basefspath = Sys.getenv("BASEFSPATH")
 
-do_graphs <- function (dataset, dataset_completed, var, name) {
-    current <- dataset[grepl(var, dataset$scenario) | dataset$scenario=="baseline",]
-    ggplot(data=current, aes(x=messages+1, y=time, color=factor(scenario))) +
-      geom_point(alpha=0.5) +
-      stat_summary(fun.data="mean_cl_boot", size=1, alpha=0.5) +
-      scale_x_log10()
-    
-    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var, ".png"), dpi=600)
-    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var, ".png"))
-    
-    current <- dataset_completed[grepl(var,dataset_completed$scenario) | dataset_completed$scenario=="baseline",]
-    ggplot(data=current, aes(x=messages+1, y=completed, color=factor(scenario))) +
-        geom_line() +
-        geom_point() +
-        scale_x_log10()
-    
-    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var, "-completed.png"), dpi=600)
-    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var, "-completed.png"))
+exclude = c(
+    "bw-256kbit", 
+    "bw-32kbit-htb1", 
+    'bw-64kbit-htb1',
+    'bw-56kbit',
+    'bw-512kbit',
+    'bw-1mbit',
+    'delay-20ms',
+    'delay-300ms',
+    'delay-400ms',
+    'delay-600ms',
+    'delay-2000',
+    'delay-2500',
+    'delay-3000'
+)
+
+
+get_breaks = function(values){
+    breaks10 = log_breaks()(values)
+    as.vector(t(sapply(c(1,2,5), function(x) x*breaks10)))
 }
+
+
+
+#do_graphs <- function (dataset, dataset_completed, var, name) {
+#    current <- dataset[grepl(var, dataset$scenario) | dataset$scenario=="baseline",]
+#    current = current[! current$scenario %in% exclude,]
+##    current$scenario[current$scenario == "delay-100ms"] <- '1000'
+#    ggplot(data=current, aes(x=size, y=time, color=factor(round))) +
+#        geom_point(alpha=0.5) +
+#        stat_summary(fun.data="mean_cl_boot", size=1, alpha=0.5) +
+#        scale_x_log10() +
+#        scale_y_log10() +
+#        ggtitle(paste0(name, " - ", "convergence time under variable ", var)) +
+#        labs(y="Time in seconds", x="Log entries", colour="Delay")
+#    
+#    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var, ".png"), dpi=600)
+#    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var, ".png"))
+
+
+
+do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
+    current <- dataset[grepl(var[1], dataset$scenario) | dataset$scenario=="baseline",]
+    current = current[! current$scenario %in% exclude,]
+    numbers = sort(as.numeric(levels(current$round)))
+    current$Color = ordered(current$round, levels=c("baseline", numbers))
+    levels(current$Color) = ifelse(levels(current$Color)=="baseline", 
+                                    levels(current$Color),
+                                    paste0(levels(current$Color), var[3]))
+#    current$scenario[current$scenario == "delay-100ms"] <- '1000'
+    guide = guide_legend(title=var[2], keywidth=3, keyheight=1)
+    plt = ggplot(data=current, aes(x=size, y=time, color=Color, linetype=Color)) +
+        geom_point(alpha=0.5) +
+        stat_summary(fun.data="mean_cl_boot", size=1, alpha=0.5, aes(shape=Color)) +
+        stat_summary(fun.y="mean", geom="line") +
+        scale_x_log10(breaks=get_breaks) +
+        scale_y_log10(breaks=get_breaks, labels=as.character) +
+        ggtitle(paste0(verbose, " - ", "Convergence Time Under Variable ", var[2])) +
+        labs(y="Time in seconds", x="Log entries") + 
+        guides(color=guide, linetype=guide, shape=guide) +
+        theme_bw() +
+        theme(legend.key=element_blank())
+    
+    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], ".png"), dpi=600)
+    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], ".png"))
+    
+    current <- dataset_completed[grepl(var[1],dataset_completed$scenario) | dataset_completed$scenario=="baseline",]
+    current = current[! current$scenario  %in% exclude,]
+    ggplot(data=current, aes(x=size, y=completed, color=factor(round))) +
+        geom_point() +
+        geom_line() +
+        scale_x_log10() +
+        ggtitle(paste0(verbose, " - ", "completed nodes under variable ", var[2])) +
+        labs(y="Number of completed nodes", x="Log entries")
+    
+    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], "-completed.png"), dpi=600)
+    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], "-completed.png"))
+}
+
+
 
 gossip = read.csv(paste0(basefspath, "/eval/datasets/gossip.csv"))
 gossip_completed = read.csv(paste0(basefspath, "/eval/datasets/gossip-completed.csv"))
 
-basefs_loss = read.csv(paste0(basefspath, "/eval/datasets/basefs-loss.csv"))
-basefs_loss_completed = read.csv(paste0(basefspath, "/eval/datasets/basefs-loss-completed.csv"))
+basefs = read.csv(paste0(basefspath, "/eval/datasets/basefs.csv"))
+basefs_completed = read.csv(paste0(basefspath, "/eval/datasets/basefs-completed.csv"))
 
-for (var in c("loss", "bw", "delay", "reorder")) {
-    do_graphs(gossip, gossip_completed, var, 'gossip')
+
+vars = list(
+    c("loss", "Packet Loss", "%"),
+    c("bw", "Bandwidth", "Kbps"),
+    c("reorder", "Packet Reorder", "%"),
+    c("delay", "Delay", "ms")
+)
+
+for (var in vars) {
+    do_graphs(gossip, gossip_completed, var, 'gossip', 'Gossip')
 }
-do_graphs(basefs_loss, basefs_loss_completed, 'loss', 'basefs')
+for (var in vars){
+    do_graphs(basefs, basefs_completed, var, 'basefs', 'BaseFS')
+}
+
+
