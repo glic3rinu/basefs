@@ -49,8 +49,8 @@ Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 
 Serf perform surprisingly well under very large delays. 
 
-<img src="plots/gossip-delay.png" width="425">
-<img src="plots/gossip-delay-completed.png" width="425">
+<img src="plots/gossip-delay.png" width="430">
+<img src="plots/gossip-delay-completed.png" width="430">
 
 ### Packet loss effects
 
