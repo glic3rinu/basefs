@@ -49,8 +49,8 @@ Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 
 Serf perform surprisingly well under very large delays. 
 
-<img src="plots/gossip-delay.png" width="450">
-<img src="plots/gossip-delay-completed.png" width="450">
+<img src="plots/gossip-delay.png" width="425">
+<img src="plots/gossip-delay-completed.png" width="425">
 
 ### Packet loss effects
 
@@ -69,7 +69,7 @@ serf: attempting reconnect to 0242ac11001a-2f526234b0ed 172.17.0.26:18374
 
 
 <img src="plots/gossip-loss.png" width="450">
-<img src="plots/gossip-loss-completed.png" width="450">
+<img src="plots/gossip-loss-completed.png" width="420">
 
 
 `netem loss 70% 25%` 
