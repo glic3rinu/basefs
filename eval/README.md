@@ -68,8 +68,8 @@ memberlist: Failed to receive remote state: read tcp 172.17.0.15:57790: i/o time
 serf: attempting reconnect to 0242ac11001a-2f526234b0ed 172.17.0.26:18374
 
 
-<img src="plots/gossip-loss.png" width="450">
-<img src="plots/gossip-loss-completed.png" width="420">
+<img src="plots/gossip-loss.png" width="440">
+<img src="plots/gossip-loss-completed.png" width="440">
 
 
 `netem loss 70% 25%` 
@@ -82,7 +82,7 @@ Probn = .25 * Probn-1 + .75 * Random
 
 Packet reordering happens naturally during the execution of a gossip protocol; nodes are expected to receive messages from different nodes at different order. This is why our simulated packet reordering has no effect on the convergence time of the gossip layer.
 
-<img src="plots/gossip-reorder.png" width="700">
+<img src="plots/gossip-reorder.png" width="440">
 
 
 ### Bandwith limitations effects
@@ -106,8 +106,8 @@ Serf gossip protocol behaves decently under high constrained bandwith conditions
 * burst, also known as buffer or maxburst. Size of the bucket, in bytes. This is the maximum amount of bytes that tokens can be available for instantaneously. In general, larger shaping rates require a larger buffer. For 10mbit/s on Intel, you need at least 10kbyte buffer if you want to reach your configured rate!
  https://en.wikipedia.org/wiki/Token_bucket
 * limit or latency Limit is the number of bytes that can be queued waiting for tokens to become available. latency parameter, which specifies the maximum amount of time a packet can sit in the TBF
-<img src="plots/gossip-bw.png" width="450">
-<img src="plots/gossip-bw-completed.png" width="450">
+<img src="plots/gossip-bw.png" width="440">
+<img src="plots/gossip-bw-completed.png" width="440">
 
 ## Sync Protocol
 
@@ -116,7 +116,7 @@ The key characteristic for the sync protocol is how the synchronization interval
 
 
 ### Interval effects sync protocol
-<img src="plots/sync.png" width="800">
+<img src="plots/sync.png" width="440">
 
 ## BaseFS
 
@@ -142,24 +142,33 @@ total: 560 writes
 
 #### Convergence Time
 
-<img src="plots/basefs-docker.png" width="400">
+<img src="plots/basefs-docker.png" width="440">
 
 
 #### Packet loss
 
 *Sync protocol depends on the gossip layer for membership* if members are reported as failed by serf the sync protocol will not contact them.
-<img src="plots/basefs-loss.png" width="400">
-<img src="plots/basefs-loss-completed.png" width="400">
+<img src="plots/basefs-loss.png" width="440">
+<img src="plots/basefs-loss-completed.png" width="440">
+
+<img src="plots/basefs-delay.png" width="440">
+<img src="plots/basefs-delay-completed.png" width="440">
+
+<img src="plots/basefs-bw.png" width="440">
+<img src="plots/basefs-bw-completed.png" width="440">
+
+<img src="plots/basefs-reorder.png" width="440">
+<img src="plots/basefs-reorder-completed.png" width="440">
 
 #### Traffic usage
     * How much overhead?
-<img src="plots/basefs-docker-traffic.png" width="400">
+<img src="plots/basefs-docker-traffic.png" width="440">
 
 
 #### Traffic balance
     * Is the traffic usage well balance between nodes?
 
-<img src="plots/basefs-docker-traffic-distribution.png" width="400">
+<img src="plots/basefs-docker-traffic-distribution.png" width="440">
 
 ### CommunityLab testbed
  Ralistic environment on Confine testbed
@@ -168,19 +177,19 @@ total: 560 writes
 #### Network characterization
 Because we run the experiment on a pre-existing and not configurable network topology we need to characterize and discover the propertires of the network to have a better understanding of the experimental results.
 
-<img src="plots/hops.png" width="400">
-<img src="plots/latencies.png" width="400">
-<img src="plots/weighted_graph_neato.png" width="400">
-<img src="plots/weighted_graph_neato_cluster.png" width="400">
+<img src="plots/hops.png" width="440">
+<img src="plots/latencies.png" width="440">
+<img src="plots/weighted_graph_neato.png" width="440">
+<img src="plots/weighted_graph_neato_cluster.png" width="440">
 
 #### Convergence Time
-<img src="plots/basefs-confine.png" width="400">
+<img src="plots/basefs-confine.png" width="440">
 
 #### Traffic usage
 
-<img src="plots/basefs-confine-traffic.png" width="400">
+<img src="plots/basefs-confine-traffic.png" width="440">
 #### Traffic balance
-<img src="plots/basefs-confine-traffic-distribution.png" width="400">
+<img src="plots/basefs-confine-traffic-distribution.png" width="440">
 
 
 
@@ -191,8 +200,8 @@ Is the gossip layer a good transport protocol for configuration replication? Is 
 1. How many Gossip packets (512b) we will need?
 BSDIFF4 produces very space-efficient patches 
 
-<img src="etc_time.png" width="400">
-<img src="etc_packets.png" width="400">
+<img src="etc_time.png" width="440">
+<img src="etc_packets.png" width="440">
 
 2. How many conflicts can we expect?
 
@@ -218,7 +227,7 @@ BaseFS makes extensive use of concurrency including processes, threads and an ev
 
 
 ### Write performance
-<img src="plots/write_performance.png" width="600">
+<img src="plots/write_performance.png" width="440">
 
 Two costly operations:
     compute the view
@@ -231,7 +240,7 @@ We have made the choice of using BSDIFF4 binary deltas on the grounds that write
 
 
 ### Read performance
-<img src="plots/read_performance.png" width="600">
+<img src="plots/read_performance.png" width="440440">
 
 Read performance is also linearly affected by the number of patches that are required to apply in order to retrieve the most recent content of every file. However, a BaseFS cached read provides good and consistent performance.
 
