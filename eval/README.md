@@ -65,8 +65,8 @@ memberlist: Failed to receive remote state: read tcp 172.17.0.15:57790: i/o time
 serf: attempting reconnect to 0242ac11001a-2f526234b0ed 172.17.0.26:18374
 
 
-<img src="plots/gossip-loss.png" width="400">
-<img src="plots/gossip-loss-completed.png" width="400">
+<img src="plots/gossip-loss.png" width="500">
+<img src="plots/gossip-loss-completed.png" width="500">
 
 
 `netem loss 70% 25%` 
@@ -79,7 +79,7 @@ Probn = .25 * Probn-1 + .75 * Random
 
 Packet reordering happens naturally during the execution of a gossip protocol; nodes are expected to receive messages from different nodes at different order. This is why our simulated packet reordering has no effect on the convergence time of the gossip layer.
 
-<img src="plots/gossip-reorder.png" width="400">
+<img src="plots/gossip-reorder.png" width="700">
 
 
 ### Bandwith limitations effects
@@ -103,8 +103,8 @@ Serf gossip protocol behaves decently under high constrained bandwith conditions
 * burst, also known as buffer or maxburst. Size of the bucket, in bytes. This is the maximum amount of bytes that tokens can be available for instantaneously. In general, larger shaping rates require a larger buffer. For 10mbit/s on Intel, you need at least 10kbyte buffer if you want to reach your configured rate!
  https://en.wikipedia.org/wiki/Token_bucket
 * limit or latency Limit is the number of bytes that can be queued waiting for tokens to become available. latency parameter, which specifies the maximum amount of time a packet can sit in the TBF
-<img src="plots/gossip-bw.png" width="400">
-<img src="plots/gossip-bw-completed.png" width="400">
+<img src="plots/gossip-bw.png" width="500">
+<img src="plots/gossip-bw-completed.png" width="500">
 
 ## Sync Protocol
 
