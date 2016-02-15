@@ -36,7 +36,7 @@ TC netem discipline provides Network Emulation functionality for testing protoco
 
 `netem delay 100ms 20ms distribution normal`
 
-Serf is configured to use the *WAN profile*. This means that it uses a `ProbeTimeout` of 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge. This is further confirmed by looked at Serf debugging messages, we start to get some `Marking 0242ac110014-8ab678bdbfa1 as failed, suspect timeout reached` from delay mean starting from 1280ms.
+Serf is configured to use the *WAN profile* with a `ProbeTimeout` of about 3 seconds. This is important because under network latency greater than 3 seconds nodes will be reported as failed, messages will not spread and the protocol will not converge. This is further confirmed by looked at Serf debugging messages, we start to get some `Marking 0242ac110014-8ab678bdbfa1 as failed, suspect timeout reached` from delay mean starting from 1280ms.
 
 https://github.com/hashicorp/memberlist/blob/master/config.go#L178
 
@@ -45,6 +45,9 @@ this is where the limitations of the gossip protocol start to show up
 memberlist: Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
 memberlist: Push/Pull with 0242ac11000c-933a0c4aa9ca failed: Reading remote state failed: read tcp 172.17.0.12:18374: i/o timeout
 Suspect 0242ac11001b-14a14421b7a6 has failed, no acks received
+
+
+Serf perform surprisingly well under very large delays. 
 
 <img src="plots/gossip-delay.png" width="500">
 <img src="plots/gossip-delay-completed.png" width="500">
@@ -207,6 +210,13 @@ Read/write performance compared to traditional filesystems (ext4) [script](docke
 bash experiment 2
 bash performance.sh
 ```
+
+Cluster configuration does not need to hold up to high intensive IO workloads, a faster convergence time is a more interessting property. However, BaseFS does remarkably well, even though it has not been finely tuned for filesystem IO performance. Bear in mind that we are comparing a kernelspace filesystem (ext4) with a userspace virtual filesystem that requires to run complex algorithms on top of cPyhton and with the additional fuse layer and the added cost of system calls.
+
+BaseFS makes extensive use of concurrency including processes, threads and an event loop. The FUSE interface runs on the main Python thread, as required by its implementation. The Serf agent runs on a separated Python process, and we talk with it using Serf own RPC protocol. We spawn an additional thread for the event loop. Implemented with asyncio, the event loop handles all the reamaining network communication in a non-blocking fashion, including the sync protocol, receiving of custom gossip events and commands sent by BaseFS CLI utility. The event loop thread shares memory with the main FUSE thread, and only a single instance of the View has to be maintained, saving memory and computation time.
+
+
+
 ### Write performance
 <img src="plots/write_performance.png" width="400">
 
