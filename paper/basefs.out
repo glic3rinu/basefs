@@ -1,0 +1,20 @@
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.2}{Background}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Scalability Limits}{section.2}% 3
+\BOOKMARK [2][-]{subsection.2.2}{Availability Under Network Partition}{section.2}% 4
+\BOOKMARK [2][-]{subsection.2.3}{Complexity}{section.2}% 5
+\BOOKMARK [2][-]{subsection.2.4}{Existing P2P Filesystems}{section.2}% 6
+\BOOKMARK [1][-]{section.3}{BaseFs Design}{}% 7
+\BOOKMARK [2][-]{subsubsection.3.0.1}{Log}{section.3}% 8
+\BOOKMARK [2][-]{subsection.3.1}{View}{section.3}% 9
+\BOOKMARK [3][-]{subsubsection.3.1.1}{Grant and Revoke}{subsection.3.1}% 10
+\BOOKMARK [2][-]{subsection.3.2}{Network}{section.3}% 11
+\BOOKMARK [3][-]{subsubsection.3.2.1}{Gossip Protocol}{subsection.3.2}% 12
+\BOOKMARK [3][-]{subsubsection.3.2.2}{Synchronization Protocol}{subsection.3.2}% 13
+\BOOKMARK [1][-]{section.4}{Implementation}{}% 14
+\BOOKMARK [2][-]{subsection.4.1}{Filesystem}{section.4}% 15
+\BOOKMARK [3][-]{subsubsection.4.1.1}{Watchers}{subsection.4.1}% 16
+\BOOKMARK [2][-]{subsection.4.2}{Commands}{section.4}% 17
+\BOOKMARK [1][-]{section.5}{Evaluation}{}% 18
+\BOOKMARK [1][-]{section.6}{The Future}{}% 19
+\BOOKMARK [1][-]{section.7}{Conclusions}{}% 20

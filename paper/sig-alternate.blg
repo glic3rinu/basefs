@@ -1,0 +1,50 @@
+This is BibTeX, Version 0.99d (TeX Live 2013/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: sig-alternate.aux
+The style file: abbrv.bst
+Database file #1: sigproc.bib
+Warning--entry type for "Yermolaiev:managing" isn't style-file defined
+--line 56 of file sigproc.bib
+Warning--empty journal in SWIM
+You've used 3 entries,
+            2118 wiz_defined-function locations,
+            513 strings with 4068 characters,
+and the built_in function-call counts, 626 in all, are:
+= -- 56
+> -- 21
+< -- 0
++ -- 10
+- -- 6
+* -- 24
+:= -- 118
+add.period$ -- 8
+call.type$ -- 3
+change.case$ -- 12
+chr.to.int$ -- 0
+cite$ -- 4
+duplicate$ -- 27
+empty$ -- 57
+format.name$ -- 6
+if$ -- 125
+int.to.chr$ -- 0
+int.to.str$ -- 3
+missing$ -- 2
+newline$ -- 17
+num.names$ -- 6
+pop$ -- 19
+preamble$ -- 1
+purify$ -- 9
+quote$ -- 0
+skip$ -- 22
+stack$ -- 0
+substring$ -- 16
+swap$ -- 2
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 12
+warning$ -- 1
+while$ -- 6
+width$ -- 4
+write$ -- 29
+(There were 2 warnings)

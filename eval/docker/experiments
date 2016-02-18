@@ -367,21 +367,21 @@ if [[ $1 -eq 1 ]]; then
 #    runconv gossip loss 90
 #    runconv basefs loss 90
 #    runconv gossip delay 5120
-    runconv basefs delay 10
-    runconv basefs delay 20
-    runconv basefs delay 40
-    runconv basefs delay 80
-    runconv basefs delay 160
-    runconv basefs delay 320
-    runconv basefs delay 640
-    runconv basefs delay 1280
-    runconv basefs delay 2560
-    runconv gossip loss 40
-    runconv gossip loss 50
-    runconv gossip loss 60
-    runconv gossip loss 70
-    runconv gossip loss 80
-    runconv gossip bw 64
+#    runconv basefs delay 10
+#    runconv basefs delay 20
+#    runconv basefs delay 40
+#    runconv basefs delay 80
+#    runconv basefs delay 160
+#    runconv basefs delay 320
+#    runconv basefs delay 640
+#    runconv basefs delay 1280
+#    runconv basefs delay 2560
+#    runconv gossip loss 40
+#    runconv gossip loss 50
+#    runconv gossip loss 60
+#    runconv gossip loss 70
+#    runconv gossip loss 80
+#    runconv gossip bw 64
     runconv gossip bw 32
     runconv gossip delay 5120
     runconv basefs loss 60

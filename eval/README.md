@@ -224,7 +224,7 @@ Starting from a fresh log file, on each round we recursively copy the entire `/e
 
 <img src="plots/read_performance.png" width="440">
 
-As expected, cold read performance is linearly affected by the incresing number of patches requiered to apply for obtaining the most recet version of the content of each file. However, a BaseFS cached is faster than uncached EXT4 reads, being able to read the entire filesystem clocked at about 2 seconds.
+As expected, cold read performance is linearly affected by the incresing number of patches requiered to apply for obtaining the most recet version of the content of each file. However, a cached BaseFS reads are faster than uncached EXT4 reads, being able to read the entire filesystem clocked at about 2 seconds.
 
 
 ### Write performance
