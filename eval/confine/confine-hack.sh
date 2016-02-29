@@ -4,12 +4,12 @@
 # INSTALLS BASEFS ON A "TEMPLATE" NODE AND THEN REPLICATE ALL THE CHANGES TO THE REST
 
 
-export TEMPLATEIP="fdf5:5351:1dfd:58:1001::b84"
+export TEMPLATEIP="fdf5:5351:1dfd:8c:1001::d58"
 
 ssh root@$TEMPLATEIP 'sed -i "s/wheezy/jessie/" /etc/apt/sources.list
     apt-get update'
 
-rsync -avhP "root@[$TEMPLATEIP]":/var/cache/apt/ packages/
+rsync -avhP --delete "root@[$TEMPLATEIP]":/var/cache/apt/ packages/
 
 cat << 'EOF' > install.sh
 ssh root@$TEMPLATEIP
@@ -30,9 +30,9 @@ rsync -avhP install.sh "root@[$TEMPLATEIP]":/tmp/
 ssh root@$TEMPLATEIP /tmp/install.sh
 
 
-rsync -avhP "root@[$TEMPLATEIP]":/usr/local/lib/python3.4/dist-packages/ python/
-rsync -avhP "root@[$TEMPLATEIP]":/usr/local/bin/serf serf
-rsync -avhP "root@[$TEMPLATEIP]":/usr/local/bin/basefs basefs
+rsync -avhP --delete "root@[$TEMPLATEIP]":/usr/local/lib/python3.4/dist-packages/ python/
+rsync -avhP --delete "root@[$TEMPLATEIP]":/usr/local/bin/serf serf
+rsync -avhP --delete "root@[$TEMPLATEIP]":/usr/local/bin/basefs basefs
 
 
 # From bestia to every node

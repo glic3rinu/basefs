@@ -10,11 +10,16 @@ sync = read.csv(paste0(basefspath, "/eval/datasets/sync.csv"))
 sync <- sync[sync$messages!=0,]
 
 plt1 <- ggplot(data=sync, aes(x=scenario, y=time))+
-    geom_point(alpha=0.5) +
-    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.5, geom="line") +
-    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.5) +
+    geom_point(alpha=0.7, color='cornflowerblue') +
+    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7, geom="line") +
+    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7) +
+    geom_hline(yintercept=36, alpha=0.4, color='blue') +
+    geom_vline(xintercept=20, alpha=0.4, color='blue') +
     theme(legend.position="bottom") +
-    scale_x_log10() +
+    theme_bw() +
+    scale_x_continuous(breaks=c(1, 5, 10, 20, 50, 100)) +
+    scale_y_continuous(breaks=c(0,36,100,200, 300, 400, 500)) +
+    labs(y="Time in seconds", x="Sync interval in seconds") + 
     ggtitle("Sync Convergence Time")
 
 #    ggplot(data=sync, aes(x=size+1, y=time, color=factor(scenario)))+
@@ -24,11 +29,16 @@ plt1 <- ggplot(data=sync, aes(x=scenario, y=time))+
 
 traffic = read.csv(paste0(basefspath, "/eval/datasets/sync-traffic.csv"))
 
-plt2 <- ggplot(data=traffic, aes(x=scenario, y=bps))+
-    geom_point(alpha=0.5) +
-    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.5, geom="line") +
-    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.5) +
-    scale_x_log10() + 
+plt2 <- ggplot(data=traffic, aes(x=scenario, y=8*bps/1000))+
+    geom_point(alpha=0.7, color='cornflowerblue') +
+    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7, geom="line") +
+    theme_bw() +
+    geom_hline(yintercept=2.5, alpha=0.4, color='blue') +
+    geom_vline(xintercept=20, alpha=0.4, color='blue') +
+    stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7) +
+    scale_y_continuous(breaks=c(0, 2.5, 20, 40, 50)) +
+    scale_x_continuous(breaks=c(1, 5, 10, 20, 50, 100)) + 
+    labs(y="Traffic in Kbps", x="Sync interval in seconds") + 
     ggtitle("Sync Traffic Usage")
 
 
@@ -73,6 +83,8 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
     }
   }
 }
+
+
 png(paste0(basefspath, "/eval/plots/sync.png"),width=8,height=6,units="in",res=600)
 multiplot(plt1, plt2, cols=2);
 dev.off()

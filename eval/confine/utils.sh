@@ -102,13 +102,14 @@ function characterize () {
             fi;
         done
 EOF
-    )
+)
     run $cmd
-    sshc $cmd
+    sshc "$cmd"
     results_dir="results/$(date +%Y.%m.%d-%H:%M:%S)"
     get /tmp/traceroute
     [[ ! -d $DIR/$results_dir/ ]] && results_dir=$(echo "$results_dir"|cut -d':' -f1,2):$((${results_dir##*:}+1))
     mkdir $DIR/$results_dir/0
+    echo $DIR/$results_dir
     scpc /tmp/traceroute $results_dir/0/traceroute
 }
 

@@ -58,7 +58,7 @@ function runconfineexperiment () {
             # CP and sleep for 6 seconds
             case $j in
                 0)
-                    origin=$BASEFSPATH/tmp/testpoint/testfile2-0
+                    origin=$BASEFSPATH/tmp/testpoint/testfile-1
                     ;;
                 1)
                     origin=$BASEFSPATH/tmp/testpoint/testfile-1-$ones

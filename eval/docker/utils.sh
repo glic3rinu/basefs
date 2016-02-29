@@ -54,16 +54,21 @@ function dock () {
         echo "Root permissions are required for running basefs resources"
         exit 3
     fi
+    # Docker has to be restarted to renew IP addresses
+    service docker restart
+    sleep 2
     basefs genkey;
     docker_ip=$(ip -f inet -o addr show docker0 | awk {'print $4'} | cut -d'/' -f1)
     basefs bootstrap test -i ${docker_ip} -f;
-    basefs resources test -l -r > $BASEFSPATH/tmp/logs/node-0-resources &
+    if [[ ${3:-true} == true ]]; then
+        basefs resources test -l -r > $BASEFSPATH/tmp/logs/node-0-resources &
+    fi
     cmd="$1"
     if [[ "$cmd" == "" || $(echo "$cmd" | grep '^[0-9][0-9]*') ]]; then
         cmd='sleep 5;
             basefs genkey;
             basefs get test ${docker_ip};
-            basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
+            #basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
             #tc qdisc add dev eth0 root handle 1:0 netem delay 100ms 20ms distribution normal reorder 25% 50% loss 20% 25%;
             #tc qdisc add dev eth0 parent 1:1 handle 10: tbf rate 10mbit buffer 75000 latency 5ms;
             mkdir -p /tmp/test;
@@ -134,7 +139,8 @@ function bcsv () {
 
 
 function gpopulate () {
-    basefs bootstrap test -i $CONFINEIP -f
+    basefs bootstrap test -i 127.0.0.1 -f
+    mkdir /tmp/test
     basefs mount test /tmp/test -d > /dev/null 2> /tmp/testlog &
     sleep 4
     pid=$!

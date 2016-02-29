@@ -47,7 +47,12 @@ class SerfClient(client.SerfClient):
         config = kwargs.pop('config', None)
         if config:
             self.MAX_BLOCK_MESSAGES = int(config.get('max_block_messages', self.MAX_BLOCK_MESSAGES))
-        super().__init__(*args, **kwargs)
+        try:
+            super().__init__(*args, **kwargs)
+        except connection.SerfConnectionError:
+            logger.warning("Retrying connection in 1 second.")
+            time.sleep(1)
+            super().__init__(*args, **kwargs)
     
     def join(self, location):
         """
@@ -330,13 +335,20 @@ def run(config, view, ip, port, hostname, join):
         try:
             serf = run_client(view, port+1, join or [], config=config)
         except connection.SerfConnectionError as e:
-            retry =- 1
+            logger.warning("SerfConnectionError, %i retries to go." % retry)
+            retry -= 1
             time.sleep(1)
             if retry < 0:
+                logger.error("Shuting down serf agent.")
                 serf_agent.stop()
                 raise e
+            if retry < 2:
+                logger.warning("Restarting serf agent because of SerfConnectionError.")
+                serf_agent.stop()
+                serf_agent.start()
             exception = e
         except:
+            logger.error("Unhandled exception. Shuting down serf agent.")
             serf_agent.stop()
             raise
         else:

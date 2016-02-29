@@ -1,0 +1,22 @@
+\begin{thebibliography}{1}
+
+\bibitem{Wikipedia:CRDT}
+Conflict-free replicated data type - architecture, 2016.
+
+\bibitem{SWIM}
+A.~M. Abhinandan~Das, Indranil~Gupta.
+\newblock Swim: Scalable weakly-consistent infection-style process group
+  membership protocol.
+\newblock 2003.
+
+\bibitem{Kleppmann:CAP}
+M.~Kleppmann.
+\newblock A critique of the cap theorem.
+\newblock {\em arxiv}, 2015.
+
+\bibitem{Yermolaiev:managing}
+O.~Yermolaiev.
+\newblock Managing configuration of a distributed system with apache zookeeper,
+  2014.
+
+\end{thebibliography}

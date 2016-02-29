@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import requests
 import json
@@ -8,8 +8,10 @@ SLICE_ID=int(os.environ.get('SLICE_ID', 2948))
 
 
 slice_req = requests.get('https://controller.community-lab.net/api/slices/%i' % SLICE_ID)
-slice = json.loads(slice_req.content)
+slice = json.loads(slice_req.content.decode())
+if 'slivers' not in slice:
+    print(slice)
 for sliver in slice['slivers']:
     sliver_req = requests.get(sliver['uri'])
-    sliver = json.loads(sliver_req.content)
-    print sliver['mgmt_net']['addr']
+    sliver = json.loads(sliver_req.content.decode())
+    print(sliver['mgmt_net']['addr'])

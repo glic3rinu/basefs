@@ -33,8 +33,9 @@ function run () {
 
 
 function collect () {
+    month=$(date +%m)
     offset=$(ntpdate -d fdf5:5351:1dfd:0:2000::1 | grep 'offset ' | awk {'print $2'} | head -n1)
-    grep -ah "COMPLETED " /tmp/output | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | sed "s/:.*2016-01/:2016-01/" | while read line; do
+    grep -ah "COMPLETED " /tmp/output | sed -E "s#([^:]+)\s*2016/$month/.*2016-$month-#\12016-$month-#" | sed "s/:.*2016-$month/:2016-$month/" | while read line; do
         linedate=$(echo "$line" | awk {'print $1 " " $2'})
         fixeddate=$(date "+%Y-%m-%d %H:%M:%S,%3N" -d "$linedate + $offset seconds")
         echo "$line" | sed "s/$linedate/$fixeddate/"

@@ -53,14 +53,14 @@ function conv () {
             echo "$(date) cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/" >> /tmp/eval_status
             cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/
             sleep 3
-            uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $7'})
+            uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#" | awk {'print $7'})
             echo "UID $uid" >> /tmp/eval_conv
             #sleep $((10+($j/3)))
             counter=0
             if [[ $j -eq 256 ]]; then
-                counter_wait=5000
+                counter_wait=7000
             else
-                counter_wait=2000
+                counter_wait=3000
             fi
             while [[ $(grep "COMPLETED $uid" $BASEFSPATH/tmp/logs/node-* | wc -l) -lt $nodes && $counter -lt $counter_wait ]]; do
                 sleep 3
@@ -101,7 +101,7 @@ function syncprotocol () {
             basefs get test ${docker_ip};
             basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix' 1
+            basefs run test -d &> /mnt/tmp/logs/node-$ix' 1
         replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/sync-$interval
     done
 }
@@ -114,14 +114,15 @@ function runconv () {
     elif [[ "$1" == "basefs" ]]; then
         sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" $BASEFSPATH/basefs/gossip.py
         sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" $BASEFSPATH/basefs/sync.py
-    elif [[ "$1" == "sync-only" ]]; then
+    elif [[ "$1" == "sync" ]]; then
         sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 0/" $BASEFSPATH/basefs/gossip.py
         intervals=( 1 2 4 8 16 32 64 128 )
         for interval in ${intervals[@]}; do
             sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = $interval/" $BASEFSPATH/basefs/sync.py
-            runconv 'sync' "$2" "$3" "-interval-$interval"
+            echo runconv sync-only "$2" "$3" "-interval-$interval"
+            runconv sync-only "$2" "$3" "-interval-$interval"
         done
-    elif [[ "$1" != "sync" ]]; then
+    elif [[ "$1" != "sync-only" ]]; then
         return
     fi
     if [[ "$2" == "delay" ]]; then
@@ -131,7 +132,7 @@ function runconv () {
             basefs resources test -l -r > /mnt/tmp/logs/node-\$ix-resources &
             tc qdisc add dev eth0 root handle 1:0 netem delay ${3}ms $(echo ${3}*0.2|bc|cut -d'.' -f1)ms distribution normal
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
+            basefs run test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
     elif [[ "$2" == "loss" ]]; then
         conv "sleep $(shuf -i 6-15 -n 1);
             basefs genkey;
@@ -139,7 +140,7 @@ function runconv () {
             basefs resources test -l -r > /mnt/tmp/logs/node-\$ix-resources &
             tc qdisc add dev eth0 root handle 1:0 netem loss $3 25%;
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
+            basefs run test -d &> /mnt/tmp/logs/node-\$ix" 1
     elif [[ "$2" == "bw" ]]; then
         conv "sleep $(shuf -i 6-15 -n 1);
             basefs genkey;
@@ -149,7 +150,7 @@ function runconv () {
             tc class add dev eth0 parent 1: classid 1:1 htb rate $3kbit
             tc class add dev eth0 parent 1:1 classid 1:11 htb rate $3kbit
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
+            basefs run test -d &> /mnt/tmp/logs/node-\$ix" 1
     elif [[ "$2" == "reorder" ]]; then
         conv "sleep $(shuf -i 6-15 -n 1);
             basefs genkey;
@@ -157,14 +158,14 @@ function runconv () {
             basefs resources test -l -r > /mnt/tmp/logs/node-\$ix-resources &
             tc qdisc add dev eth0 root handle 1:0 netem reorder $3% 25%;
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
+            basefs run test -d &> /mnt/tmp/logs/node-\$ix" 1
     elif [[ "$2" == "baseline" ]]; then
         conv "sleep $(shuf -i 6-15 -n 1);
             basefs genkey;
             basefs get test \${docker_ip};
             basefs resources test -l -r > /mnt/tmp/logs/node-\$ix-resources &
             mkdir -p /tmp/test;
-            basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-\$ix" 1
+            basefs run test -d &> /mnt/tmp/logs/node-\$ix" 1
     else
         return
     fi
@@ -239,18 +240,68 @@ function resourceusage () {
     done
 }
 
+function do_performance () {
+    TYPE=$1
+    DIR=$2
+    {
+        find /etc -type d -exec perf stat mkdir $DIR{} \; 2>&1 | grep 'seconds time elapsed'| sed -E "s/^\s*([0-9][^ ]+).*/$TYPE,write,mkdir,\1,1/"
+        find /etc -type l -exec perf stat mkdir $DIR{} \; 2>&1 | grep 'seconds time elapsed'| sed -E "s/^\s*([0-9][^ ]+).*/$TYPE,write,link,\1,1/"
+        files=$(find /etc -type f)
+        for i in $(seq 1 30); do
+            find /etc -type f -exec perf stat cp {} $DIR{} \; 2>&1 | grep 'seconds time elapsed'| sed -E "s/^\s*([0-9][^ ]+).*/$TYPE,write,file,\1,$i/"
+            sync && echo 3 > /proc/sys/vm/drop_caches
+            echo "$files" | while read file; do
+                perf stat grep "*" ${DIR}$file 2>&1 > /dev/null
+            done | grep 'seconds time elapsed'| sed -E "s/^\s*([0-9][^ ]+).*/$TYPE,read,file-uncached,\1,$i/"
+            echo "$files" | while read file; do
+                perf stat grep "*" ${DIR}$file 2>&1 > /dev/null
+            done | grep 'seconds time elapsed'| sed -E "s/^\s*([0-9][^ ]+).*/$TYPE,read,file-cached,\1,$i/"
+        done
+    }
+}
+
+
+function performance () {
+    if [[ $(whoami) != 'root' ]]; then
+        echo "Root permissions are required for running basefs resources"
+        exit 3
+    fi
+    mkdir -p $BASEFSPATH/tmp/perf
+    
+    echo "fs,operation,type,time,round" > $BASEFSPATH/eval/datasets/performance2.csv
+    
+    # BaseFS
+    mkdir -p /tmp/test;
+    basefs genkey;
+    basefs bootstrap -i 127.0.0.1 test -f;
+    { basefs mount test /tmp/test/ -s -f; } &
+    trap "kill $! 2> /dev/null; kill $$ 2> /dev/null; killall basefs serf" INT
+    sleep 3
+    # Load into fs cache
+    grep -R "*" /etc/* > /dev/null
+    do_performance basefs /tmp/test >> $BASEFSPATH/eval/datasets/performance2.csv
+    killall basefs
+    
+    # EXT4
+    grep -R "*" /etc/* > /dev/null
+    rm -r /media/data/tmp/test2
+    mkdir -p /media/data/tmp/test2
+    do_performance ext4 /media/data/tmp/test2 >> $BASEFSPATH/eval/datasets/performance2.csv
+}
+
+
 
 function basefsconv () {
     sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" $BASEFSPATH/basefs/gossip.py
     sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" $BASEFSPATH/basefs/sync.py
-    nodes=29
-    repetitions=${2:-20}
+    nodes=${2:-29}
+    repetitions=${3:-20}
     cmd='sleep 5;
         basefs genkey;
         basefs get test ${docker_ip};
         basefs resources test -l -r > /mnt/tmp/logs/node-$ix-resources &
         mkdir -p /tmp/test;
-        basefs mount test /tmp/test -d &> /mnt/tmp/logs/node-$ix'
+        basefs run test -d &> /mnt/tmp/logs/node-$ix'
     echo "Staring $(date)" > /tmp/eval_conv
     mkdir -p $BASEFSPATH/tmp/logs
     mkdir -p $BASEFSPATH/tmp/rounds
@@ -272,7 +323,7 @@ function basefsconv () {
             # CP and sleep for 6 seconds
             case $j in
                 0)
-                    origin=$BASEFSPATH/tmp/testpoint/testfile2-0
+                    origrep '*' $BASEFSPATH/tmp/scalability-*/*/cpuin=$BASEFSPATH/tmp/testpoint/testfile-1
                     ;;
                 1)
                     origin=$BASEFSPATH/tmp/testpoint/testfile-1-$ones
@@ -294,7 +345,7 @@ function basefsconv () {
             echo "$(date) cp $origin /tmp/test/testfile$counter-$i-$j" >> /tmp/eval_status
             cp $origin /tmp/test/testfile$counter-$i-$j
             sleep 3
-            uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/01/.*2016-01-#\12016-01-#" | awk {'print $7'})
+            uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#" | awk {'print $7'})
             echo "UID $uid" >> /tmp/eval_conv
             sleep 3
             counter=$(($counter+1))
@@ -310,7 +361,120 @@ function basefsconv () {
     killall basefs
     trap - INT
     mv $BASEFSPATH/tmp/logs $BASEFSPATH/tmp/rounds/logs-1
-    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefs
+    replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/basefsdocker
+}
+
+
+
+function scalability () {
+    sed -i "s/^    MAX_BLOCK_MESSAGES = [0-9].*/    MAX_BLOCK_MESSAGES = 10/" $BASEFSPATH/basefs/gossip.py
+    sed -i "s/^    FULL_SYNC_INTERVAL = [0-9].*/    FULL_SYNC_INTERVAL = 20/" $BASEFSPATH/basefs/sync.py
+    total_nodes=300
+    repetitions=${2:-30}
+    echo "Staring $(date)" | tee /tmp/eval_conv
+    rounds=( 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 )
+    cmd='sleep 5;
+        basefs genkey;
+        basefs get test ${docker_ip};
+        mkdir -p /tmp/test;
+        basefs run test -d &> /mnt/tmp/logs/node-$ix &
+        sleep infinity;'
+    for nodes in $(seq 199 10 329); do
+#    for nodes in $(echo -e "1\n$(seq 9 10 329)"); do
+        rm $BASEFSPATH/tmp/logs/*
+        rm -fr $BASEFSPATH/tmp/rounds
+        mkdir -p $BASEFSPATH/tmp/rounds
+        mkdir -p $BASEFSPATH/tmp/logs
+        echo "$cmd" "$nodes"
+        dock "$cmd" "$nodes" false &
+        pid=$!
+        cpid=$(pgrep -P $pid basefs)
+        trap "kill -INT $cpid; kill $pid 2> /dev/null; bstop; killall basefs; kill $$ 2> /dev/null; kill $cpid;" INT
+        sleep 30
+        sleep $(( $nodes*2 ))
+        while [[ $(ls $BASEFSPATH/tmp/logs/ | wc -l) -ne $(($nodes+1)) ]]; do
+            service docker restart
+            kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
+            sleep 1
+            bstop
+            sleep 10
+            rm $BASEFSPATH/tmp/logs/*
+            echo "$cmd" "$nodes"
+            dock "$cmd" "$nodes" false &
+            pid=$!
+            cpid=$(pgrep -P $pid basefs)
+            trap "kill -INT $cpid; kill $pid 2> /dev/null; bstop; killall basefs; kill $$ 2> /dev/null; kill $cpid;" INT
+            sleep 30
+            sleep $(( $nodes*2 ))
+        done
+        {
+            while true; do
+                sleep 60;
+                echo -e -1 $(cat /proc/loadavg) >> $BASEFSPATH/tmp/logs/cpu
+            done
+        } &
+        timer=$!
+        for j in ${rounds[@]}; do
+            echo "$(date) cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/" | tee /tmp/eval_status
+            echo -e 0 $(cat /proc/loadavg) >> $BASEFSPATH/tmp/logs/cpu
+            cp $BASEFSPATH/tmp/testpoint/testfile-$j /tmp/test/
+            for i in $(seq 1 3); do
+                echo -e $i $(cat /proc/loadavg) >> $BASEFSPATH/tmp/logs/cpu
+                sleep 1
+            done
+            echo -e 5 $(cat /proc/loadavg) >> $BASEFSPATH/tmp/logs/cpu
+            uid=$(grep " basefs.fs: Sending entry " $BASEFSPATH/tmp/logs/node-0 | tail -n 1 | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#" | awk {'print $7'})
+            echo "UID $uid" | tee /tmp/eval_conv
+            #sleep $((10+($j/3)))
+            counter=5
+            counter_wait=1000
+            while [[ $(grep "COMPLETED $uid" $BASEFSPATH/tmp/logs/node-* | wc -l) -lt $nodes && $counter -lt $counter_wait ]]; do
+                sleep 3
+                echo -e $counter $(cat /proc/loadavg) >> $BASEFSPATH/tmp/logs/cpu
+                #echo -e $counter $(grep "^cpu \|^ctxt " /proc/stat | tr '\n' ' ') >> $BASEFSPATH/tmp/logs/cpu
+                counter=$(($counter+1))
+                echo "COUNTER $counter" | tee /tmp/eval_conv
+            done
+        done
+        kill $timer
+        sleep 5
+        fusermount -u /tmp/test
+        for id in $(docker ps --format "{{.ID}}"); do
+            docker exec $id pkill basefs
+        done
+        sleep 5
+#        for i in $(seq 1 5); do
+#            host_ip=$(ifconfig docker0|grep 'inet addr:'|sed -E 's/.*inet addr:([^ ]+).*/\1/');
+#            pids=''
+#            for id in $(docker ps --format "{{.ID}}"); do
+#                { docker exec $id bash -c "time ping -c5 -s5507 $host_ip" &>> $BASEFSPATH/tmp/logs/stress-delay; } &
+#                pids="$pids $!"
+#            done
+#            wait $pids
+#            pids=''
+#            for id in $(docker ps --format "{{.ID}}"); do
+#                { docker exec $id bash -c "time ping -f -c1000 -s5507 $host_ip" &>> $BASEFSPATH/tmp/logs/stress-throughput; } &
+#                pids="$pids $!"
+#            done
+#            wait $pids
+#            pids=''
+#            for id in $(docker ps --format "{{.ID}}"); do
+#                { docker exec $id bash -c "time dd if=/dev/zero of=/dev/null count=250000" &>> $BASEFSPATH/tmp/logs/stress-cpu; } &
+#                pids="$pids $!"
+#            done
+#            wait $pids
+#        done
+        kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
+        sleep 1
+        kill -INT $(ps aux|grep '/usr/local/bin/basefs mount test /tmp/test/ -iface docker0'|awk {'print $2'}|head -n 1)
+        bstop
+        sleep 3
+        bstop
+        killall basefs
+        mv $BASEFSPATH/tmp/logs $BASEFSPATH/tmp/rounds/logs-1
+        replace $BASEFSPATH/tmp/rounds/ $BASEFSPATH/tmp/scalability-$nodes
+    done
+    trap - INT
 }
 
 
@@ -382,25 +546,37 @@ if [[ $1 -eq 1 ]]; then
 #    runconv gossip loss 70
 #    runconv gossip loss 80
 #    runconv gossip bw 64
-    runconv gossip bw 32
-    runconv gossip delay 5120
+#    runconv gossip bw 32
+#    runconv gossip delay 5120
+#    runconv basefs loss 60
+#    runconv basefs loss 70
+#    runconv basefs loss 80
+#    runconv basefs delay 5120
+#    runconv basefs loss 10
+#    runconv basefs loss 20
+#    runconv basefs loss 30
+#    runconv basefs loss 40
+#    runconv basefs loss 50
     runconv basefs loss 60
     runconv basefs loss 70
     runconv basefs loss 80
-    runconv basefs delay 5120
+    runconv basefs loss 90
 elif [[ $1 -eq 2 ]]; then
     resourceusage
 elif [[ $1 -eq 3 ]]; then
-    runconv "sync" baseline
-    runconv "sync" loss 10
-    runconv "sync" loss 20
-    runconv "sync" loss 30
-    runconv "sync" loss 40
-    runconv "sync" loss 50
-    runconv "sync" loss 60
-    runconv "sync" loss 70
-    runconv "sync" loss 80
+    runconv sync baseline
+    runconv sync loss 10
+    runconv sync loss 20
+    runconv sync loss 30
+    runconv sync loss 40
+    runconv sync loss 50
+    runconv sync loss 60
+    runconv sync loss 70
+    runconv sync loss 80
 elif [[ $1 -eq 4 ]]; then
-    basefsconv
-
+    basefsconv $2
+elif [[ $1 -eq 5 ]]; then
+    scalability
+elif [[ $1 -eq 6 ]]; then
+    performance
 fi

@@ -64,7 +64,6 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
         stat_summary(fun.y="mean", geom="line") +
         scale_x_log10(breaks=get_breaks) +
         scale_y_log10(breaks=get_breaks, labels=as.character) +
-        ggtitle(paste0(verbose, " - ", "Convergence Time Under Variable ", var[2])) +
         labs(y="Time in seconds", x="Log entries") + 
         guides(color=guide, linetype=guide, shape=guide) +
         theme_bw() +

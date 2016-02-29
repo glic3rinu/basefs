@@ -25,29 +25,87 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Complexity}{\thepage }{subsection.2.3}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Existing P2P Filesystems}{\thepage }{subsection.2.4}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}BaseFs Design}{\thepage }{section.3}}
+\citation{Wikipedia:CRDT}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.0.1}Log}{\thepage }{subsubsection.3.0.1}}
 \newlabel{log}{{3.0.1}{\thepage }{Log}{subsubsection.3.0.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Log Entires}{\thepage }{section*.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Partial log representation}}{\thepage }{figure.1}}
+\newlabel{fig:log}{{1}{\thepage }{Partial log representation}{figure.1}{}}
 \citation{SWIM}
+\@writefile{toc}{\contentsline {paragraph}{Blocks}{\thepage }{section*.3}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Bloc linking representation}}{\thepage }{figure.2}}
+\newlabel{fig:blocs}{{2}{\thepage }{Bloc linking representation}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}View}{\thepage }{subsection.3.1}}
 \newlabel{view}{{3.1}{\thepage }{View}{subsection.3.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Conflict-free view representation of log in Figure \ref  {fig:log}}}{\thepage }{figure.3}}
+\newlabel{fig:view}{{3}{\thepage }{Conflict-free view representation of log in Figure \ref {fig:log}}{figure.3}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.1.1}Grant and Revoke}{\thepage }{subsubsection.3.1.1}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Network}{\thepage }{subsection.3.2}}
 \newlabel{network}{{3.2}{\thepage }{Network}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}Gossip Protocol}{\thepage }{subsubsection.3.2.1}}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A sample black and white graphic (.eps format) that has been resized with the \texttt  {epsfig} command.}}{\thepage }{figure.1}}
-\newlabel{entrypacket}{{1}{\thepage }{A sample black and white graphic (.eps format) that has been resized with the \texttt {epsfig} command}{figure.1}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces A sample black and white graphic (.eps format) that has been resized with the \texttt  {epsfig} command.}}{\thepage }{figure.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Cumulative histogram of /etc number of messages}}{\thepage }{figure.5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Compression time of /etc files}}{\thepage }{figure.6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Log entry contained into a Serf custom event payload}}{\thepage }{figure.4}}
+\newlabel{entrypacket}{{4}{\thepage }{Log entry contained into a Serf custom event payload}{figure.4}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Synchronization Protocol}{\thepage }{subsubsection.3.2.2}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Block state diagram}}{\thepage }{figure.3}}
-\newlabel{fig:lion}{{3}{\thepage }{Block state diagram}{figure.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Implementation}{\thepage }{section.4}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces ShareLaTeX logo}}{\thepage }{figure.4}}
-\newlabel{fig:lion}{{4}{\thepage }{ShareLaTeX logo}{figure.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Block state diagram}}{\thepage }{figure.7}}
+\newlabel{fig:lion}{{7}{\thepage }{Block state diagram}{figure.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}BaseFS Implementation}{\thepage }{section.4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces BaseFS modules}}{\thepage }{figure.8}}
+\newlabel{fig:lion}{{8}{\thepage }{BaseFS modules}{figure.8}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Filesystem}{\thepage }{subsection.4.1}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Watchers}{\thepage }{subsubsection.4.1.1}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Commands}{\thepage }{subsection.4.2}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}BaseFS Evaluation}{\thepage }{section.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Network Evaluation}{\thepage }{subsection.5.1}}
+\@writefile{toc}{\contentsline {paragraph}{Max gossiped messages}{\thepage }{section*.4}}
+\@writefile{toc}{\contentsline {paragraph}{Fullsync Interval}{\thepage }{section*.5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Gossip convergence with variable number of gossip messages}}{\thepage }{figure.9}}
+\newlabel{fig:lion}{{9}{\thepage }{Gossip convergence with variable number of gossip messages}{figure.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Full Sync protocol convergence with variable execution interval}}{\thepage }{figure.10}}
+\newlabel{fig:lion}{{10}{\thepage }{Full Sync protocol convergence with variable execution interval}{figure.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{Scalability}{\thepage }{section*.6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces BaseFS Docker scalability}}{\thepage }{figure.11}}
+\newlabel{fig:lion}{{11}{\thepage }{BaseFS Docker scalability}{figure.11}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Delay Effects}{\thepage }{subsubsection.5.1.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces BaseFS under variable delay}}{\thepage }{figure.12}}
+\newlabel{fig:lion}{{12}{\thepage }{BaseFS under variable delay}{figure.12}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Packet Loss Effects}{\thepage }{subsubsection.5.1.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces BaseFS under variable packet loss}}{\thepage }{figure.13}}
+\newlabel{fig:lion}{{13}{\thepage }{BaseFS under variable packet loss}{figure.13}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.3}Packet Reordering Effects}{\thepage }{subsubsection.5.1.3}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.4}Bandwith Limitations Effects}{\thepage }{subsubsection.5.1.4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces BaseFS under variable packet reordering}}{\thepage }{figure.14}}
+\newlabel{fig:lion}{{14}{\thepage }{BaseFS under variable packet reordering}{figure.14}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.5}BaseFS Under CommunityLab}{\thepage }{subsubsection.5.1.5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces BaseFS under variable bandwidth}}{\thepage }{figure.15}}
+\newlabel{fig:lion}{{15}{\thepage }{BaseFS under variable bandwidth}{figure.15}{}}
+\@writefile{toc}{\contentsline {paragraph}{Docker}{\thepage }{section*.7}}
+\@writefile{toc}{\contentsline {paragraph}{CommunityLab Testbed}{\thepage }{section*.8}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces CommunityLab network hops}}{\thepage }{figure.16}}
+\newlabel{fig:lion}{{16}{\thepage }{CommunityLab network hops}{figure.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces CommunityLab network topology}}{\thepage }{figure.17}}
+\newlabel{fig:lion}{{17}{\thepage }{CommunityLab network topology}{figure.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}File Operations Performance}{\thepage }{subsection.5.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces BaseFS convergence time on CommunityLab}}{\thepage }{figure.18}}
+\newlabel{fig:lion}{{18}{\thepage }{BaseFS convergence time on CommunityLab}{figure.18}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces BaseFS traffic distribution on CommunityLab}}{\thepage }{figure.19}}
+\newlabel{fig:lion}{{19}{\thepage }{BaseFS traffic distribution on CommunityLab}{figure.19}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Read Performance}{\thepage }{subsubsection.5.2.1}}
+\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces BaseFS vs EXT4 filesystem read performance}}{\thepage }{figure.20}}
+\newlabel{fig:lion}{{20}{\thepage }{BaseFS vs EXT4 filesystem read performance}{figure.20}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Write Performance}{\thepage }{subsubsection.5.2.2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {21}{\ignorespaces BaseFS vs EXT4 filesystem write performance}}{\thepage }{figure.21}}
+\newlabel{fig:lion}{{21}{\thepage }{BaseFS vs EXT4 filesystem write performance}{figure.21}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}The Future}{\thepage }{section.6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {22}{\ignorespaces Alternative block linking with manifest tree}}{\thepage }{figure.22}}
+\newlabel{fig:infohash}{{22}{\thepage }{Alternative block linking with manifest tree}{figure.22}{}}
 \bibstyle{abbrv}
 \bibdata{sigproc}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Commands}{\thepage }{subsection.4.2}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Evaluation}{\thepage }{section.5}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}The Future}{\thepage }{section.6}}
+\bibcite{Wikipedia:CRDT}{1}
+\bibcite{SWIM}{2}
+\bibcite{Kleppmann:CAP}{3}
+\bibcite{Yermolaiev:managing}{4}
 \@writefile{toc}{\contentsline {section}{\numberline {7}Conclusions}{\thepage }{section.7}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Acknowledgments}{\thepage }{section.8}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}References}{\thepage }{section.9}}

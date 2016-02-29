@@ -14,14 +14,16 @@ import matplotlib.pyplot as plt
 basepath = sys.argv[1] if len(sys.argv) == 2 else '/etc'
 
 def compress(method):
-    ini = time.time()
-    results = []
+    start = time.time()
+    messages = []
+    times = []
     for path, dirs, files in os.walk(basepath):
-        results += [1 for dir in dirs]
+        messages += [1 for dir in dirs]
         for file in files:
             file = os.path.join(basepath, file)
             packets = 1
             if not os.path.islink(file):
+                ini = time.time()
                 filename = file.split(os.sep)[-1]
                 first_packet = 512-(355 + len(filename))
                 try:
@@ -33,8 +35,9 @@ def compress(method):
 #                            packets = 60
                 except (FileNotFoundError, IsADirectoryError):
                     continue
-            results.append(packets)
-    return results, time.time()-ini
+                times.append(time.time()-ini)
+            messages.append(packets)
+    return messages, time.time()-start, times
 
 # warm-up
 compress(lambda n: '')
@@ -46,6 +49,15 @@ results = {
     'zlib': compress(zlib.compress),
 }
 
+sys.stdout.write('method,type,value\n')
+for method, v in results.items():
+    messages, __, times = v
+    for value in messages:
+        sys.stdout.write('%s,%s,%s\n' % (method, 'messages', value))
+    for value in times:
+        sys.stdout.write('%s,%s,%s\n' % (method, 'times', value))
+
+
 plt.hist(results['raw'][0], bins=1000, histtype='step', normed=True, color='y', label='raw', cumulative=True)
 plt.hist(results['zlib'][0], bins=1000, histtype='step', normed=True, color='r', label='zlib', cumulative=True)
 plt.hist(results['bsdiff4'][0], bins=1000, histtype='step', normed=True, color='g', label='bsdiff4', cumulative=True)
@@ -55,7 +67,7 @@ plt.xlabel("Number of Packets")
 plt.ylabel("Probability")
 plt.legend()
 plt.show()
-plt.savefig('etc_packets.png', dpi=300)
+#plt.savefig('etc_packets.png', dpi=300)
 plt.clf()
 
 
@@ -68,7 +80,7 @@ plt.yticks((1,2,3,4), ('raw', 'zlib', 'bsdiff4', 'lzma'))
 plt.xlabel('Time in Seconds')
 plt.title('/etc Compression Time')
 
-plt.savefig('etc_time.png', dpi=300)
+#plt.savefig('etc_time.png', dpi=300)
 
 #print(json.dumps(results, indent=4))
 

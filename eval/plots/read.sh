@@ -13,9 +13,9 @@ function readscenarios () {
             round=$(echo "$scenario_name" | sed -E "s/.*-([0-9]+).*/\1/")
         fi
         for log in $(ls  -d $BASEFSPATH/tmp/$scenario/logs-*); do
-            grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
+            grep " basefs.fs: Sending entry " $log/node-0 | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#" | awk {'print $1 " " $2 " " $(NF-1) " " $NF'} | while read line; do
                 line=( $line )
-                messages=$(grep " basefs.gossip: Sending .* ${line[2]}" $log/node-0 | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#" | awk {'print $(NF-5)'})
+                messages=$(grep " basefs.gossip: Sending .* ${line[2]}" $log/node-0 | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#" | awk {'print $(NF-5)'})
                 messages=${messages:-"-1"}
                 start=$(date -d "${line[0]} ${line[1]} $(date '+%Z')" +'%s.%3N' || echo "$line" >&2)
                 size=$(echo ${line[3]} | sed -E "s/.*-([0-9]+)'/\1/")
@@ -27,7 +27,7 @@ function readscenarios () {
                     node=${node##*/}
                     complition_time=$(echo $(date -d "$linedate UTC" +'%s.%3N' || echo "$nodeline ${line[2]}" >&2)-$start | bc | awk '{printf "%f\n", $0}')
                     output="$output$complition_time $scenario_name,$round,${size},$messages,$node,$complition_time,$filename\n"
-                done < <(grep -a "COMPLETED ${line[2]}" $log/node-* | sed -E "s#([^:]+)\s*2016/02/.*2016-02-#\12016-02-#"| sed "s/:.*2016-02/:2016-02/" | awk {'print $1 " " $2'})
+                done < <(grep -a "COMPLETED ${line[2]}" $log/node-* | sed -E "s#([^:]+)\s*2016/$MONTH/.*2016-$MONTH-#\12016-$MONTH-#"| sed "s/:.*2016-$MONTH/:2016-$MONTH/" | awk {'print $1 " " $2'})
                 completed=1
                 while read line; do
                     echo $line,$completed
@@ -162,5 +162,25 @@ function readperformance () {
     done
 }
 
+
+function readoverhead () {
+    echo "scenario,metric,time"
+    grep real $BASEFSPATH/tmp/scalability-*/*/stress* | while read line; do
+        nodes=$(echo $line| sed -E "s/.*scalability-([0-9]+).*/\1/")
+        metric=$(echo $line| cut -d':' -f1|cut -d'-' -f4)
+        complition=$(echo $line| awk {'print $2'} | sed -e "s/m/*60+/" -e "s/s//" | bc | awk '{printf "%f\n", $0}')
+        echo "$nodes,$metric,$complition"
+    done
+}
+
+
+function readload () {
+    echo "scenario,slot,one_min,five_min,fiveteen_min"
+    grep '.' $BASEFSPATH/tmp/scalability-*/*/cpu | while read line; do
+        nodes=$(echo $line| sed -E "s/.*scalability-([0-9]+).*/\1/")
+        metrics=( $(echo $line| cut -d':' -f2) )
+        echo "$nodes,${metrics[0]},${metrics[1]},${metrics[2]},${metrics[3]}"
+    done
+}
 
 $1

@@ -43,8 +43,10 @@ for node in os.listdir(trace_path):
         ip = handler.readline().split()[0]
         ip_to_name[ip] = str(node)
 
-cluster = ['1', '10', '30', '11', '29', '17', '16', '8', '9', '14', '0']
+#cluster = ['29', '14', '23', '10', '19', '1', '2', '22', '30', '11', '12', '13', '5', '21', '9']
 
+cluster = ['24', '6', '31', '32', '35', '27', '17', '15', '8', '25', '33', '4', '26', '16', '20',
+    '34', '28', '18', '3', '7', '34']
 good_nodes = 0
 for node in os.listdir(trace_path):
     filename = os.path.join(trace_path, str(node), 'traceroute')
@@ -149,3 +151,8 @@ plt.xlabel('Number of hops')
 hops_path = os.path.join(plot_path, "hops.png")
 plt.savefig(hops_path, dpi=300)
 print("eog " + hops_path)
+
+sys.stderr.write("link,latency,hops\n")
+for ix, value in enumerate(zip(latencies, nhops)):
+    l, h = value
+    sys.stderr.write("%s,%s,%s\n" % (ix, l, h))
