@@ -139,6 +139,7 @@ class SyncHandler:
         if peername in self.syncing:
             self.syncing.remove(peername)
         writer.close()
+        logger.debug("Closed full sync with %s" % str(peername))
     
     @asyncio.coroutine
     def read_sync(self, reader, writer):
@@ -396,12 +397,15 @@ class SyncHandler:
                     result.append(c)
                     choices.remove((c, w))
                     break
+        logger.debug("Get random members, syncing: %i, choices: %i, results: %i" % (
+            len(self.syncing), len(choices), len(result)
+        ))
         return result
     
     @asyncio.coroutine
     def initial_request(self, reader, writer):
         peername = writer.get_extra_info('peername')
-        logger.debug('Initiating sync with %s', peername)
+        logger.debug('Initiating sync with %s', str(peername))
         receiving = self.get_and_update_receiving()
         writer.write(b's')
         self.write(writer, self.HASH)
@@ -423,28 +427,48 @@ def do_full_sync(sync, config=None):
     @asyncio.coroutine
     def full_sync(members):
         for member in members:
-            ip, port = member
-            reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
-            yield from sync.initial_request(reader, writer)
+            retries = 4
+            while retries:
+                ip, port = member
+                logger.debug("Open connection with %s:%s" % (ip, port))
+                try:
+                    reader, writer = yield from asyncio.open_connection(ip, port, loop=loop)
+                except TimeoutError:
+                    retries -= 1
+                    logger.error("Connection timed out contacting %s:%s, %i retries left" % (ip, port, retries))
+                    yield from asyncio.sleep(1)
+                except OSError:
+                    retries -= 1
+                    logger.error("Connect call failed contacting %s:%s, %i retries left" % (ip, port, retries))
+                    yield from asyncio.sleep(1)
+                else:
+                    yield from sync.initial_request(reader, writer)
+                    break
     
     @asyncio.coroutine
     def seed_sync():
         yield from asyncio.sleep(0.2)
-        members = sync.get_random_members(num=sync.SEED_NODES)
+        members = sync.f_members(num=sync.SEED_NODES)
         logger.debug('Seeding to %s', members)
-        yield from full_sync(members)
-    
+        try:
+            yield from full_sync(members)
+        except Exception as exc:
+            logger.error(traceback.format_exc())
     sync.serf.partial_gossip.connect(lambda: loop.call_soon_threadsafe(asyncio.async, seed_sync()))
     
-    FULL_SYNC_INTERVAL = 5*60*5*10
+    FULL_SYNC_INTERVAL = 20
     if config:
         FULL_SYNC_INTERVAL = int(config.get('full_sync_interval', FULL_SYNC_INTERVAL))
     deviation = int(FULL_SYNC_INTERVAL*0.1)
     FULL_SYNC_INTERVAL = (FULL_SYNC_INTERVAL-deviation, FULL_SYNC_INTERVAL+deviation)
     while True:
         try:
-            yield from asyncio.sleep(random.randint(*FULL_SYNC_INTERVAL))
+            seconds = random.randint(*FULL_SYNC_INTERVAL)
+            logger.info("Next full sync in %i seconds" % seconds)
+            yield from asyncio.sleep(seconds)
             members = sync.get_random_members(num=1)
+            if not members:
+                logger.warning("No members available for full state synchronization.")
             yield from full_sync(members)
         except Exception as exc:
             logger.error(traceback.format_exc())

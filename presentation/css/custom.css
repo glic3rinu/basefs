@@ -1,0 +1,8 @@
+.bw {
+    background-color:rgb(63, 63, 63);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        -webkit-transition: all .2s linear;
+        -moz-transition: all .2s linear;
+        -ms-transition: all .2s linear;
+        -o-transition: all .2s linear;
+}

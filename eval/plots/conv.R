@@ -14,6 +14,11 @@ exclude = c(
     'bw-56kbit',
     'bw-512kbit',
     'bw-1mbit',
+    'bw-512',
+    'bw-256',
+    'bw-1024',
+    'bw-54',
+    'bw-2',
     'delay-20ms',
     'delay-300ms',
     'delay-400ms',
@@ -52,6 +57,9 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
     current <- dataset[grepl(var[1], dataset$scenario) | dataset$scenario=="baseline",]
     current = current[! current$scenario %in% exclude,]
     numbers = sort(as.numeric(levels(current$round)))
+    if ( var[1] == "bw" ) {
+        numbers <- rev(numbers)
+    }
     current$Color = ordered(current$round, levels=c("baseline", numbers))
     levels(current$Color) = ifelse(levels(current$Color)=="baseline", 
                                     levels(current$Color),
@@ -74,11 +82,18 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
     
     current <- dataset_completed[grepl(var[1],dataset_completed$scenario) | dataset_completed$scenario=="baseline",]
     current = current[! current$scenario  %in% exclude,]
-    ggplot(data=current, aes(x=size, y=completed, color=factor(round))) +
+    numbers = sort(as.numeric(levels(current$round)))
+    current$Color = ordered(current$round, levels=c("baseline", numbers))
+    levels(current$Color) = ifelse(levels(current$Color)=="baseline", 
+                                    levels(current$Color),
+                                    paste0(levels(current$Color), var[3]))
+    ggplot(data=current, aes(x=size, y=completed, color=Color, linetype=Color)) +
         geom_point() +
         geom_line() +
+        theme_bw() +
         scale_x_log10() +
-        ggtitle(paste0(verbose, " - ", "completed nodes under variable ", var[2])) +
+        guides(color=guide, linetype=guide, shape=guide) +
+        theme(legend.key=element_blank()) +
         labs(y="Number of completed nodes", x="Log entries")
     
     ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], "-completed.png"), dpi=600)
@@ -98,12 +113,12 @@ vars = list(
     c("loss", "Packet Loss", "%"),
     c("bw", "Bandwidth", "Kbps"),
     c("reorder", "Packet Reorder", "%"),
-    c("delay", "Delay", "ms")
+    c("delay", "Mean Delay", "ms")
 )
 
-for (var in vars) {
-    do_graphs(gossip, gossip_completed, var, 'gossip', 'Gossip')
-}
+#for (var in vars) {
+#    do_graphs(gossip, gossip_completed, var, 'gossip', 'Gossip')
+#}
 for (var in vars){
     do_graphs(basefs, basefs_completed, var, 'basefs', 'BaseFS')
 }

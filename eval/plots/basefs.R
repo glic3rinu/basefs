@@ -79,23 +79,35 @@ do_graph <- function(name, verbose) {
 #    ggsave(traffic_path, dpi=600)
 #    print(paste0('eog ', traffic_path))
 
+    breaks = c(
+        "Serf.UDP.bytes",
+        "Serf.TCP.bytes",
+        "Sync.bytes"
+    )
+    labels = c(
+        "Serf UDP",
+        "Serf TCP",
+        "Sync"
+    )
+
     xx = read.csv(paste0(basefspath, "eval/datasets/basefs-", name, "-traffic-distribution.csv"))
     traffic<- melt(xx, id.var="Node")
+    traffic$variable = factor(traffic$variable, levels=breaks)
+    levels(traffic$variable) = labels
     plot <- ggplot(traffic, aes(x=Node, y=value/10**6, fill=variable)) +
-        geom_bar(stat = "identity") +
+        geom_bar(stat = "identity", position="dodge") +
         ggtitle(verbose) +
-        theme_bw()
+        theme_bw() +
+        ylim(0, 7.5)
     if ( name == 'confine' ) {
         plot <- plot +
             theme(legend.position = "none") +
             labs(x="Node", y="Traffic in MB")
     } else {
         plot <- plot +
-            labs(x="Node") + theme(axis.title.y=element_blank())
-#        plot <- plot + theme(
-#          axis.line=element_blank(),
-#          axis.text.y=element_blank(),
-#          axis.title.y=element_blank())
+            labs(x="Node") +
+            scale_fill_discrete(name="Protocol") +
+            theme(axis.title.y=element_blank())
     }
     plot
 }

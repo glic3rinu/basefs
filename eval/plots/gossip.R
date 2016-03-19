@@ -28,6 +28,9 @@ plt = ggplot(data=current, aes(x=size, y=time, color=Color, linetype=Color)) +
     scale_x_log10(breaks=get_breaks) +
     scale_y_log10(breaks=get_breaks, labels=as.character) +
     labs(y="Time in seconds", x="Log entries") + 
+    geom_hline(yintercept=2, alpha=0.5, color='grey') +
+#    geom_segment(aes(x =10, y = 0, xend = 10, yend = 2), alpha=0.4, color='blue') +
+    geom_vline(xintercept=10, alpha=0.5, color='grey') +
 #    guides(color=guide, linetype=guide, shape=guide) +
     theme_bw() +
     theme(legend.key=element_blank(), legend.position="none")

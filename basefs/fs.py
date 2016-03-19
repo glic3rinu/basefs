@@ -126,9 +126,7 @@ class FileSystem(Operations):
                 'st_size': len(content),
                 'st_uid': os.getuid(),
             }
-        
 
-        
 #        full_path = self._full_path(path)
 #        st = os.lstat(full_path)
 #        return dict((key, getattr(st, key)) for key in ())

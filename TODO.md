@@ -1,3 +1,24 @@
+“We determined that…” with “The authors determined that….”.
+in order to -> to
+Rather than describing a result, show the reader what they need to know to come to their own conclusion about it
+Rather than writing, "Figure 4 shows the relationship between the numbers of species A and species B," write "The abundances of species A and B were inversely related (Figure 4)."
+present tense, scalability is great 
+prove log dag is crdt
+limit the use of prepositional phrases at the start of sentences and limit the use of 'the.' http://www.advanced-english-grammar.com/list-of-prepositional-phrases.html
+examines / analizes
+reports on / outlines
+argues / justifies / recommends
+compares / contrasts
+descusses / demonstrates
+shows / refutes
+highlights / illustrates
+remove also
+
+TODO BaseFS is a Merkle tree not a DAG! != IPFS and GIT
+
+
+
+
 # remove "real" cpu time
 # TODO include number of packets on the legend
 # TODO eof_received

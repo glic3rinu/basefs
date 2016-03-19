@@ -1,14 +1,14 @@
 
 ```bash
 rsync -rvhP --exclude="*.png" --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3/Dropbox/basefs root@calmisko.org:
-rsync -rvhP --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3rinu/Dropbox/basefs /root
+rsync -rvhP --exclude="*.png" --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3rinu/Dropbox/basefs /root
 rsync -rvhP --exclude=datasets --exclude=tmp --exclude=.git --exclude=env --exclude="*~" --exclude=logs --exclude=results --exclude=__pycache__ /home/glic3/Dropbox/basefs /root
 rsync -rvhp root@calmisko.org:/root/basefs/tmp/testpoint /root/basefs/tmp/testpoint 
 
 
-rsync -rvhP --exclude=__pycache__ root@calmisko.org:basefs/eval/datasets/ /home/glic3/Dropbox/basefs/eval/datasets/
-rsync -rvhP --exclude=__pycache__ /root/basefs/eval/datasets/ /home/glic3rinu/Dropbox/basefs/eval/datasets/
-rsync -rvhP --exclude=__pycache__ root@xps:/root/basefs/eval/datasets/ /home/glic3rinu/Dropbox/basefs/eval/datasets/
+rsync -rvhP --exclude=__pycache__ root@calmisko.org:basefs/eval/datasets/basefs* /home/glic3/Dropbox/basefs/eval/datasets/
+rsync -rvhP --exclude=__pycache__ /root/basefs/eval/datasets/basefs* /home/glic3rinu/Dropbox/basefs/eval/datasets/
+rsync -rvhP --exclude=__pycache__ root@xps:/root/basefs/eval/datasets/basefs* /home/glic3rinu/Dropbox/basefs/eval/datasets/
 
 ```
 
