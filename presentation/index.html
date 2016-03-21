@@ -43,33 +43,35 @@
             <div class="slides">
                 <section>
                     <h1>BaseFS</h1>
-                    <h3>Basically Available, Soft-State, Eventually Consistent File Sytstem<br> for Cluster Management</h3>
+                    <h3>Basically Available, Soft-State, Eventually Consistent File Sytstem for P2P Cloud Management</h3>
                     <p>
-                        <small>Created by <a href="http://hakim.se">Hakim El Hattab</a> / <a href="http://twitter.com/hakimel">@hakimel</a></small>
+                        <small>Created by <a href="mailto:marc.aymerich@est.fib.upc.edu">Marc Aymerich</a></small>
                     </p>
                 </section>
                 <section id="configuration" data-background="imgs/peerj-cs-eniac.jpg">
-                        <h2 class="bw">Cloud Management?</h2>
+                        <h2 class="bw">Cloud Management</h2>
                         <li class="bw">Coordination</li>
                         <li class="bw">Configuration</li>
                         <li class="bw">Service discovery</li>
                         <li class="bw">Orchestration</li>
                 </section>
-                <section id="client-server" data-background="imgs/client-server.png">
-                    <h2 class="fragment bw">Client-Server Architecture <br>is Bad for</h2>
-                    <li class="fragment bw">Availability</li>
-                    <li class="fragment bw">Scalability</li>
-                    <li class="fragment bw">Management</li>
+                <section id="client-server" data-background="imgs/alan.jpg">
+                    <h2 class="bw">Client-Server Architecture</h2>
+                    <img src="imgs/client-server.png"></img>
+                    <li class="fragment bw">Chef, Puppet or Ansible</li>
+                    <li class="fragment bw">Availability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
+                    <li class="fragment bw">Scalability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
                 </section>
-                <section id="client-server2" data-background="imgs/ha-client-server.png">
-                        <h2 class="fragment bw">High Available Cloud Configuation</h2>
-                        <li class="fragment bw">... the same ...</li>
-                        <li class="fragment bw">Centralized architecture with some redundancy</li>
-                        <li class="fragment bw">with added complexy!</li>
+                <section id="client-server2" data-background="imgs/datacenter-mess.jpg">
+                        <h2 class="bw">HA Client-Server Architecture</h2>
+                        <img src="imgs/ha-client-server.png"></img>
+                        <li class="fragment bw">ZooKeeper, etcd or Consul</li>
+                        <li class="fragment bw">Same centralized architecture with <strong>some redundancy</strong></li>
+                        <li class="fragment bw">Increased complexity <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
                 </section>
                 <section id="datacenter" data-background="imgs/supercomputer.jpg">
                     <h2 class="bw">Traditional Cloud is<br>
-                                            Centralized</h2>
+                                   Centralized</h2>
                 </section>
                 <section id="guifi" data-background="imgs/guifi.png">
                     <h2 class="bw">Community Cloud is <br>
@@ -80,7 +82,7 @@
 <!--                    <h2 class="fragment bw">Peer-to-peer Architecture</h2>-->
 <!--                </section>-->
                 <section data-background="imgs/nasa.jpg">
-                    <h2 class="bw">How can we do better<br><b>P2P management</b>?</h2>
+                    <h2 class="bw">How can we do better<br><strong>P2P management</strong>?</h2>
                 </section>
                 <section id="choose" data-background="imgs/choose.png">
                     <h2 class="bw">Consistency or Availability ...</h2>
@@ -90,366 +92,241 @@
                     <h2 class="bw">Eventual Consistency</h2>
                     <li class="fragment bw">Availability under partition</li>
                     <li class="fragment bw">Weakly consistent communication channel:<br>
-                                            gossip-style network protocol <b>NO APIs</b></li>
-                    <li class="fragment bw">Nodes don't need to trust each other</li>
+                                            gossip-style network protocol <strong>NO APIs</strong></li>
                     <li class="fragment bw">High performance:<br>
                                             progress without coordination</li>
                     <li class="fragment bw">Geographic and administrative scalability</li>
                 </section>
-                <section id="basefs" data-background="imgs/branches.jpg">
-                        <h2 class="bw">BaseFS</h2>
-                </section>
+
                 <section id="basefs-overview" data-background="imgs/p2p.png">
-                    <li class="fragment bw">Peer-to-Peer replication middleware</li>
+                    <h2 class="bw">BaseFS</h2>
+                    <li class="fragment bw">Peer-to-peer replication middleware</li>
                     <li class="fragment bw">Gossip-style communication</li>
                     <li class="fragment bw">BlockChain-inspired datastore</li>
                     <li class="fragment bw">Filesystem interface</li>
                 </section>
                 
                 <section id="hood" data-background="imgs/car.jpg">
-                        <h2 class="bw">BaseFS - under the hood</h2>
+                    <h2 class="bw">BaseFS Under The Hood</h2>
+                    TODO overview
+                </section>
+                
+                <section id="log" data-background="imgs/branches.jpg">
+                    <div class="bw" style="margin:0 0 20px 0;">
+                        <h2>Log</h2>
+                        <li><strong>Log entries</strong>: filesystem metadata <i>"i-nodes"</i></li>
+                        <li><strong>Blocks</strong>: file content chunks</li>
+                    </div>
+                </section>
+                
+                <section id="log-entry" data-background="imgs/branches.jpg">
+                    <h2 class="bw">Log Entry</h2>
+                    <li class="bw">Merkle DAG</li>
+                    <img class="stretch image" src="imgs/log.png"></img>
+                    <li class="bw">mkdir, write, delete, revert, grant, <br>
+                       revoke, ack, link, slink, mode</li>
+                </section>
+                
+                <section id="log-entry-properties" data-background="imgs/branches.jpg">
+                    <h2 class="bw">Log Entry Properties</h2>
+                    <div class="bw fragment" style="margin:0 0 20px 0;">
+                        <ul>
+                            <li>Merkle Direct Acyclic Graph
+                            <ul>
+                                <li><strong>Content addressing</strong>: uniquely identified by its hash</li>
+                                <li><strong>Tamper resistance</strong>: hash verification</li>
+                                <li><strong>Deduplication</strong>: objects with same hash are equal</li>
+                                <li><strong>Casual ordering</strong>: object linked is older</li>
+                            </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bw fragment">
+                        <ul>
+                            <li>Convergent Replicated Data Type
+                            <ul>
+                                <li><strong>Message loss</strong>: associativity <tt>f(f(a, b), c) = f(a, f(b, c))</tt></li>
+                                <li><strong>Message reordering</strong>: commutativity <tt>f(a, b) = f(b, a)</tt></li>
+                                <li><strong>Multiple delivery</strong>: idempotency <tt>f(f(a)) = f(a)</tt></li>
+                            </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+                
+                <section id="log-blocks" data-background="imgs/branches.jpg">
+                    <h2 class="bw">Blocks</h2>
+                    <li class="bw">Hashed linked list</li>
+                    <img class="stretch image" src="imgs/blocs.png"></img>
                 </section>
                 
                 <section id="view" data-background="imgs/choices.jpg">
-                        <h2 class="bw">View</h2>
+                    <h2 class="bw">View</h2>
+                    <li class="fragment bw" style="margin:0 0 20px 0;">Resolved conflict <i>"view"</i> of the log</li>
+                    <div class="fragment bw" style="margin:0 0 20px 0;">
+                    <ul>
+                    <li><strong>Proof-of-authority:</strong>
+                        <ol>
+                            <li>Higher hierarchy key branch</li>
+                            <li>If equal, more contributors branch</li>
+                            <li>If equal, higher root hash branch</li>
+                        </ol>
+                    </li>
+                    </ul>
+                    </div>
+                    <li class="fragment bw">Write permissions</li>
                 </section>
-                <section id="gossip" data-background="imgs/gossip.jpg">
-                        <h2 class="bw">Gossip Protocol</h2>
-                </section>
-                <section id="sync" data-background="imgs/sync.jpg">
-                        <h2 class="bw">Synchronization Protocol</h2>
-                </section>
-                <section id="fs" data-background="imgs/file.jpg">
-                        <h2 class="bw">File System API</h2>
-                </section>
-                <section data-background="imgs/p2p.png">
-                    <section id="overview">
-                        <h2 class="fragment bw">BaseFS Provides</h2>
-                        <li class="fragment bw">Conflict-free replicated data type</li>
-                        <li class="fragment bw">Write permissions</li>
-                        <li class="fragment bw">Cluster membership and dissemination protocol</li>
-                        <li class="fragment bw">APIs</li>
-                    </section>
+                <section id="view-example" data-background="imgs/choices.jpg">
+                    <h2 class="bw">View Example</h2>
+                    <img class="stretch image" src="imgs/view-strike.png"></img>
                 </section>
                 
-
-                <!-- Example of nested vertical slides -->
-                <section>
-                    <section>
-                        <h2>Vertical Slides</h2>
-                        <p>Slides can be nested inside of each other.</p>
-                        <p>Use the <em>Space</em> key to navigate through all slides.</p>
-                        <br>
-                        <a href="#" class="navigate-down">
-                            <img width="178" height="238" data-src="https://s3.amazonaws.com/hakim-static/reveal-js/arrow.png" alt="Down arrow">
-                        </a>
-                    </section>
-                    <section>
-                        <h2>Basement Level 1</h2>
-                        <p>Nested slides are useful for adding additional detail underneath a high level horizontal slide.</p>
-                    </section>
-                    <section>
-                        <h2>Basement Level 2</h2>
-                        <p>That's it, time to go back up.</p>
-                        <br>
-                        <a href="#/2">
-                            <img width="178" height="238" data-src="https://s3.amazonaws.com/hakim-static/reveal-js/arrow.png" alt="Up arrow" style="transform: rotate(180deg); -webkit-transform: rotate(180deg);">
-                        </a>
-                    </section>
+                <section id="gossip" data-background="imgs/gossip.jpg">
+                    <h2 class="bw">Gossip Protocol</h2>
+                    <li class="fragment bw">Serf</li>
+                    <li class="fragment bw"><strong>Group membership</strong> and <strong>log disemination</strong></li>
+                    <li class="fragment bw">512 bytes of payload</li>
+                    <img class="fragment stretch image" src="imgs/payload.png"></img>
                 </section>
 
-                <section>
-                    <h2>Slides</h2>
-                    <p>
-                        Not a coder? Not a problem. There's a fully-featured visual editor for authoring these, try it out at <a href="http://slides.com" target="_blank">http://slides.com</a>.
-                    </p>
+                <section id="gossip-etc" data-background="imgs/gossip.jpg">
+                    <h2 class="bw">/etc number of messages</h2>
+                    <img class="stretch image" src="imgs/etc_messages.png"></img>
                 </section>
-
-                <section>
-                    <h2>Point of View</h2>
-                    <p>
-                        Press <strong>ESC</strong> to enter the slide overview.
-                    </p>
-                    <p>
-                        Hold down alt and click on any element to zoom in on it using <a href="http://lab.hakim.se/zoom-js">zoom.js</a>. Alt + click anywhere to zoom back out.
-                    </p>
-                </section>
-
-                <section>
-                    <h2>Touch Optimized</h2>
-                    <p>
-                        Presentations look great on touch devices, like mobile phones and tablets. Simply swipe through your slides.
-                    </p>
-                </section>
-
-                <section data-markdown>
-                    <script type="text/template">
-                        ## Markdown support
-
-                        Write content using inline or external Markdown.
-                        Instructions and more info available in the [readme](https://github.com/hakimel/reveal.js#markdown).
-
-                        ```
-                        <section data-markdown>
-                          ## Markdown support
-
-                          Write content using inline or external Markdown.
-                          Instructions and more info available in the [readme](https://github.com/hakimel/reveal.js#markdown).
-                        </section>
-                        ```
-                    </script>
-                </section>
-
-                <section>
-                    <section id="fragments">
-                        <h2>Fragments</h2>
-                        <p>Hit the next arrow...</p>
-                        <p class="fragment">... to step through ...</p>
-                        <p><span class="fragment">... a</span> <span class="fragment">fragmented</span> <span class="fragment">slide.</span></p>
-
-                        <aside class="notes">
-                            This slide has fragments which are also stepped through in the notes window.
-                        </aside>
-                    </section>
-                    <section>
-                        <h2>Fragment Styles</h2>
-                        <p>There's different types of fragments, like:</p>
-                        <p class="fragment grow">grow</p>
-                        <p class="fragment shrink">shrink</p>
-                        <p class="fragment fade-out">fade-out</p>
-                        <p class="fragment current-visible">current-visible</p>
-                        <p class="fragment highlight-red">highlight-red</p>
-                        <p class="fragment highlight-blue">highlight-blue</p>
-                    </section>
-                </section>
-
-                <section id="transitions">
-                    <h2>Transition Styles</h2>
-                    <p>
-                        You can select from different transitions, like: <br>
-                        <a href="?transition=none#/transitions">None</a> -
-                        <a href="?transition=fade#/transitions">Fade</a> -
-                        <a href="?transition=slide#/transitions">Slide</a> -
-                        <a href="?transition=convex#/transitions">Convex</a> -
-                        <a href="?transition=concave#/transitions">Concave</a> -
-                        <a href="?transition=zoom#/transitions">Zoom</a>
-                    </p>
-                </section>
-
-                <section id="themes">
-                    <h2>Themes</h2>
-                    <p>
-                        reveal.js comes with a few themes built in: <br>
-                        <!-- Hacks to swap themes after the page has loaded. Not flexible and only intended for the reveal.js demo deck. -->
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/black.css'); return false;">Black (default)</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/white.css'); return false;">White</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/league.css'); return false;">League</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/sky.css'); return false;">Sky</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/beige.css'); return false;">Beige</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/simple.css'); return false;">Simple</a> <br>
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/serif.css'); return false;">Serif</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/blood.css'); return false;">Blood</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/night.css'); return false;">Night</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/moon.css'); return false;">Moon</a> -
-                        <a href="#" onclick="document.getElementById('theme').setAttribute('href','css/theme/solarized.css'); return false;">Solarized</a>
-                    </p>
-                </section>
-
-                <section>
-                    <section data-background="#dddddd">
-                        <h2>Slide Backgrounds</h2>
-                        <p>
-                            Set <code>data-background="#dddddd"</code> on a slide to change the background color. All CSS color formats are supported.
-                        </p>
-                        <a href="#" class="navigate-down">
-                            <img width="178" height="238" data-src="https://s3.amazonaws.com/hakim-static/reveal-js/arrow.png" alt="Down arrow">
-                        </a>
-                    </section>
-                    <section data-background="https://s3.amazonaws.com/hakim-static/reveal-js/image-placeholder.png">
-                        <h2>Image Backgrounds</h2>
-                        <pre><code class="hljs">&lt;section data-background="image.png"&gt;</code></pre>
-                    </section>
-                    <section data-background="https://s3.amazonaws.com/hakim-static/reveal-js/image-placeholder.png" data-background-repeat="repeat" data-background-size="100px">
-                        <h2>Tiled Backgrounds</h2>
-                        <pre><code class="hljs" style="word-wrap: break-word;">&lt;section data-background="image.png" data-background-repeat="repeat" data-background-size="100px"&gt;</code></pre>
-                    </section>
-                    <section data-background-video="https://s3.amazonaws.com/static.slid.es/site/homepage/v1/homepage-video-editor.mp4,https://s3.amazonaws.com/static.slid.es/site/homepage/v1/homepage-video-editor.webm" data-background-color="#000000">
-                        <div style="background-color: rgba(0, 0, 0, 0.9); color: #fff; padding: 20px;">
-                            <h2>Video Backgrounds</h2>
-                            <pre><code class="hljs" style="word-wrap: break-word;">&lt;section data-background-video="video.mp4,video.webm"&gt;</code></pre>
-                        </div>
-                    </section>
-                    <section data-background="http://i.giphy.com/90F8aUepslB84.gif">
-                        <h2>... and GIFs!</h2>
-                    </section>
-                </section>
-
-                <section data-transition="slide" data-background="#4d7e65" data-background-transition="zoom">
-                    <h2>Background Transitions</h2>
-                    <p>
-                        Different background transitions are available via the backgroundTransition option. This one's called "zoom".
-                    </p>
-                    <pre><code class="hljs">Reveal.configure({ backgroundTransition: 'zoom' })</code></pre>
-                </section>
-
-                <section data-transition="slide" data-background="#b5533c" data-background-transition="zoom">
-                    <h2>Background Transitions</h2>
-                    <p>
-                        You can override background transitions per-slide.
-                    </p>
-                    <pre><code class="hljs" style="word-wrap: break-word;">&lt;section data-background-transition="zoom"&gt;</code></pre>
-                </section>
-
-                <section>
-                    <h2>Pretty Code</h2>
-                    <pre><code class="hljs" data-trim contenteditable>
-function linkify( selector ) {
-  if( supports3DTransforms ) {
-
-    var nodes = document.querySelectorAll( selector );
-
-    for( var i = 0, len = nodes.length; i &lt; len; i++ ) {
-      var node = nodes[i];
-
-      if( !node.className ) {
-        node.className += ' roll';
-      }
-    }
-  }
-}
-                    </code></pre>
-                    <p>Code syntax highlighting courtesy of <a href="http://softwaremaniacs.org/soft/highlight/en/description/">highlight.js</a>.</p>
-                </section>
-
-                <section>
-                    <h2>Marvelous List</h2>
+                <section id="sync" data-background="imgs/sync.jpg">
+                    <h2 class="bw">Synchronization Protocol</h2>
+                    <div class="fragment bw">
                     <ul>
-                        <li>No order here</li>
-                        <li>Or here</li>
-                        <li>Or here</li>
-                        <li>Or here</li>
-                    </ul>
+                        <li>Log disemination
+                        <ul>
+                            <li>after <strong>partition</strong></li>
+                            <li><strong>large files</strong></li>
+                            <li><strong>bootsrap</strong> joining nodes</li>
+                        </ul>
+                        </li>
+                    </div>
+                    <li class="fragment bw">Unseen-biased randomized node selection</li>
+                    <li class="fragment bw">Efficient divergence detection with Merkle trees</li>
                 </section>
-
-                <section>
-                    <h2>Fantastic Ordered List</h2>
-                    <ol>
-                        <li>One is smaller than...</li>
-                        <li>Two is smaller than...</li>
-                        <li>Three!</li>
-                    </ol>
+                <section id="fs" data-background="imgs/file.jpg">
+                    <h2 class="bw">File System API</h2>
+                    <li class="fragment bw">Natural way of doing configuration in UNIX</li>
+                    <li class="fragment bw">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>
+                    <li class="fragment bw">Watchers: react to events</li>
+                    
                 </section>
-
-                <section>
-                    <h2>Tabular Tables</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th>Value</th>
-                                <th>Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Apples</td>
-                                <td>$1</td>
-                                <td>7</td>
-                            </tr>
-                            <tr>
-                                <td>Lemonade</td>
-                                <td>$2</td>
-                                <td>18</td>
-                            </tr>
-                            <tr>
-                                <td>Bread</td>
-                                <td>$3</td>
-                                <td>2</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <section id="modules" data-background="imgs/moudle.jpg">
+                    <h2 class="bw">Module Overview</h2>
+                    <img class="stretch image" src="imgs/modules.png"></img>
                 </section>
-
-                <section>
-                    <h2>Clever Quotes</h2>
-                    <p>
-                        These guys come in two forms, inline: <q cite="http://searchservervirtualization.techtarget.com/definition/Our-Favorite-Technology-Quotations">
-                        &ldquo;The nice thing about standards is that there are so many to choose from&rdquo;</q> and block:
-                    </p>
-                    <blockquote cite="http://searchservervirtualization.techtarget.com/definition/Our-Favorite-Technology-Quotations">
-                        &ldquo;For years there has been a theory that millions of monkeys typing at random on millions of typewriters would
-                        reproduce the entire works of Shakespeare. The Internet has proven this theory to be untrue.&rdquo;
-                    </blockquote>
+                
+                <section id="evaluation" data-background="imgs/graph.gif">
+                    <h2 class="bw">Evaluation</h2>
+                        <li class="bw">Network: <a href="https://www.docker.com/">Docker</a> and <a href="https://community-lab.net/">Community-Lab</a></li>
+                        <li class="bw">Filesystem IO</li>
                 </section>
-
-                <section>
-                    <h2>Intergalactic Interconnections</h2>
-                    <p>
-                        You can link between slides internally,
-                        <a href="#/2/3">like this</a>.
-                    </p>
+                
+                <section id="param" data-background="imgs/old-pane.jpg">
+                    <h2 class="bw">Parametrization</h2>
+                    <li class="bw">Max Gossiped Blocks</li>
+                    <li class="bw">Sync Protocol Interval</li>
+                    <li class="bw">Docker Cluster Size</li>
                 </section>
-
-                <section>
-                    <h2>Speaker View</h2>
-                    <p>There's a <a href="https://github.com/hakimel/reveal.js#speaker-notes">speaker view</a>. It includes a timer, preview of the upcoming slide as well as your speaker notes.</p>
-                    <p>Press the <em>S</em> key to try it out.</p>
-
-                    <aside class="notes">
-                        Oh hey, these are some notes. They'll be hidden in your presentation, but you can see them if you open the speaker notes window (hit 's' on your keyboard).
-                    </aside>
+                
+                <section id="param-gossip" data-background="imgs/old-pane.jpg">
+                    <h2 class="bw">Param: Max Gossiped Blocks</h2>
+                    <img class="stretch" src="imgs/gossip-reorder.png"></img>
                 </section>
-
-                <section>
-                    <h2>Export to PDF</h2>
-                    <p>Presentations can be <a href="https://github.com/hakimel/reveal.js#pdf-export">exported to PDF</a>, here's an example:</p>
-                    <iframe src="https://www.slideshare.net/slideshow/embed_code/42840540" width="445" height="355" frameborder="0" marginwidth="0" marginheight="0" scrolling="no" style="border:3px solid #666; margin-bottom:5px; max-width: 100%;" allowfullscreen> </iframe>
+                <section id="param-sync" data-background="imgs/old-pane.jpg">
+                    <h2 class="bw">Param: Sync Protocol Interval</h2>
+                    <img class="stretch" src="imgs/sync.png"></img>
                 </section>
-
-                <section>
-                    <h2>Global State</h2>
-                    <p>
-                        Set <code>data-state="something"</code> on a slide and <code>"something"</code>
-                        will be added as a class to the document element when the slide is open. This lets you
-                        apply broader style changes, like switching the page background.
-                    </p>
+                <section id="param-cluster" data-background="imgs/old-pane.jpg">
+                    <h2 class="bw">Param: Docker Cluster Size</h2>
+                    <img class="stretch" src="imgs/scalability.png"></img>
                 </section>
-
-                <section data-state="customevent">
-                    <h2>State Events</h2>
-                    <p>
-                        Additionally custom events can be triggered on a per slide basis by binding to the <code>data-state</code> name.
-                    </p>
-                    <pre><code class="javascript" data-trim contenteditable style="font-size: 18px;">
-Reveal.addEventListener( 'customevent', function() {
-    console.log( '"customevent" has fired' );
-} );
-                    </code></pre>
-                </section>
-
-                <section>
-                    <h2>Take a Moment</h2>
-                    <p>
-                        Press B or . on your keyboard to pause the presentation. This is helpful when you're on stage and want to take distracting slides off the screen.
-                    </p>
-                </section>
-
-                <section>
-                    <h2>Much more</h2>
+                
+                <section id="network" data-background="imgs/switch-room.jpg">
+                    <h2 class="bw">Network Evaluation</h2>
+                    <div class="bw">
                     <ul>
-                        <li>Right-to-left support</li>
-                        <li><a href="https://github.com/hakimel/reveal.js#api">Extensive JavaScript API</a></li>
-                        <li><a href="https://github.com/hakimel/reveal.js#auto-sliding">Auto-progression</a></li>
-                        <li><a href="https://github.com/hakimel/reveal.js#parallax-background">Parallax backgrounds</a></li>
-                        <li><a href="https://github.com/hakimel/reveal.js#keyboard-bindings">Custom keyboard bindings</a></li>
+                        <li>Virtual Environment based on:
+                            <ul>
+                                <li><a href="https://www.docker.com/">Docker containers</a></li>
+                                <li><a href="http://lartc.org/manpages/tc.txt">TC (Traffic Control)</a></li>
+                            </ul>
+                        <li>30 nodes cluster</li>
+                        <li>Write to one node and measure convergence time</li>
                     </ul>
+                    </div>
+                </section>
+                
+                <section id="latency" data-background="imgs/switch-room.jpg">
+                    <h2 class="bw">Latency</h2>
+                    <img class="stretch" src="imgs/basefs-delay.png"></img>
+                </section>
+                <section id="bw" data-background="imgs/switch-room.jpg">
+                    <h2 class="bw">Bandwidth</h2>
+                    <img class="stretch" src="imgs/basefs-bw.png"></img>
+                </section>
+                <section id="loss" data-background="imgs/switch-room.jpg">
+                    <h2 class="bw">Packet Loss</h2>
+                    <img class="stretch" src="imgs/basefs-loss-completed.png"></img>
+                </section>
+                
+                <section id="cl" data-background="imgs/guifi.jpg">
+                    <h2 class="bw">Community-Lab</h2>
+                    <div class="bw">
+                        <ul>
+                            <li>Community Network Testbed by the CONFINE project</li>
+                            <li>36 node slice with public IPv4 connectivity</li>
+                        </ul>
+                    </div>
+                    <img class="stretch image" src="imgs/topology.png"></img>
+                </section>
+                
+                <section id="cl-convergence" data-background="imgs/guifi.jpg">
+                    <h2 class="bw">Community-Lab: Convergence</h2>
+                    <img class="stretch" src="imgs/basefs.png"></img>
+                </section>
+                <section id="cl-traffic" data-background="imgs/guifi.jpg">
+                    <h2 class="bw">Community-Lab: Traffic distribution</h2>
+                    <img class="stretch" src="imgs/basefs-traffic-distribution.png"></img>
+                </section>
+                
+                <section id="io" data-background="imgs/performance.jpg">
+                    <h2 class="bw">File System IO Evaluation</h2>
+                    <li class="bw">Single BaseFS node</li>
+                    <li class="bw">Recursive write of <tt>/etc</tt> directory</li>
+                    <li class="bw">Make Bsdiff4 suffer</li>
+                </section>
+                
+                <section id="io-read" data-background="imgs/performance.jpg">
+                    <h2 class="bw">File System Read Performance</h2>
+                    <img class="stretch" src="imgs/read_performance.png"></img>
+                </section>
+                <section id="io-write" data-background="imgs/performance.jpg">
+                    <h2 class="bw">File System Write Performance</h2>
+                    <img class="stretch" src="imgs/write_performance.png"></img>
+                </section>
+                
+                <section id="future" data-background="imgs/domination.jpg">
+                    <h2 class="bw">Plans for world domination</h2>
+                    <li class="fragment bw">Generalized filesystem</li>
+                    <li class="fragment bw">Distributed Dropbox-like applications</li>
+                    <li class="fragment bw">System upgrade on distributed systems</li>
+                    <li class="fragment bw">Shared in-memory databse (memcache)</li>
+                    <li class="fragment bw">Mutable P2P file-sharing</li>
+                    <li class="fragment bw">Self-updatable documents (encycolpedia, discography)</li>
+                    <li class="fragment bw">Distributed version control system</li>
                 </section>
 
                 <section style="text-align: left;">
                     <h1>THE END</h1>
                     <p>
-                        - <a href="http://slides.com">Try the online editor</a> <br>
-                        - <a href="https://github.com/hakimel/reveal.js">Source code &amp; documentation</a>
+                        - <a href="https://github.com/glic3rinu/basefs/raw/master/paper/basefs.pdf">Read the paper</a> <br>
+                        - <a href="https://github.com/glic3rinu/basefs">Try it out</a><br>
+                        - <a href="https://github.com/glic3rinu/basefs">Source code &amp; documentation</a>
                     </p>
                 </section>
 
