@@ -6,6 +6,15 @@ library(ggthemes)
 library(Hmisc)
 library(scales)
 basefspath = Sys.getenv("BASEFSPATH")
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
+
 
 exclude = c(
     "bw-256kbit", 
@@ -74,11 +83,10 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
         scale_y_log10(breaks=get_breaks, labels=as.character) +
         labs(y="Time in seconds", x="Log entries") + 
         guides(color=guide, linetype=guide, shape=guide) +
-        theme_bw() +
         theme(legend.key=element_blank())
-    
-    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], ".png"), dpi=600)
-    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], ".png"))
+    if ( ! black ) plt <- plt + theme_bw()
+    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], extra, ".png"), dpi=600)
+    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], extra, ".png"))
     
     current <- dataset_completed[grepl(var[1],dataset_completed$scenario) | dataset_completed$scenario=="baseline",]
     current = current[! current$scenario  %in% exclude,]
@@ -87,17 +95,16 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
     levels(current$Color) = ifelse(levels(current$Color)=="baseline", 
                                     levels(current$Color),
                                     paste0(levels(current$Color), var[3]))
-    ggplot(data=current, aes(x=size, y=completed, color=Color, linetype=Color)) +
+    plt <- ggplot(data=current, aes(x=size, y=completed, color=Color, linetype=Color)) +
         geom_point() +
         geom_line() +
-        theme_bw() +
         scale_x_log10() +
         guides(color=guide, linetype=guide, shape=guide) +
         theme(legend.key=element_blank()) +
         labs(y="Number of completed nodes", x="Log entries")
-    
-    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], "-completed.png"), dpi=600)
-    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], "-completed.png"))
+    if ( ! black ) plt <- plt + theme_bw()
+    ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], "-completed", extra, ".png"), dpi=600)
+    print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], "-completed", extra, ".png"))
 }
 
 

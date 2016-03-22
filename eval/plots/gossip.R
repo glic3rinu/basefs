@@ -7,6 +7,15 @@ library(Hmisc)
 library(scales)
 
 basefspath = Sys.getenv("BASEFSPATH")
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
+
 
 get_breaks = function(values){
     breaks10 = log_breaks()(values)
@@ -32,8 +41,8 @@ plt = ggplot(data=current, aes(x=size, y=time, color=Color, linetype=Color)) +
 #    geom_segment(aes(x =10, y = 0, xend = 10, yend = 2), alpha=0.4, color='blue') +
     geom_vline(xintercept=10, alpha=0.5, color='grey') +
 #    guides(color=guide, linetype=guide, shape=guide) +
-    theme_bw() +
     theme(legend.key=element_blank(), legend.position="none")
-
-ggsave(paste0(basefspath, "/eval/plots/gossip.png"), dpi=600)
-print(paste0("eog ", basefspath, "/eval/plots/gossip.png"))
+if ( ! black ) plt <- plt + theme_bw()
+plt
+ggsave(paste0(basefspath, "/eval/plots/gossip", extra, ".png"), dpi=600)
+print(paste0("eog ", basefspath, "/eval/plots/gossip", extra, ".png"))

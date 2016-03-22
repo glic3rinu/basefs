@@ -61,3 +61,8 @@ target/
 tmp/
 Rplots.pdf
 datasets.old
+*.eps
+*.backup
+*.out
+*.aux
+*.log

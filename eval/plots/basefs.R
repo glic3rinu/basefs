@@ -8,7 +8,14 @@ library(tidyr)
 library(reshape2)
 
 basefspath = Sys.getenv("BASEFSPATH")
-
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
 
 multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
   library(grid)
@@ -37,9 +44,9 @@ do_graph <- function(name, verbose) {
       stat_ecdf(aes(color=factor(size+1)), size=1) +
       stat_ecdf(size=1, alpha=0.7) +
       ggtitle(verbose) +
-      theme_bw() +
       xlim(0, 5) +
       labs(x="Time in seconds", y="Convergence %", colour="Entries")
+    if ( ! black ) plot <- plot + theme_bw()
 #    ggsave(paste0(basefspath, "/eval/plots/basefs-", name, ".png"), dpi=600)
 #    print(paste0("eog ", basefspath, "/eval/plots/basefs-", name, ".png"))
     if ( name == 'confine' ) {
@@ -55,10 +62,10 @@ plt1 <- do_graph("confine", "CommunityLab")
 plt2 <- do_graph("docker", "Docker")
 
 
-png(paste0(basefspath, "/eval/plots/basefs.png"), width=8, height=6, units="in", res=600)
+png(paste0(basefspath, "/eval/plots/basefs", extra, ".png"), width=8, height=6, units="in", res=600)
 multiplot(plt1, plt2, cols=2);
 dev.off()
-print(paste0("eog ", basefspath, "/eval/plots/basefs.png"))
+print(paste0("eog ", basefspath, "/eval/plots/basefs", extra, ".png"))
 
 
 do_graph <- function(name, verbose) {
@@ -97,8 +104,8 @@ do_graph <- function(name, verbose) {
     plot <- ggplot(traffic, aes(x=Node, y=value/10**6, fill=variable)) +
         geom_bar(stat = "identity", position="dodge") +
         ggtitle(verbose) +
-        theme_bw() +
         ylim(0, 7.5)
+    if ( ! black ) plot <- plot + theme_bw()
     if ( name == 'confine' ) {
         plot <- plot +
             theme(legend.position = "none") +
@@ -115,9 +122,8 @@ do_graph <- function(name, verbose) {
 plt1 <- do_graph("confine", "CommunityLab")
 plt2 <- do_graph("docker", "Docker")
 
-
-png(paste0(basefspath, "/eval/plots/basefs-traffic-distribution.png"), width=8, height=6, units="in", res=600)
+png(paste0(basefspath, "/eval/plots/basefs-traffic-distribution", extra, ".png"), width=8, height=6, units="in", res=600)
 multiplot(plt1, plt2, cols=2);
 dev.off()
-print(paste0("eog ", basefspath, "/eval/plots/basefs-traffic-distribution.png"))
+print(paste0("eog ", basefspath, "/eval/plots/basefs-traffic-distribution", extra, ".png"))
 

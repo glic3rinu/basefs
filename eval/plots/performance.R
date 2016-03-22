@@ -7,6 +7,14 @@ library(Hmisc)
 
 
 basefspath = Sys.getenv("BASEFSPATH")
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
 
 
 perf <- read.csv(paste0(basefspath, "/eval/datasets/performance2.csv"))
@@ -28,18 +36,19 @@ labels = c(
     "EXT4 mkdir",
     "EXT4 link"
 )
-ggplot(data=df, aes(x=round, y=time*1000, color=group, shape=group)) +
+plt <- ggplot(data=df, aes(x=round, y=time*1000, color=group, shape=group)) +
     geom_point(size=1, alpha=0.5) +
     scale_y_log10() +
-    theme_bw() +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=1) +
     stat_summary(fun.y = "mean", geom="line") +
     labs(y="Time in ms", x="Round", color="group", main="") +
     scale_color_discrete(name="", labels=labels, breaks=breaks) +
     scale_shape_discrete(name="", labels=labels, breaks=breaks)
+if ( ! black ) plt <- plt + theme_bw()
+plt
 
-ggsave(paste0(basefspath, "/eval/plots/write_performance.png"), dpi=600)
-print(paste0("eog ", basefspath, "/eval/plots/write_performance.png"))
+ggsave(paste0(basefspath, "/eval/plots/write_performance", extra, ".png"), dpi=600)
+print(paste0("eog ", basefspath, "/eval/plots/write_performance", extra, ".png"))
 
 perf <- read.csv(paste0(basefspath, "/eval/datasets/performance.csv"))
 df = perf[perf$operation!="write",]
@@ -56,13 +65,13 @@ labels = c(
     "EXT4 cold read",
     "EXT4 cached read"
 )
-ggplot(data=df, aes(x=round, y=time, color=group, shape=group)) +
+plt <- ggplot(data=df, aes(x=round, y=time, color=group, shape=group)) +
     geom_line(size=1) +
     geom_point(size=3) +
-    theme_bw() +
     labs(y="Time in seconds", x="Round", color="group") +
     scale_color_discrete(name="", labels=labels, breaks=breaks) +
     scale_shape_discrete(name="", labels=labels, breaks=breaks)
-
-ggsave(paste0(basefspath, "/eval/plots/read_performance.png"), dpi=600)
-print(paste0("eog ", basefspath, "/eval/plots/read_performance.png"))
+if ( ! black ) plt <- plt + theme_bw()
+plt
+ggsave(paste0(basefspath, "/eval/plots/read_performance", extra, ".png"), dpi=600)
+print(paste0("eog ", basefspath, "/eval/plots/read_performance", extra, ".png"))

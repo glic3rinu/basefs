@@ -6,6 +6,14 @@ library(ggthemes)
 library(Hmisc)
 
 basefspath = Sys.getenv("BASEFSPATH")
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
 
 
 multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
@@ -33,13 +41,12 @@ scalability = read.csv(paste0(basefspath, "/eval/datasets/scalability.csv"))
 plt1 <- ggplot(data=scalability, aes(x=scenario+1, y=time)) + #, color=factor(scenario))) +
     geom_point(alpha=0.7, color='cornflowerblue') +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7, geom="line") +
-    theme_bw() +
     scale_x_continuous(breaks=c(0, 30, 50, 100, 150, 200, 250, 300, 350, 400)) +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7) +
     labs(y="Time in seconds", x="Number of Nodes") +
     theme(legend.position = "none") +
     ggtitle("Convergence Time")
-
+if ( ! black ) plt1 <- plt1 + theme_bw()
 
 #overhead = read.csv(paste0(basefspath, "/eval/datasets/scalability-overhead.csv"))
 #plt2 <- ggplot(data=overhead, aes(x=scenario+1, y=time, color=factor(metric))) +
@@ -57,7 +64,6 @@ plt2 <- ggplot(data=load, aes(x=scenario+1, y=one_min, color='red')) + #factor(s
     geom_point(alpha=0.7) +
     scale_y_continuous(breaks=c(0, 50, 100, 150, 200, 250, 300, 350, 400)) +
     scale_x_continuous(breaks=c(0, 30, 50, 100, 150, 200, 250, 300, 350, 400)) +
-    theme_bw() +
     geom_hline(yintercept=4, alpha=0.4, color='blue') +
     geom_vline(xintercept=45, alpha=0.4, color='blue') +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7, geom="line") +
@@ -65,10 +71,10 @@ plt2 <- ggplot(data=load, aes(x=scenario+1, y=one_min, color='red')) + #factor(s
     labs(y="Load AVG", x="Number of Nodes") +
     theme(legend.position = "none") +
     ggtitle("Load AVG over last minute")
+if ( ! black ) plt2 <- plt2 + theme_bw()
 
 
-
-png(paste0(basefspath, "/eval/plots/scalability.png"), width=8, height=6, units="in", res=600)
+png(paste0(basefspath, "/eval/plots/scalability", extra, ".png"), width=8, height=6, units="in", res=600)
 multiplot(plt1, plt2, cols=2);
 dev.off()
-print(paste0("eog ", basefspath, "/eval/plots/scalability.png"))
+print(paste0("eog ", basefspath, "/eval/plots/scalability", extra, ".png"))

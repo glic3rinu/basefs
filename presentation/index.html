@@ -57,14 +57,14 @@
                 </section>
                 <section id="client-server" data-background="imgs/alan.jpg">
                     <h2 class="bw">Client-Server Architecture</h2>
-                    <img src="imgs/client-server.png"></img>
+                    <img class="image" src="imgs/client-server.png"></img>
                     <li class="fragment bw">Chef, Puppet or Ansible</li>
                     <li class="fragment bw">Availability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
                     <li class="fragment bw">Scalability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
                 </section>
                 <section id="client-server2" data-background="imgs/datacenter-mess.jpg">
                         <h2 class="bw">HA Client-Server Architecture</h2>
-                        <img src="imgs/ha-client-server.png"></img>
+                        <img class="image" src="imgs/ha-client-server.png"></img>
                         <li class="fragment bw">ZooKeeper, etcd or Consul</li>
                         <li class="fragment bw">Same centralized architecture with <strong>some redundancy</strong></li>
                         <li class="fragment bw">Increased complexity <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
@@ -90,12 +90,17 @@
                 </section>
                 <section id="p2p" data-background="imgs/abstract-time2.jpg">
                     <h2 class="bw">Eventual Consistency</h2>
-                    <li class="fragment bw">Availability under partition</li>
-                    <li class="fragment bw">Weakly consistent communication channel:<br>
-                                            gossip-style network protocol <strong>NO APIs</strong></li>
-                    <li class="fragment bw">High performance:<br>
-                                            progress without coordination</li>
-                    <li class="fragment bw">Geographic and administrative scalability</li>
+                    <ul class="list">
+                    <li class="fragment item"><strong>Available</strong> under partition:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;no need for stable quorums</li>
+                    <li class="fragment item">Weakly consistent communication channel:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gossip-style network protocol, REST or RPC <strong>NO APIs</strong></li>
+                    <li class="fragment item">High <strong>performance</strong>:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;progress without coordination</li>
+                    <li class="fragment item">Nodes <strong>don't need to trust</strong> each other: Byzantine<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on SC systems are practically untractable</li>
+                    <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
+                    </ul>
                 </section>
 
                 <section id="basefs-overview" data-background="imgs/p2p.png">
@@ -108,14 +113,25 @@
                 
                 <section id="hood" data-background="imgs/car.jpg">
                     <h2 class="bw">BaseFS Under The Hood</h2>
-                    TODO overview
+                    <div class="bw">
+                        <ul>
+                            <li><strong>Log</strong> - Merkle DAG of inmutable entries and blocks</li>
+                            <li><strong>View</strong> - Conflict resolved composition of the <i>log</i></li>
+                            <li><strong>Gossip protocol</strong> - Membership and initial dissemination</li>
+                            <li><strong>Synchronization protocol</strong> - Full state sync</li>
+                            <li><strong>File system</strong> - Provides file system API for the <i>view</i></li>
+                            <li><strong>Modules</strong> - Overview of BaseFS components</li>
+                        </ul>
+                    </div>
                 </section>
                 
                 <section id="log" data-background="imgs/branches.jpg">
                     <div class="bw" style="margin:0 0 20px 0;">
                         <h2>Log</h2>
+                        <ul>
                         <li><strong>Log entries</strong>: filesystem metadata <i>"i-nodes"</i></li>
                         <li><strong>Blocks</strong>: file content chunks</li>
+                        </ul>
                     </div>
                 </section>
                 
@@ -156,13 +172,14 @@
                 
                 <section id="log-blocks" data-background="imgs/branches.jpg">
                     <h2 class="bw">Blocks</h2>
+                    <li class="bw">Contains Bsdiff4 patches in 483B chunks</li>
                     <li class="bw">Hashed linked list</li>
                     <img class="stretch image" src="imgs/blocs.png"></img>
                 </section>
                 
                 <section id="view" data-background="imgs/choices.jpg">
                     <h2 class="bw">View</h2>
-                    <li class="fragment bw" style="margin:0 0 20px 0;">Resolved conflict <i>"view"</i> of the log</li>
+                    <li class="fragment bw" style="margin:0 0 20px 0;">Conflict resolved <i>"view"</i> of the log</li>
                     <div class="fragment bw" style="margin:0 0 20px 0;">
                     <ul>
                     <li><strong>Proof-of-authority:</strong>
@@ -195,25 +212,25 @@
                 </section>
                 <section id="sync" data-background="imgs/sync.jpg">
                     <h2 class="bw">Synchronization Protocol</h2>
-                    <div class="fragment bw">
-                    <ul>
-                        <li>Log disemination
+                    <ul class="list">
+                        <li class="fragment item">Log disemination
                         <ul>
                             <li>after <strong>partition</strong></li>
                             <li><strong>large files</strong></li>
                             <li><strong>bootsrap</strong> joining nodes</li>
                         </ul>
                         </li>
-                    </div>
-                    <li class="fragment bw">Unseen-biased randomized node selection</li>
-                    <li class="fragment bw">Efficient divergence detection with Merkle trees</li>
+                        <li class="fragment item">Unseen-biased randomized node selection</li>
+                        <li class="fragment item">Efficient divergence detection with Merkle trees</li>
+                    </ul>
                 </section>
                 <section id="fs" data-background="imgs/file.jpg">
                     <h2 class="bw">File System API</h2>
-                    <li class="fragment bw">Natural way of doing configuration in UNIX</li>
-                    <li class="fragment bw">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>
-                    <li class="fragment bw">Watchers: react to events</li>
-                    
+                    <ul class="list">
+                    <li class="fragment item">Natural way of doing configuration in UNIX</li>
+                    <li class="fragment item">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>
+                    <li class="fragment item">Watchers: react to events</li>
+                    </ul>
                 </section>
                 <section id="modules" data-background="imgs/moudle.jpg">
                     <h2 class="bw">Module Overview</h2>
@@ -235,15 +252,15 @@
                 
                 <section id="param-gossip" data-background="imgs/old-pane.jpg">
                     <h2 class="bw">Param: Max Gossiped Blocks</h2>
-                    <img class="stretch" src="imgs/gossip-reorder.png"></img>
+                    <img class="stretch image" src="imgs/gossip-black.png"></img>
                 </section>
                 <section id="param-sync" data-background="imgs/old-pane.jpg">
                     <h2 class="bw">Param: Sync Protocol Interval</h2>
-                    <img class="stretch" src="imgs/sync.png"></img>
+                    <img class="stretch image" src="imgs/sync-black.png"></img>
                 </section>
                 <section id="param-cluster" data-background="imgs/old-pane.jpg">
                     <h2 class="bw">Param: Docker Cluster Size</h2>
-                    <img class="stretch" src="imgs/scalability.png"></img>
+                    <img class="stretch image" src="imgs/scalability-black.png"></img>
                 </section>
                 
                 <section id="network" data-background="imgs/switch-room.jpg">
@@ -263,15 +280,15 @@
                 
                 <section id="latency" data-background="imgs/switch-room.jpg">
                     <h2 class="bw">Latency</h2>
-                    <img class="stretch" src="imgs/basefs-delay.png"></img>
+                    <img class="stretch image" src="imgs/basefs-delay-black.png"></img>
                 </section>
                 <section id="bw" data-background="imgs/switch-room.jpg">
                     <h2 class="bw">Bandwidth</h2>
-                    <img class="stretch" src="imgs/basefs-bw.png"></img>
+                    <img class="stretch image" src="imgs/basefs-bw-black.png"></img>
                 </section>
                 <section id="loss" data-background="imgs/switch-room.jpg">
                     <h2 class="bw">Packet Loss</h2>
-                    <img class="stretch" src="imgs/basefs-loss-completed.png"></img>
+                    <img class="stretch image" src="imgs/basefs-loss-completed-black.png"></img>
                 </section>
                 
                 <section id="cl" data-background="imgs/guifi.jpg">
@@ -287,11 +304,11 @@
                 
                 <section id="cl-convergence" data-background="imgs/guifi.jpg">
                     <h2 class="bw">Community-Lab: Convergence</h2>
-                    <img class="stretch" src="imgs/basefs.png"></img>
+                    <img class="stretch image" src="imgs/basefs-black.png"></img>
                 </section>
                 <section id="cl-traffic" data-background="imgs/guifi.jpg">
                     <h2 class="bw">Community-Lab: Traffic distribution</h2>
-                    <img class="stretch" src="imgs/basefs-traffic-distribution.png"></img>
+                    <img class="stretch image" src="imgs/basefs-traffic-distribution-black.png"></img>
                 </section>
                 
                 <section id="io" data-background="imgs/performance.jpg">
@@ -303,22 +320,24 @@
                 
                 <section id="io-read" data-background="imgs/performance.jpg">
                     <h2 class="bw">File System Read Performance</h2>
-                    <img class="stretch" src="imgs/read_performance.png"></img>
+                    <img class="stretch image" src="imgs/read_performance-black.png"></img>
                 </section>
                 <section id="io-write" data-background="imgs/performance.jpg">
                     <h2 class="bw">File System Write Performance</h2>
-                    <img class="stretch" src="imgs/write_performance.png"></img>
+                    <img class="stretch image" src="imgs/write_performance-black.png"></img>
                 </section>
                 
                 <section id="future" data-background="imgs/domination.jpg">
                     <h2 class="bw">Plans for world domination</h2>
-                    <li class="fragment bw">Generalized filesystem</li>
-                    <li class="fragment bw">Distributed Dropbox-like applications</li>
-                    <li class="fragment bw">System upgrade on distributed systems</li>
-                    <li class="fragment bw">Shared in-memory databse (memcache)</li>
-                    <li class="fragment bw">Mutable P2P file-sharing</li>
-                    <li class="fragment bw">Self-updatable documents (encycolpedia, discography)</li>
-                    <li class="fragment bw">Distributed version control system</li>
+                    <ul class="list">
+                        <li class="fragment item">Generalized filesystem</li>
+                        <li class="fragment item">Distributed Dropbox-like applications</li>
+                        <li class="fragment item">System upgrade on distributed systems</li>
+                        <li class="fragment item">Shared in-memory databse (memcache)</li>
+                        <li class="fragment item">Mutable P2P file-sharing</li>
+                        <li class="fragment item">Self-updatable documents (encycolpedia, discography)</li>
+                        <li class="fragment item">Distributed version control system</li>
+                    </ul>
                 </section>
 
                 <section style="text-align: left;">

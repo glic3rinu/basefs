@@ -8,6 +8,15 @@ library(Hmisc)
 basefspath = Sys.getenv("BASEFSPATH")
 sync = read.csv(paste0(basefspath, "/eval/datasets/sync.csv"))
 sync <- sync[sync$messages!=0,]
+args = commandArgs(trailingOnly=TRUE)
+black <- args[1] == "black"
+extra <- ''
+if ( is.na(black) ){
+    black <- FALSE
+} else if ( black ) {
+    extra <- '-black'
+}
+
 
 plt1 <- ggplot(data=sync, aes(x=scenario, y=time))+
     geom_point(alpha=0.7, color='cornflowerblue') +
@@ -16,12 +25,11 @@ plt1 <- ggplot(data=sync, aes(x=scenario, y=time))+
     geom_hline(yintercept=36, alpha=0.4, color='blue') +
     geom_vline(xintercept=20, alpha=0.4, color='blue') +
     theme(legend.position="bottom") +
-    theme_bw() +
     scale_x_continuous(breaks=c(1, 5, 10, 20, 50, 100)) +
     scale_y_continuous(breaks=c(0,36,100,200, 300, 400, 500)) +
     labs(y="Time in seconds", x="Sync interval in seconds") + 
     ggtitle("Sync Convergence Time")
-
+if ( ! black ) plt1 <- plt1 + theme_bw()
 #    ggplot(data=sync, aes(x=size+1, y=time, color=factor(scenario)))+
 #      geom_point(alpha=0.1) + stat_summary(fun.data = "mean_cl_boot", size=2, alpha=0.5) +
 #      scale_x_log10()
@@ -32,7 +40,6 @@ traffic = read.csv(paste0(basefspath, "/eval/datasets/sync-traffic.csv"))
 plt2 <- ggplot(data=traffic, aes(x=scenario, y=8*bps/1000))+
     geom_point(alpha=0.7, color='cornflowerblue') +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7, geom="line") +
-    theme_bw() +
     geom_hline(yintercept=2.5, alpha=0.4, color='blue') +
     geom_vline(xintercept=20, alpha=0.4, color='blue') +
     stat_summary(fun.data = "mean_cl_boot", size=1, alpha=0.7) +
@@ -40,7 +47,7 @@ plt2 <- ggplot(data=traffic, aes(x=scenario, y=8*bps/1000))+
     scale_x_continuous(breaks=c(1, 5, 10, 20, 50, 100)) + 
     labs(y="Traffic in Kbps", x="Sync interval in seconds") + 
     ggtitle("Sync Traffic Usage")
-
+if ( ! black ) plt2 <- plt2 + theme_bw()
 
 # Multiple plot function
 #
@@ -85,7 +92,7 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 }
 
 
-png(paste0(basefspath, "/eval/plots/sync.png"),width=8,height=6,units="in",res=600)
+png(paste0(basefspath, "/eval/plots/sync", extra, ".png"),width=8,height=6,units="in",res=600)
 multiplot(plt1, plt2, cols=2);
 dev.off()
-print(paste0("eog ", basefspath, "/eval/plots/sync.png"))
+print(paste0("eog ", basefspath, "/eval/plots/sync", extra, ".png"))
