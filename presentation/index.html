@@ -41,11 +41,13 @@
 
             <!-- Any section element inside of this container is displayed as a slide -->
             <div class="slides">
-                <section>
+                <section data-state="show-github-ribbon">
                     <h1>BaseFS</h1>
+
+
                     <h3>Basically Available, Soft-State, Eventually Consistent File Sytstem for P2P Cloud Management</h3>
                     <p>
-                        <small>Created by <a href="mailto:marc.aymerich@est.fib.upc.edu">Marc Aymerich</a></small>
+                        <small>Created by <a href="mailto:marc.aymerich@est.fib.upc.edu">Marc Aymerich</a> / <a href="https://github.com/glic3rinu"><img style="width:25px;margin:0;padding:0;border:none;background:none;"src="imgs/github.svg"></img></a></small>
                     </p>
                 </section>
                 <section id="configuration" data-background="imgs/peerj-cs-eniac.jpg">
@@ -58,16 +60,16 @@
                 <section id="client-server" data-background="imgs/alan.jpg">
                     <h2 class="bw">Client-Server Architecture</h2>
                     <img class="image" src="imgs/client-server.png"></img>
-                    <li class="fragment bw">Chef, Puppet or Ansible</li>
-                    <li class="fragment bw">Availability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
-                    <li class="fragment bw">Scalability <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
+                    <li class="fragment bw"><a href="https://www.chef.io/chef/">Chef</a>, <a href="https://puppetlabs.com/">Puppet</a> or <a href="https://www.ansible.com/">Ansible</a></li>
+                    <li class="fragment bw">Availability <img class="icon" src="imgs/sad.png"></img></li>
+                    <li class="fragment bw">Scalability <img class="icon" src="imgs/sad.png"></img></li>
                 </section>
                 <section id="client-server2" data-background="imgs/datacenter-mess.jpg">
                         <h2 class="bw">HA Client-Server Architecture</h2>
                         <img class="image" src="imgs/ha-client-server.png"></img>
-                        <li class="fragment bw">ZooKeeper, etcd or Consul</li>
+                        <li class="fragment bw"><a href="https://zookeeper.apache.org/">ZooKeeper</a>, <a href="https://coreos.com/etcd/">etcd</a> or <a href="https://www.consul.io/">Consul</a></li>
                         <li class="fragment bw">Same centralized architecture with <strong>some redundancy</strong></li>
-                        <li class="fragment bw">Increased complexity <img style="margin:0px;margin-top:10px;background:none;border:none;box-shadow:none;" src="imgs/sad.png"></img></li>
+                        <li class="fragment bw">Increased complexity <img class="icon" src="imgs/sad.png"></img></li>
                 </section>
                 <section id="datacenter" data-background="imgs/supercomputer.jpg">
                     <h2 class="bw">Traditional Cloud is<br>
@@ -85,8 +87,9 @@
                     <h2 class="bw">How can we do better<br><strong>P2P management</strong>?</h2>
                 </section>
                 <section id="choose" data-background="imgs/choose.png">
-                    <h2 class="bw">Consistency or Availability ...</h2>
-                    <h2 class="bw">... You must choose wisely</h2>
+                    <h2 class="bw" style="padding-left:15px;text-align:left;">Consistency or Availability ...</h2>
+                    <h2 class="bw" style="text-align:right;padding-right:15px;">... You must <a href="http://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed" title="CAP theorem">choose wisely</a></h2></a>
+                    
                 </section>
                 <section id="p2p" data-background="imgs/abstract-time2.jpg">
                     <h2 class="bw">Eventual Consistency</h2>
@@ -94,11 +97,11 @@
                     <li class="fragment item"><strong>Available</strong> under partition:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;no need for stable quorums</li>
                     <li class="fragment item">Weakly consistent communication channel:<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gossip-style network protocol, REST or RPC <strong>NO APIs</strong></li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gossip-style network protocol, REST or RPC <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
                     <li class="fragment item">High <strong>performance</strong>:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;progress without coordination</li>
                     <li class="fragment item">Nodes <strong>don't need to trust</strong> each other: Byzantine<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on SC systems are practically untractable</li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on SC systems are <a href="http://pages.cs.wisc.edu/~swift/classes/cs739-fa14/blog/2014/10/the_byzantine_generals_problem.html">practically untractable</a></li>
                     <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
                     </ul>
                 </section>
@@ -107,7 +110,7 @@
                     <h2 class="bw">BaseFS</h2>
                     <li class="fragment bw">Peer-to-peer replication middleware</li>
                     <li class="fragment bw">Gossip-style communication</li>
-                    <li class="fragment bw">BlockChain-inspired datastore</li>
+                    <li class="fragment bw"><a href="https://en.wikipedia.org/wiki/Block_chain_(database)">BlockChain</a>-inspired datastore</li>
                     <li class="fragment bw">Filesystem interface</li>
                 </section>
                 
@@ -115,12 +118,12 @@
                     <h2 class="bw">BaseFS Under The Hood</h2>
                     <div class="bw">
                         <ul>
-                            <li><strong>Log</strong> - Merkle DAG of inmutable entries and blocks</li>
-                            <li><strong>View</strong> - Conflict resolved composition of the <i>log</i></li>
-                            <li><strong>Gossip protocol</strong> - Membership and initial dissemination</li>
-                            <li><strong>Synchronization protocol</strong> - Full state sync</li>
-                            <li><strong>File system</strong> - Provides file system API for the <i>view</i></li>
-                            <li><strong>Modules</strong> - Overview of BaseFS components</li>
+                            <li><a href="#/log"><strong>Log</strong></a> - <a href="https://bmcorser.github.io/2014/12/22/merkle-dag.html">Merkle DAG</a> of inmutable entries</li>
+                            <li><a href="#/view"><strong>View</strong></a> - Conflict resolved composition of the <i>log</i></li>
+                            <li><a href="#/gossip"><strong>Gossip protocol</strong></a> - Membership and initial dissemination</li>
+                            <li><a href="#/sync"><strong>Synchronization protocol</strong></a> - Full state sync</li>
+                            <li><a href="#/fs"><strong>File system</strong></a> - Provides file system API for the <i>view</i></li>
+                            <li><a href="#/modules"><strong>Modules</strong></a> - Overview of BaseFS components</li>
                         </ul>
                     </div>
                 </section>
@@ -129,25 +132,25 @@
                     <div class="bw" style="margin:0 0 20px 0;">
                         <h2>Log</h2>
                         <ul>
-                        <li><strong>Log entries</strong>: filesystem metadata <i>"i-nodes"</i></li>
-                        <li><strong>Blocks</strong>: file content chunks</li>
+                        <li><a href="#/log-entries"><strong>Log entries</strong></a>: filesystem metadata <i>"i-nodes"</i></li>
+                        <li><a href="#/log-blocks"><strong>Blocks</strong></a>: file content chunks</li>
                         </ul>
                     </div>
                 </section>
                 
-                <section id="log-entry" data-background="imgs/branches.jpg">
-                    <h2 class="bw">Log Entry</h2>
-                    <li class="bw">Merkle DAG</li>
+                <section id="log-entries" data-background="imgs/branches.jpg">
+                    <h2 class="bw">Log Entries</h2>
+                    <li class="bw"><a href="https://bmcorser.github.io/2014/12/22/merkle-dag.html">Merkle DAG</a></li>
                     <img class="stretch image" src="imgs/log.png"></img>
                     <li class="bw">mkdir, write, delete, revert, grant, <br>
                        revoke, ack, link, slink, mode</li>
                 </section>
                 
-                <section id="log-entry-properties" data-background="imgs/branches.jpg">
-                    <h2 class="bw">Log Entry Properties</h2>
+                <section id="log-entries-properties" data-background="imgs/branches.jpg">
+                    <h2 class="bw">Log Entries Properties</h2>
                     <div class="bw fragment" style="margin:0 0 20px 0;">
                         <ul>
-                            <li>Merkle Direct Acyclic Graph
+                            <li><a href="https://bmcorser.github.io/2014/12/22/merkle-dag.html">Merkle Direct Acyclic Graph</a>
                             <ul>
                                 <li><strong>Content addressing</strong>: uniquely identified by its hash</li>
                                 <li><strong>Tamper resistance</strong>: hash verification</li>
@@ -159,7 +162,7 @@
                     </div>
                     <div class="bw fragment">
                         <ul>
-                            <li>Convergent Replicated Data Type
+                            <li><a href="https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type">Convergent Replicated Data Type</a>
                             <ul>
                                 <li><strong>Message loss</strong>: associativity <tt>f(f(a, b), c) = f(a, f(b, c))</tt></li>
                                 <li><strong>Message reordering</strong>: commutativity <tt>f(a, b) = f(b, a)</tt></li>
@@ -171,15 +174,15 @@
                 </section>
                 
                 <section id="log-blocks" data-background="imgs/branches.jpg">
-                    <h2 class="bw">Blocks</h2>
-                    <li class="bw">Contains Bsdiff4 patches in 483B chunks</li>
+                    <h2 class="bw">Log Blocks</h2>
                     <li class="bw">Hashed linked list</li>
+                    <li class="bw"><a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> patches in 483B chunks</li>
                     <img class="stretch image" src="imgs/blocs.png"></img>
                 </section>
                 
                 <section id="view" data-background="imgs/choices.jpg">
                     <h2 class="bw">View</h2>
-                    <li class="fragment bw" style="margin:0 0 20px 0;">Conflict resolved <i>"view"</i> of the log</li>
+                    <li class="fragment bw" style="margin:0 0 20px 0;">Conflict resolved composition of the log</li>
                     <div class="fragment bw" style="margin:0 0 20px 0;">
                     <ul>
                     <li><strong>Proof-of-authority:</strong>
@@ -191,7 +194,7 @@
                     </li>
                     </ul>
                     </div>
-                    <li class="fragment bw">Write permissions</li>
+                    <li class="fragment bw">Provides write permissions</li>
                 </section>
                 <section id="view-example" data-background="imgs/choices.jpg">
                     <h2 class="bw">View Example</h2>
@@ -200,7 +203,7 @@
                 
                 <section id="gossip" data-background="imgs/gossip.jpg">
                     <h2 class="bw">Gossip Protocol</h2>
-                    <li class="fragment bw">Serf</li>
+                    <li class="fragment bw"><a href="https://www.serfdom.io/">Serf</a></li>
                     <li class="fragment bw"><strong>Group membership</strong> and <strong>log disemination</strong></li>
                     <li class="fragment bw">512 bytes of payload</li>
                     <img class="fragment stretch image" src="imgs/payload.png"></img>
@@ -208,7 +211,7 @@
 
                 <section id="gossip-etc" data-background="imgs/gossip.jpg">
                     <h2 class="bw">/etc number of messages</h2>
-                    <img class="stretch image" src="imgs/etc_messages.png"></img>
+                    <img class="stretch image" src="imgs/etc_messages-black.png"></img>
                 </section>
                 <section id="sync" data-background="imgs/sync.jpg">
                     <h2 class="bw">Synchronization Protocol</h2>
@@ -221,7 +224,7 @@
                         </ul>
                         </li>
                         <li class="fragment item">Unseen-biased randomized node selection</li>
-                        <li class="fragment item">Efficient divergence detection with Merkle trees</li>
+                        <li class="fragment item">Efficient divergence detection with <a href="https://en.wikipedia.org/wiki/Merkle_tree">Merkle trees</a></li>
                     </ul>
                 </section>
                 <section id="fs" data-background="imgs/file.jpg">
@@ -245,9 +248,9 @@
                 
                 <section id="param" data-background="imgs/old-pane.jpg">
                     <h2 class="bw">Parametrization</h2>
-                    <li class="bw">Max Gossiped Blocks</li>
-                    <li class="bw">Sync Protocol Interval</li>
-                    <li class="bw">Docker Cluster Size</li>
+                    <li class="bw"><a href="#/param-gossip">Max Gossiped Blocks</a></li>
+                    <li class="bw"><a href="#/param-sync">Sync Protocol Interval</a></li>
+                    <li class="bw"><a href="#/param-cluster">Docker Cluster Size</a></li>
                 </section>
                 
                 <section id="param-gossip" data-background="imgs/old-pane.jpg">
@@ -314,8 +317,8 @@
                 <section id="io" data-background="imgs/performance.jpg">
                     <h2 class="bw">File System IO Evaluation</h2>
                     <li class="bw">Single BaseFS node</li>
-                    <li class="bw">Recursive write of <tt>/etc</tt> directory</li>
-                    <li class="bw">Make Bsdiff4 suffer</li>
+                    <li class="bw">Recursive write of <a href="https://en.wikipedia.org/wiki/Unix_filesystem#Conventional_directory_layout"><tt>/etc</tt> directory</a></li>
+                    <li class="bw">Make <a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> suffer</li>
                 </section>
                 
                 <section id="io-read" data-background="imgs/performance.jpg">
@@ -340,11 +343,11 @@
                     </ul>
                 </section>
 
-                <section style="text-align: left;">
+                <section style="text-align: left;" data-state="show-github-ribbon">
                     <h1>THE END</h1>
                     <p>
                         - <a href="https://github.com/glic3rinu/basefs/raw/master/paper/basefs.pdf">Read the paper</a> <br>
-                        - <a href="https://github.com/glic3rinu/basefs">Try it out</a><br>
+                        - <a href="https://github.com/glic3rinu/basefs">Try it out</a></br>
                         - <a href="https://github.com/glic3rinu/basefs">Source code &amp; documentation</a>
                     </p>
                 </section>
@@ -355,7 +358,6 @@
 
         <script src="lib/js/head.min.js"></script>
         <script src="js/reveal.js"></script>
-
         <script>
 
             // Full list of configuration options available at:
@@ -380,6 +382,6 @@
             });
 
         </script>
-
+                <a class="ribbon" href="https://github.com/glic3rinu/basefs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://github-camo.global.ssl.fastly.net/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67" alt="Fork BaseFS on GitHub"></a>
     </body>
 </html>

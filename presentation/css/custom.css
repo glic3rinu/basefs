@@ -1,15 +1,18 @@
 .bw {
-    background-color:rgb(63, 63, 63);
+    background-color: rgb(63, 63, 63);
 }
 
 .image {
     padding: 15px !important;
     background: rgba(255, 255, 255, 0.95) !important;
-    box-shadow: 2px 2px 20px #111 !important;
+    box-shadow: 7px 7px 20px #111 !important;
     border-radius: 7px;
+    max-width:95% !important;
 
 }
 
+.ribbon { display: none; }
+.show-github-ribbon .ribbon { display: block; }
 
 .list {
     list-style-position: inside;
@@ -21,7 +24,20 @@
 .item {
     background-color:rgb(63, 63, 63);
     padding-left: 30px !important;
-/*    margin-left: -104px !important;*/
-/*    width: 117% !important;*/
-/*    padding-left: 36px !important;*/
+}
+
+.icon {
+    margin:0px !important;
+    margin-top:10px !important;
+    margin-bottom:-6px  !important;
+    background:none !important;
+    border:none !important;
+    box-shadow:none !important;
+}
+
+.icodn {
+    margin:0 !important;
+    padding:0 !important;
+    border:none !important;
+    background:none !important;
 }

@@ -28,19 +28,24 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="1.979899"
-     inkscape:cx="324.11282"
-     inkscape:cy="444.80145"
+     inkscape:zoom="2.8"
+     inkscape:cx="-456.27882"
+     inkscape:cy="899.4013"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     showguides="true"
+     showguides="false"
      inkscape:guide-bbox="true"
      inkscape:window-width="1920"
      inkscape:window-height="1028"
      inkscape:window-x="0"
      inkscape:window-y="27"
-     inkscape:window-maximized="1" />
+     inkscape:window-maximized="1">
+    <sodipodi:guide
+       position="-1143.5714,1054.2857"
+       orientation="-0.70710678,0.70710678"
+       id="guide6342" />
+  </sodipodi:namedview>
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -62,8 +67,8 @@
        id="rect4186"
        width="2366.4854"
        height="440.32199"
-       x="-2495.6326"
-       y="-107.49674"
+       x="-1742.0587"
+       y="-772.17712"
        rx="4.6355095"
        ry="4.6355095" />
     <path
@@ -128,7 +133,7 @@
          y="281.67099"
          x="70.876251"
          height="34.234802"
-         width="157.75772"
+         width="103.06155"
          id="rect4143-8-3-5-3-7"
          style="fill:#e9b96e;fill-opacity:1;stroke:#8f5902;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
@@ -147,9 +152,9 @@
            x="78.313507"
            sodipodi:role="line"><tspan
              style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
-             id="tspan3857-9">mkdir</tspan><tspan
+             id="tspan3857-9">mkdir </tspan><tspan
              style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
-             id="tspan3859-03"> /home/user1/shared</tspan></tspan><tspan
+             id="tspan3859-03">shared</tspan></tspan><tspan
            id="tspan4888-4"
            y="321.96921"
            x="78.313507"
@@ -311,7 +316,7 @@
          y="736.63202"
          x="-319.99542"
          height="34.234802"
-         width="119.37193"
+         width="99.91906"
          id="rect4143-8-3-5-3-4-7"
          style="fill:#ad7fa8;fill-opacity:1;stroke:#5c3566;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
@@ -332,7 +337,7 @@
              style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
              id="tspan5106-5">mkdir</tspan><tspan
              style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
-             id="tspan5108-8"> /home/user1 </tspan></tspan></text>
+             id="tspan5108-8"> user1 </tspan></tspan></text>
     </g>
     <path
        sodipodi:type="star"
@@ -558,7 +563,7 @@
        inkscape:export-ydpi="300" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -1031.0928,217.36218 154.28575,-65 -112.1429,70.71429"
+       d="m -1038.2901,209.15469 161.48305,-56.79251 -112.50004,60.89286"
        id="path4338"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
@@ -567,15 +572,16 @@
        sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -940.29505,223.02695 62.6295,-72.22591 -14.6472,82.32743"
+       d="m -942.08076,213.38409 64.41521,-62.58305 -14.46863,62.68457"
        id="path5199"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
-       inkscape:export-ydpi="400" />
+       inkscape:export-ydpi="400"
+       sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -700.37848,214.50504 -174.28567,-60.71429 127.14281,65.71429"
+       d="m -697.34276,207.36218 -180.89281,-55.17858 131.96423,60.7143"
        id="path4340"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
@@ -584,12 +590,13 @@
        sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -835.74425,225.04725 -40.9112,-74.75128 0,-66.164996 0,67.175146 94.95437,80.30712"
+       d="m -842.88711,211.29725 -33.76834,-61.00128 0,-66.164996 0,67.175146 81.20437,61.91426"
        id="path5203"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
-       inkscape:export-ydpi="400" />
+       inkscape:export-ydpi="400"
+       sodipodi:nodetypes="ccccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="m -1542.8732,158.84998 22.2234,65.65991 87.8833,-29.29442 -110.1067,-35.35534 108.0864,-23.23351 -64.6498,-29.7995 -40.9112,51.51778 -69.7005,3.03046 8.5863,-72.730986 -71.3951,20.860666 -3.5715,105 66.4286,-54.28571 -62.1429,-51.42858 -104.2104,2.61434 54.0432,-61.619308 50.1672,59.004968 42.2618,-88.804468 27.7792,68.690373 61.6193,-43.941636 39.901,59.599001 67.6802,-43.941636 -108.5914,-15.657365"
@@ -1982,7 +1989,7 @@
          sodipodi:role="line"
          id="tspan3981-7-0"
          x="197.4715"
-         y="-103.59695">1-483B</tspan></text>
+         y="-103.59695">1-48B</tspan></text>
     <g
        style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;line-height:128.99999619%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        id="text3983-9"
@@ -5025,30 +5032,30 @@
          y="281.67099"
          x="70.876251"
          height="34.234802"
-         width="157.75772"
+         width="104.21964"
          id="rect4143-8-3-5-3"
-         style="fill:#e9b96e;fill-opacity:1;stroke:#8f5902;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+         style="fill:#e9b96e;fill-opacity:1;stroke:#8f5902;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
          sodipodi:linespacing="100%"
          id="text4060-9-9-9"
          y="295.96921"
          x="78.313507"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;line-height:100%;letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Inconsolata;-inkscape-font-specification:Inconsolata Medium"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:100%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="295.96921"
            x="78.313507"
            id="tspan4062-2-3-9"
            sodipodi:role="line">user1@cafe00:</tspan><tspan
            id="tspan4921"
-           y="309.75858"
+           y="308.96921"
            x="78.313507"
            sodipodi:role="line"><tspan
-             style="font-weight:bold;-inkscape-font-specification:Inconsolata Bold"
+             style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
              id="tspan3857">mkdir</tspan><tspan
-             style="font-style:italic;-inkscape-font-specification:Inconsolata Italic"
-             id="tspan3859"> /home/user1/shared</tspan></tspan><tspan
+             style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
+             id="tspan3859"> shared</tspan></tspan><tspan
            id="tspan4888"
-           y="323.8222"
+           y="321.96921"
            x="78.313507"
            sodipodi:role="line" /></text>
     </g>
@@ -5208,28 +5215,28 @@
          y="736.63202"
          x="-319.99542"
          height="34.234802"
-         width="119.37193"
+         width="102.87772"
          id="rect4143-8-3-5-3-4"
-         style="fill:#ad7fa8;fill-opacity:1;stroke:#5c3566;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+         style="fill:#ad7fa8;fill-opacity:1;stroke:#5c3566;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
          sodipodi:linespacing="100%"
          id="text4060-9-9-9-2"
          y="750.89777"
          x="-312.98129"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;line-height:100%;letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Inconsolata;-inkscape-font-specification:Inconsolata Medium"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:100%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="750.89777"
            x="-312.98129"
            id="tspan4062-2-3-9-8"
            sodipodi:role="line">root@aabbcc:</tspan><tspan
            id="tspan4898"
-           y="764.68713"
+           y="763.89777"
            x="-312.98129"
            sodipodi:role="line"><tspan
-             style="font-weight:bold;-inkscape-font-specification:Inconsolata Bold"
+             style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
              id="tspan5106">mkdir</tspan><tspan
-             style="font-style:italic;-inkscape-font-specification:Inconsolata Italic"
-             id="tspan5108"> /home/user1 </tspan></tspan></text>
+             style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
+             id="tspan5108"> user1 </tspan></tspan></text>
     </g>
     <path
        sodipodi:type="star"
@@ -5389,8 +5396,8 @@
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400" />
     <g
-       transform="translate(-648.57721,539.05347)"
-       id="g4752-2"
+       transform="translate(-648.58559,538.97487)"
+       id="g4752-17"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/paper/imgs/view.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -5400,30 +5407,30 @@
          y="281.67099"
          x="70.876251"
          height="34.234802"
-         width="157.75772"
-         id="rect4143-8-3-5-3-3"
-         style="fill:#e9b96e;fill-opacity:1;stroke:#8f5902;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+         width="104.21964"
+         id="rect4143-8-3-5-3-53"
+         style="fill:#e9b96e;fill-opacity:1;stroke:#8f5902;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
          sodipodi:linespacing="100%"
-         id="text4060-9-9-9-9"
+         id="text4060-9-9-9-41"
          y="295.96921"
          x="78.313507"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;line-height:100%;letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Inconsolata;-inkscape-font-specification:Inconsolata Medium"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:100%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="295.96921"
            x="78.313507"
-           id="tspan4062-2-3-9-02"
+           id="tspan4062-2-3-9-26"
            sodipodi:role="line">user1@cafe00:</tspan><tspan
-           id="tspan4921-2"
-           y="309.75858"
+           id="tspan4921-6"
+           y="308.96921"
            x="78.313507"
            sodipodi:role="line"><tspan
-             style="font-weight:bold;-inkscape-font-specification:Inconsolata Bold"
+             style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
              id="tspan3857-6">mkdir</tspan><tspan
-             style="font-style:italic;-inkscape-font-specification:Inconsolata Italic"
-             id="tspan3859-0"> /home/user1/shared</tspan></tspan><tspan
-           id="tspan4888-8"
-           y="323.8222"
+             style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
+             id="tspan3859-4"> shared</tspan></tspan><tspan
+           id="tspan4888-5"
+           y="321.96921"
            x="78.313507"
            sodipodi:role="line" /></text>
     </g>
@@ -5533,8 +5540,8 @@
              id="tspan3855-4"> user1</tspan></tspan></text>
     </g>
     <g
-       id="g5100-3"
-       transform="translate(-299.99161,3.8285982)"
+       id="g5100-5"
+       transform="translate(-300,3.7500035)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/paper/imgs/view.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -5544,28 +5551,28 @@
          y="736.63202"
          x="-319.99542"
          height="34.234802"
-         width="119.37193"
-         id="rect4143-8-3-5-3-4-6"
-         style="fill:#ad7fa8;fill-opacity:1;stroke:#5c3566;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+         width="102.87772"
+         id="rect4143-8-3-5-3-4-0"
+         style="fill:#ad7fa8;fill-opacity:1;stroke:#5c3566;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
       <text
          sodipodi:linespacing="100%"
          id="text4060-9-9-9-2-8"
          y="750.89777"
          x="-312.98129"
-         style="font-size:13px;font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;line-height:100%;letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Inconsolata;-inkscape-font-specification:Inconsolata Medium"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:13px;line-height:100%;font-family:Inconsolata;-inkscape-font-specification:'Inconsolata Medium';letter-spacing:-0.5px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
          xml:space="preserve"><tspan
            y="750.89777"
            x="-312.98129"
-           id="tspan4062-2-3-9-8-3"
+           id="tspan4062-2-3-9-8-6"
            sodipodi:role="line">root@aabbcc:</tspan><tspan
-           id="tspan4898-7"
-           y="764.68713"
+           id="tspan4898-0"
+           y="763.89777"
            x="-312.98129"
            sodipodi:role="line"><tspan
-             style="font-weight:bold;-inkscape-font-specification:Inconsolata Bold"
+             style="font-weight:bold;-inkscape-font-specification:'Inconsolata Bold'"
              id="tspan5106-8">mkdir</tspan><tspan
-             style="font-style:italic;-inkscape-font-specification:Inconsolata Italic"
-             id="tspan5108-7"> /home/user1 </tspan></tspan></text>
+             style="font-style:italic;-inkscape-font-specification:'Inconsolata Italic'"
+             id="tspan5108-1"> user1 </tspan></tspan></text>
     </g>
     <path
        sodipodi:type="star"
@@ -6935,7 +6942,7 @@
        inkscape:export-ydpi="300" />
     <g
        id="g4968"
-       transform="translate(409.98881,-8.8690896)"
+       transform="translate(409.98881,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7039,7 +7046,7 @@
     </g>
     <g
        id="g4947-1"
-       transform="translate(426.07991,-8.8690896)"
+       transform="translate(426.07991,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7067,7 +7074,7 @@
     </g>
     <g
        id="g4947-8"
-       transform="translate(522.69223,-8.8690896)"
+       transform="translate(522.69223,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7095,7 +7102,7 @@
     </g>
     <g
        id="g4947-3"
-       transform="translate(570.99831,-8.8690896)"
+       transform="translate(570.99831,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7123,7 +7130,7 @@
     </g>
     <g
        id="g4947-5"
-       transform="translate(483.28282,-158.70471)"
+       transform="translate(483.28282,-156.70471)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7817,7 +7824,7 @@
     </g>
     <g
        id="g4947-1-9"
-       transform="translate(377.77388,-8.8690896)"
+       transform="translate(377.77388,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7845,7 +7852,7 @@
     </g>
     <g
        id="g4947-1-44"
-       transform="translate(619.30438,-8.8690896)"
+       transform="translate(619.30438,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7873,7 +7880,7 @@
     </g>
     <g
        id="g4947-1-44-1"
-       transform="translate(667.61055,-8.8690896)"
+       transform="translate(667.61055,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7901,7 +7908,7 @@
     </g>
     <g
        id="g4947-1-44-0"
-       transform="translate(329.4677,-8.8690896)"
+       transform="translate(329.4677,-18.86909)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -7991,7 +7998,7 @@
     </g>
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -563.72913,216.42702 148.57143,-61.42857 -112.1429,70.71429"
+       d="m -578.37634,211.62879 163.21864,-56.63034 -113.91067,59.60261"
        id="path4338-5"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
@@ -8000,15 +8007,16 @@
        sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -478.6457,225.66322 62.6295,-72.22591 -14.6472,82.32743"
+       d="m -479.65585,215.30916 63.63965,-61.87185 -14.89974,63.38707"
        id="path5199-3"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
-       inkscape:export-ydpi="400" />
+       inkscape:export-ydpi="400"
+       sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -240.87199,214.99845 -172.14281,-58.57143 127.14281,65.71429"
+       d="m -234.306,211.96799 -170.88012,-54.78336 121.58697,56.87546"
        id="path4340-4"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
@@ -8017,15 +8025,16 @@
        sodipodi:nodetypes="ccc" />
     <path
        style="fill:none;stroke:#2e3436;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m -374.0949,227.68352 -40.9112,-74.75128 0,-66.164994 0,67.175144 94.95437,80.30712"
+       d="m -382.17612,215.30915 -32.82998,-62.37691 0,-66.164994 0,67.175144 82.07493,61.11422"
        id="path5203-8"
        inkscape:connector-curvature="0"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
-       inkscape:export-ydpi="400" />
+       inkscape:export-ydpi="400"
+       sodipodi:nodetypes="ccccc" />
     <g
        id="g4968-0"
-       transform="translate(871.35252,-6.2328176)"
+       transform="translate(871.35252,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8167,7 +8176,7 @@
          id="tspan4076-8-6-6-4">Low Latency Network</tspan></text>
     <g
        id="g4947-1-99"
-       transform="translate(886.87219,-6.2328176)"
+       transform="translate(886.87219,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8195,7 +8204,7 @@
     </g>
     <g
        id="g4947-8-5"
-       transform="translate(984.62726,-6.2328176)"
+       transform="translate(984.62726,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8223,7 +8232,7 @@
     </g>
     <g
        id="g4947-3-3"
-       transform="translate(1033.5048,-6.2328176)"
+       transform="translate(1033.5048,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8251,7 +8260,7 @@
     </g>
     <g
        id="g4947-5-6"
-       transform="translate(944.57507,-161.06844)"
+       transform="translate(944.57507,-159.06844)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8304,7 +8313,7 @@
        inkscape:export-ydpi="400" />
     <g
        id="g4947-1-9-8"
-       transform="translate(837.99462,-6.2328176)"
+       transform="translate(837.99462,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8332,7 +8341,7 @@
     </g>
     <g
        id="g4947-1-44-2"
-       transform="translate(1082.3824,-6.2328176)"
+       transform="translate(1082.3824,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8360,7 +8369,7 @@
     </g>
     <g
        id="g4947-1-44-1-5"
-       transform="translate(1131.2599,-6.2328176)"
+       transform="translate(1131.2599,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
@@ -8388,7 +8397,7 @@
     </g>
     <g
        id="g4947-1-44-0-5"
-       transform="translate(789.11708,-6.2328176)"
+       transform="translate(789.11708,-16.232818)"
        inkscape:export-filename="/home/glic3/Dropbox/basefs/presentation/imgs/ha-client-server.png"
        inkscape:export-xdpi="400"
        inkscape:export-ydpi="400">
