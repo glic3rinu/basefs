@@ -95,13 +95,13 @@
                     <h2 class="bw">Eventual Consistency</h2>
                     <ul class="list">
                     <li class="fragment item"><strong>Available</strong> under partition:<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;no need for stable quorums</li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No need for stable quorums</li>
                     <li class="fragment item">Weakly consistent communication channel:<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gossip-style network protocol, REST or RPC <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gossip-style network protocol, REST or RPC <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
                     <li class="fragment item">High <strong>performance</strong>:<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;progress without coordination</li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Progress without coordination</li>
                     <li class="fragment item">Nodes <strong>don't need to trust</strong> each other: Byzantine<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on SC systems are <a href="http://pages.cs.wisc.edu/~swift/classes/cs739-fa14/blog/2014/10/the_byzantine_generals_problem.html">practically untractable</a></li>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on <span title="Strongly Consistent">SC</span> systems are <a href="http://pages.cs.wisc.edu/~swift/classes/cs739-fa14/blog/2014/10/the_byzantine_generals_problem.html">practically untractable</a></li>
                     <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
                     </ul>
                 </section>
@@ -175,8 +175,12 @@
                 
                 <section id="log-blocks" data-background="imgs/branches.jpg">
                     <h2 class="bw">Log Blocks</h2>
-                    <li class="bw">Hashed linked list</li>
-                    <li class="bw"><a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> patches in 483B chunks</li>
+                    <div class="bw">
+                        <ul>
+                        <li>Hashed linked list</li>
+                        <li><a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> patches in 483B chunks</li>
+                        </ul>
+                    </div>
                     <img class="stretch image" src="imgs/blocs.png"></img>
                 </section>
                 
@@ -203,7 +207,7 @@
                 
                 <section id="gossip" data-background="imgs/gossip.jpg">
                     <h2 class="bw">Gossip Protocol</h2>
-                    <li class="fragment bw"><a href="https://www.serfdom.io/">Serf</a></li>
+                    <li class="fragment bw"><a href="https://www.serfdom.io/">Serf library</a></li>
                     <li class="fragment bw"><strong>Group membership</strong> and <strong>log disemination</strong></li>
                     <li class="fragment bw">512 bytes of payload</li>
                     <img class="fragment stretch image" src="imgs/payload.png"></img>
@@ -232,7 +236,7 @@
                     <ul class="list">
                     <li class="fragment item">Natural way of doing configuration in UNIX</li>
                     <li class="fragment item">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>
-                    <li class="fragment item">Watchers: react to events</li>
+                    <li class="fragment item">Watchers: react to events, similar to <a href="https://en.wikipedia.org/wiki/Inotify">inotify</a></li>
                     </ul>
                 </section>
                 <section id="modules" data-background="imgs/moudle.jpg">
@@ -242,8 +246,12 @@
                 
                 <section id="evaluation" data-background="imgs/graph.gif">
                     <h2 class="bw">Evaluation</h2>
-                        <li class="bw">Network: <a href="https://www.docker.com/">Docker</a> and <a href="https://community-lab.net/">Community-Lab</a></li>
-                        <li class="bw">Filesystem IO</li>
+                    <div class="bw">
+                    <ul>
+                        <li><a href="#/network">Network</a>: <a href="https://www.docker.com/">Docker</a> and <a href="https://community-lab.net/">Community-Lab</a></li>
+                        <li><a href="#/io">Filesystem IO</a></li>
+                    </ul>
+                    </div>
                 </section>
                 
                 <section id="param" data-background="imgs/old-pane.jpg">
