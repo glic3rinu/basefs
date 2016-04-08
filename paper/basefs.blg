@@ -1,16 +1,12 @@
-This is BibTeX, Version 0.99d (TeX Live 2013/Debian)
+This is BibTeX, Version 0.99d (TeX Live 2015/Debian)
 Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: basefs.aux
 The style file: abbrv.bst
 Database file #1: sigproc.bib
 Warning--entry type for "Yermolaiev:managing" isn't style-file defined
---line 63 of file sigproc.bib
+--line 50 of file sigproc.bib
 Warning--entry type for "Wikipedia:CRDT" isn't style-file defined
---line 78 of file sigproc.bib
-Repeated entry---line 145 of file sigproc.bib
- : @inproceedings{ongaro2014search
- :                                ,
-I'm skipping whatever remains of this entry
+--line 65 of file sigproc.bib
 Warning--to sort, need author or key in Wikipedia:CRDT
 Warning--empty journal in SWIM
 Warning--empty journal in babaoglupeer
@@ -57,4 +53,4 @@ warning$ -- 5
 while$ -- 45
 width$ -- 17
 write$ -- 153
-(There was 1 error message)
+(There were 7 warnings)

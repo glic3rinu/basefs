@@ -43,8 +43,9 @@ plt <- ggplot(data=df, aes(x=round, y=time*1000, color=group, shape=group)) +
     stat_summary(fun.y = "mean", geom="line") +
     labs(y="Time in ms", x="Round", color="group", main="") +
     scale_color_discrete(name="", labels=labels, breaks=breaks) +
-    scale_shape_discrete(name="", labels=labels, breaks=breaks)
-if ( ! black ) plt <- plt + theme_bw()
+    scale_shape_discrete(name="", labels=labels, breaks=breaks) +
+    theme(legend.key=element_blank())
+if ( ! black ) plt <- plt + theme_bw() + theme(legend.key=element_blank())
 plt
 
 ggsave(paste0(basefspath, "/eval/plots/write_performance", extra, ".png"), dpi=600)
@@ -70,8 +71,9 @@ plt <- ggplot(data=df, aes(x=round, y=time, color=group, shape=group)) +
     geom_point(size=3) +
     labs(y="Time in seconds", x="Round", color="group") +
     scale_color_discrete(name="", labels=labels, breaks=breaks) +
-    scale_shape_discrete(name="", labels=labels, breaks=breaks)
-if ( ! black ) plt <- plt + theme_bw()
+    scale_shape_discrete(name="", labels=labels, breaks=breaks) +
+    theme(legend.key=element_blank())
+if ( ! black ) plt <- plt + theme_bw() + theme(legend.key=element_blank())
 plt
 ggsave(paste0(basefspath, "/eval/plots/read_performance", extra, ".png"), dpi=600)
 print(paste0("eog ", basefspath, "/eval/plots/read_performance", extra, ".png"))

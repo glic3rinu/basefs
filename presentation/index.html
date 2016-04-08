@@ -6,8 +6,8 @@
 
         <title>BaseFS – Basically Available, Soft-State, Eventually Consistent File Sytstem</title>
 
-        <meta name="description" content="A framework for easily creating beautiful presentations using HTML">
-        <meta name="author" content="Hakim El Hattab">
+        <meta name="description" content="Peer-to-peer eventually consistent file system for cloud management">
+        <meta name="author" content="Marc Aymerich">
 
         <meta name="apple-mobile-web-app-capable" content="yes">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -95,13 +95,13 @@
                     <ul class="list">
                     <li class="fragment item"><strong>Available</strong> under partition:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No need for stable quorums</li>
-                    <li class="fragment item">Weakly consistent communication channel:<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gossip-style network protocol, <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
                     <li class="fragment item">High <strong>performance</strong>:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Progress without coordination</li>
+                    <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
+                    <li class="fragment item">Weakly consistent communication channel:<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gossip-style network protocol, <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
                     <li class="fragment item">Nodes <strong>don't need to trust</strong> each other: Byzantine<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;failures on <span title="Strongly Consistent">SC</span> systems are <a href="http://pages.cs.wisc.edu/~swift/classes/cs739-fa14/blog/2014/10/the_byzantine_generals_problem.html">practically untractable</a></li>
-                    <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
                     </ul>
                 </section>
 
@@ -131,8 +131,8 @@
                     <div class="bw" style="margin:0 0 20px 0;">
                         <h2>Log</h2>
                         <ul>
-                        <li><a href="#/log-entries"><strong>Log entries</strong></a>: filesystem metadata <i>"i-nodes"</i></li>
-                        <li><a href="#/log-blocks"><strong>Log Blocks</strong></a>: file content chunks</li>
+                        <li><a href="#/log-entries"><strong>Log entries</strong></a> - filesystem metadata <i>"i-nodes"</i></li>
+                        <li><a href="#/log-blocks"><strong>Log blocks</strong></a> - file content chunks</li>
                         </ul>
                     </div>
                 </section>
@@ -163,11 +163,11 @@
                         <ul>
                             <li><a href="https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type">Convergent Replicated Data Type</a>
                             <ul>
-                                <li><strong>Message loss</strong>: associativity <tt>f(f(a, b), c) = f(a, f(b, c))</tt></li>
-                                <li><strong>Message reordering</strong>: commutativity <tt>f(a, b) = f(b, a)</tt></li>
-                                <li><strong>Multiple delivery</strong>: idempotency <tt>f(f(a)) = f(a)</tt></li>
+                                <li>Associativity &nbsp;&nbsp; <tt style="float:right;">f(f(a, b), c) = f(a, f(b, c))</tt>
+                                <li>Commutativity &nbsp;&nbsp; <tt style="float:right;">f(a, b) = f(b, a)</tt>
+                                <li>Idempotency &nbsp;&nbsp; <tt style="float:right;">f(f(a)) = f(a)</tt>
                             </ul>
-                            </li>
+                            Allowing <strong>message loss</strong>, <strong>reordering</strong>, <strong>multiple delivery</strong>
                         </ul>
                     </div>
                 </section>
@@ -185,19 +185,16 @@
                 
                 <section id="view" data-background="imgs/choices.jpg">
                     <h2 class="bw">View</h2>
-                    <li class="fragment bw" style="margin:0 0 20px 0;">Conflict resolved composition of the log</li>
-                    <div class="fragment bw" style="margin:0 0 20px 0;">
-                    <ul>
-                    <li><strong>Proof-of-authority:</strong>
+                    <ul class="list">
+                    <li class="fragment item">Conflict resolved composition of the log</li>
+                    <li class="fragment item"><strong>Self-certified</strong> filesystem with <strong>write permissions</strong></li>
+                    <li class="fragment item"><strong>Proof-of-authority</strong>:
                         <ol>
                             <li>Higher hierarchy key branch</li>
                             <li>If equal, more contributors branch</li>
                             <li>If equal, higher root hash branch</li>
                         </ol>
                     </li>
-                    </ul>
-                    </div>
-                    <li class="fragment bw">Provides write permissions</li>
                 </section>
                 <section id="view-example" data-background="imgs/choices.jpg">
                     <h2 class="bw">View Example</h2>
@@ -206,9 +203,11 @@
                 
                 <section id="gossip" data-background="imgs/gossip.jpg">
                     <h2 class="bw">Gossip Protocol</h2>
-                    <li class="fragment bw"><a href="https://www.serfdom.io/">Serf library</a></li>
-                    <li class="fragment bw"><strong>Group membership</strong> and <strong>log disemination</strong></li>
-                    <li class="fragment bw">512 bytes of payload</li>
+                    <ul class="list">
+                        <li class="fragment item">Implemented using <a href="https://www.serfdom.io/">Serf library</a></li>
+                        <li class="fragment item">Provides <strong>group membership</strong> and <strong>log disemination</strong></li>
+                        <li class="fragment item">Uses Serf custom events payload (512 bytes)</li>
+                    </ul>
                     <img class="fragment stretch image" src="imgs/payload.png"></img>
                 </section>
 
@@ -226,7 +225,7 @@
                             <li><strong>bootsrap</strong> joining nodes</li>
                         </ul>
                         </li>
-                        <li class="fragment item">Unseen-biased randomized node selection</li>
+                        <li class="fragment item">Unseen-biased randomized node selection<br> $$p_i = t_i/\sum_{j=1}^{1,n} t_j$$</li>
                         <li class="fragment item">Efficient divergence detection with <a href="https://en.wikipedia.org/wiki/Merkle_tree">Merkle trees</a></li>
                     </ul>
                 </section>
@@ -384,7 +383,8 @@
                     { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
                     { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
                     { src: 'plugin/zoom-js/zoom.js', async: true },
-                    { src: 'plugin/notes/notes.js', async: true }
+                    { src: 'plugin/notes/notes.js', async: true },
+                    { src: 'plugin/math/math.js', async: true }
                 ]
             });
 

@@ -52,7 +52,7 @@ do_graph <- function(name, verbose) {
     if ( name == 'confine' ) {
         plot <- plot + theme(legend.position = "none")
     } else {
-        plot <- plot + theme(axis.title.y=element_blank())
+        plot <- plot + theme(axis.title.y=element_blank(), legend.key=element_blank())
     }
     plot
 }
@@ -114,7 +114,7 @@ do_graph <- function(name, verbose) {
         plot <- plot +
             labs(x="Node") +
             scale_fill_discrete(name="Protocol") +
-            theme(axis.title.y=element_blank())
+            theme(axis.title.y=element_blank(), legend.key=element_blank())
     }
     plot
 }

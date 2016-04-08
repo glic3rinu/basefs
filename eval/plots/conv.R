@@ -34,7 +34,17 @@ exclude = c(
     'delay-600ms',
     'delay-2000',
     'delay-2500',
-    'delay-3000'
+    'delay-3000',
+    'delay-10',
+    'delay-20',
+    'delay-40',
+    'delay-80',
+    'delay-320',
+    'loss-10',
+    'loss-20',
+    'loss-30',
+    'loss-40'
+#    'baseline'
 )
 
 
@@ -84,7 +94,7 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
         labs(y="Time in seconds", x="Log entries") + 
         guides(color=guide, linetype=guide, shape=guide) +
         theme(legend.key=element_blank())
-    if ( ! black ) plt <- plt + theme_bw()
+    if ( ! black ) plt + theme_bw() + theme(legend.key=element_blank())
     ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], extra, ".png"), dpi=600)
     print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], extra, ".png"))
     
@@ -96,13 +106,13 @@ do_graphs <- function (dataset, dataset_completed, var, name, verbose) {
                                     levels(current$Color),
                                     paste0(levels(current$Color), var[3]))
     plt <- ggplot(data=current, aes(x=size, y=completed, color=Color, linetype=Color)) +
-        geom_point() +
+        geom_point(size=3, aes(shape=Color)) +
         geom_line() +
         scale_x_log10() +
         guides(color=guide, linetype=guide, shape=guide) +
         theme(legend.key=element_blank()) +
         labs(y="Number of completed nodes", x="Log entries")
-    if ( ! black ) plt <- plt + theme_bw()
+    if ( ! black ) plt + theme_bw() + theme(legend.key=element_blank())
     ggsave(paste0(basefspath, "/eval/plots/", name, "-", var[1], "-completed", extra, ".png"), dpi=600)
     print(paste0("eog ", basefspath, "/eval/plots/", name, "-", var[1], "-completed", extra, ".png"))
 }
