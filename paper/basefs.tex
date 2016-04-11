@@ -47,6 +47,8 @@ Zookeeper, etcd and Consul are consolidated distributed key-value stores for sha
 Existing work rely on fault-tolerant, distributed coordination algorithms like Paxos\cite{lamport2001paxos} and Raft\cite{ongaro2014search} are used because of their strong consistency properties. But coordinated consensus is expensive, processes can't make progress independently: a majority of nodes have to agree on every decision first. Constant communication between nodes is needed, making the system hard to scale beyond small clusters or across wide-area networks. 
 Coordination algorithms are notoriously hard to implement\cite{ongaro2014search}, and even harder to make them tolerate Byzantine failures. In the end, nodes need to trust each other, making it hard to scale as the number of administrative domains increases. The real scalability challenges faced by community cloud computing are not about the size of the system, but on \textbf{geographic} and \textbf{administrative} scalability.
 
+% TODO link byzantine failures is hard to implement
+
 By removing coordinated consensus, geographic scalability improves naturally, as progress is no longer restricted by network delay anymore. On the other hand, administrative scalability can be improved by removing the need for nodes having to trust each other. 
 
 \subsection{Availability Under Network Partition}
@@ -58,7 +60,7 @@ The CAP theorem is a valid and useful tool for reasoning about fundamental trade
 \item Availability: node failures do not prevent survivors from continuing
 \item Partition tolerance: the system continues to operate despite message loss due to network failure
 \end{itemize}
-    
+
 The theorem states that a distributed system facing a network partition has to choose between staying available or being consistent. In our case all the current solutions err on the side of consistency. These solutions are commonly called CP (Consistent but not available under Partition). The main implication is that in case of partition nodes under a minority partition will not be able to make progress.
 
 CP systems are a fragile and complex piece of the infrastructure, and making a system depend on them makes progress impossible for minority partitions. It is important to stress that consistency presented by the CAP theorem actually refers to \textbf{strong consistency}. This consistency definition can be relaxed and allow availability and some kind of consistency less than "all nodes see the same data at the same time". A typical example is eventual consistency, which guarantees that after some undefined amount of time all replicas will converge on the same value.
@@ -140,9 +142,9 @@ Conditions that allow for a gossip-style week communication channel with message
 The specifications for the log entry fields are the following:
 
 \begin{enumerate}
-\item \textbf{Prent hash} - SHA-224 hash hexdigest of the target entry. 
-\item \textbf{Timestamp} - a UNIX timestamp that represents the time at which the log entry was created. BaseFS does not provide any mechanism to validate this timestamp with a global clock, this field is purely informative used for example by \texttt{ls} command.
-\item \textbf{Action} - filesystem operations needed for enabling all the common requirements for a cloud configuration tool
+\item \textbf{Prent hash} - SHA-224 hash hexdigest of the target entry.
+\item \textbf{Timestamp} - a UNIX timestamp declaring the node local time at which the log entry was created. Used solely as informative data, for example by the \texttt{ls} command.
+\item \textbf{Action} - defines the log operation type, enabling common cloud management functionality.
     \begin{itemize}
     \item \texttt{mkdir}: make a new directory
     \item \texttt{write}: create or update a file content
@@ -157,18 +159,18 @@ The specifications for the log entry fields are the following:
     \end{itemize}
 
 remove operations are implemented with \texttt{delete} and \texttt{link} actions
-\item \textbf{Name} - determines the name of the directory, file, link or key. Like UNIX file names, BaseFS name size is limited to 256 characters. Paths are constructed using these names.
-\item \textbf{Size} - size of the file in bytes. This is a performance optimization because computing the whole file size every time an ls is performed is really expensive.
-\item \textbf{Content} - depending on the action, the log entry content may contain:
+\item \textbf{Name} - designates the name of the directory, file, link or key. Name size is limited to 256 characters, like most UNIX filesystems. Paths are constructed using this names.
+\item \textbf{Size} - indicates the size of the content file in bytes. This is a performance optimization that avoids reading the entire file every time an \texttt{ls} operation is performed.
+\item \textbf{Content} - depending on the action this field can contain:
     \begin{itemize}
     \item \texttt{write}: SHA-224 hexdigest of the first block content
     \item \texttt{grant} or \texttt{revoke}: Base64 encoded EC public key
-    \item \texttt{slink}: target path, could be any path, not restricted to BaseFS filesystem.
+    \item \texttt{slink}: target path, could be any path, not restricted to BaseFS filesystem
     \item \texttt{link} and \texttt{revert}: target entry hexdigest SHA-224 hash
-    \item \texttt{mode}: mode value
+    \item \texttt{mode}: file permissions in octal notation
     \end{itemize}
-\item \textbf{Key fingerprint} - The public key fingerprint used to sign the log entry.
-\item \textbf{Signature} - base64 encoding of the entry's signature. Elliptic curve cryptography is used for the smaller size of the keys compared to equivalent RSA security level.
+\item \textbf{Key fingerprint} - public key fingerprint used to sign the log entry.
+\item \textbf{Signature} - ECDSA (Elliptic Curve Digital Signature Algorithm) signature of the log entry in base64 encoding.
 \end{enumerate}
 
 Notice that version control is provided naturally by the monotonic and immutability properties of BaseFS Merkle DAG. All history is available, \texttt{revert} entries only need to reference a previous entry hash for the path state to be reverted.
@@ -193,7 +195,7 @@ File content is divided into chunks called blocks. As represented in figure \ref
 \label{fig:blocs}
 \end{figure}
 
-By addressing blocks by their hash blocks the block list is tamper resistance and avoids deduplication. With the convenient side effect of saving disk space and bandwidth on copy operations.
+By addressing blocks by their hash the block list is tamper resistance and avoids deduplication. With the convenient side effect of saving disk space and bandwidth on copy operations.
 
 \subsection{View} \label{view}
 
@@ -244,12 +246,12 @@ BaseFS uses Serf for a) membership maintenance and b) broadcast of new log entri
 
 \begin{enumerate}
 \item The hash function of choice is SHA-224, the smallest SHA (28B) considered secure\footnote{\url{https://en.wikipedia.org/wiki/SHA-2\#Comparison\_of\_SHA\_functions}}.
-\item Use of elliptic curve cryptography with 192 bits key size (equivalent to a 2048b RSA key\footnote{\url{https://tools.ietf.org/html/draft-ietf-msec-mikey-ecc-03}}). Keys of this size produce  48 Bytes signatures.
+\item Use of elliptic curve cryptography with 192 bits key size (equivalent to a 2048b RSA key\footnote{\url{https://tools.ietf.org/html/draft-ietf-msec-mikey-ecc-03}}). Keys of this size produce 48 Bytes signatures.
 \item Encoding of the file size value is limited to 6 bytes, restricting the maximum file size to 2 PiB.
-\item Even though text protocols are easier to work with, we choose to use a more space-efficient binary representation of the entry fields. When possible, field delimitation is encoded into fields of fixed size. Otherwise, a dedicated offset byte is used, which can delimit up to 255 bytes, allowing file names length similar to other moder filesystems.
+\item Binary over text representation of the entry fields. Using fields of fixed lenght where convinient and offset bytes for more variable fields. A byte can delimit up to 255 bytes, pairing file name length with other modern filesystems.
 \end{enumerate}
 
-To address concerns about how many events will be required for effective configuration management, figure \ref{fig:etc-messages} plots a histogram of the number of messages required for replicating the entire \texttt{/etc} directory of a typical Linux box. Including directories, files and symbolic links. Linux \texttt{/etc} directory contains the system configuration and can be a good representative of an actual large distributed system configuration. Using any of the tested encoding methods, 0.987 of \texttt{/etc} content can be disseminated using at most 10 Serf events per file.
+To address concerns about how many gossip messages will be required for effective configuration management, figure \ref{fig:etc-messages} plots a histogram of the number of messages used for replicating the entire \texttt{/etc} directory of a typical Linux box. Including directories, files and symbolic links. Linux \texttt{/etc} directory contains the system configuration and can be a good representative of an actual large distributed system configuration. Using any of the tested encoding methods, 0.987 of \texttt{/etc} content can be disseminated using at most 10 Serf events per file.
 
 \begin{figure}
 \centering
@@ -273,24 +275,26 @@ Figure \ref{fig:etc-time} shows the measured time each encoding method takes to 
 
 While gossip produces the initial spread of information, a full state synchronization protocol is run infrequently in order to guarantee delivery with probability 1, update nodes after being partitioned and bootstrap nodes joining the system. Additionally, because the number of blocks sent through the gossip layer can be limited by BaseFS configuration, a mechanism to spread remaining blocks is needed. This protocol is different from Serf \textit{full state sync protocol} in two ways. It is not limited to the \textit{nth} most recent events and it is optimized with knowledge of the underlying \textit{log} data structure.
 
+% TODO link serf full state sync protocol
+
 In order to make the information exchange during replica synchronization efficient, the sync protocol uses Merkle trees. Data is hashed at multiple levels of granularity and nodes can quickly find out divergent parts of the data. The Merkle tree is built conforming to the filesystem hierarchy. Each path hash is computed recursively, using the XOR of its sub-paths as well as its own related entries. The root path is the XOR of all log entries. The protocol communication is an iterative process, walking and expanding paths with a mismatching hash. Nodes will detect divergence interchanging log entries and blocks until fully synchronized. 
 
 The synchronization protocol is a text-based streaming protocol. Using new line character as log entry delimiter, spaces as field delimiter and encodes binary content in base64, avoiding delimiters to appear out of place. Its alphabet is:
 
 \begin{itemize}
 \item \texttt{HASH} - Filesystem root hash. Identifies the filesystem and avoids inter-filesystem synchronizations. 
-\item \texttt{LS} - Path list, includes all path entry hashes, sub-paths hashes and the last-block hash of incomplete files.
-\item \texttt{PATH\_REQ} - Path request, indicates a node is missing an entire path and requests all its content to its peer.
-\item \texttt{ENTRY\_REQ} - Entry request, used by a node to request a missing entry to its peer.
-\item \texttt{BLOCK\_REQ} - idem for blocks
-\item \texttt{ENTRIES} - Contains a log entry, can be a response to an \texttt{ENTRY\_REQ} or when a node finds out that its peer is missing some entry.
+\item \texttt{LS} - Path list. Includes all path entry hashes, sub-paths hashes and the last-block hash of incomplete files.
+\item \texttt{PATH\_REQ} - Path request. Indicates a node is missing an entire path and requests all its content to its peer.
+\item \texttt{ENTRY\_REQ} - Entry request. Used by a node to request a missing entry to its peer.
+\item \texttt{BLOCK\_REQ} - Idem for blocks
+\item \texttt{ENTRIES} - Contains a log entry. Can be a response to an \texttt{ENTRY\_REQ} or when a node finds out that its peer is missing some entry.
 \item \texttt{BLOCKS} - idem for blocks
 \item \texttt{BLOCKS\_REC} - A node announces files in receiving state. In case of divergence the peer can apply this hash to the Merkle tree.
 \item \texttt{CLOSE} - Indicates a node is fully synchronize with its peer and communication is terminated.
 \item \texttt{EOF} - Signals end of transmission.
 \end{itemize}
 
-The pattern of communication is probabilistic, correlated with the amount of time passed since last contact. Every $t$ seconds, a node chooses a peer $i$ with probability $p_i = t_i/\sum_{j=1}^{1,n} t_j$. Synchronization is initiated by sending \texttt{HASH} and \texttt{LS /} requests containing local state. Things continue from there.
+The communication pattern is probabilistic, correlated with the amount of time passed since last contact. Every $t$ seconds, a node chooses a peer $i$ with probability $p_i = t_i/\sum_{j=1}^{1,n} t_j$. Synchronization is initiated by sending \texttt{HASH} and \texttt{LS /} requests containing local state. Things continue from there.
 
 To make dissemination faster for files greater than \\ \texttt{MAX\_GOSSIPED\_BLOCKS}, nodes immediately initiate synchronization with a number of peers specified by a configurable \texttt{SEED\_NODES}, defaulting to 4.
 
@@ -329,9 +333,9 @@ Event handlers are registered at mount time and are invoked in the context of a 
 
 \subsection{Modules Overview}\label{modules}
 
-Figure \ref{fig:modules} shows the main BaseFS modules and their interactions. BaseFS makes extensive use of concurrency including processes, threads and an event loop. The FUSE interface runs on the main Python thread, as required by its implementation. The Serf agent runs on a separated Python process. Communication with Serf agent is done using Serf's RPC protocol. We spawn an additional thread for the event loop. Implemented with \textit{asyncio}, the event loop handles all the remaining network communication in a non-blocking fashion. Including the synchronization protocol, receiving of gossip events and commands sent by BaseFS CLI utility. The event loop thread shares memory with the main FUSE thread, and only a single instance of the \textit{view} has to be maintained, saving substantial memory and computation time.
+Figure \ref{fig:modules} shows the main BaseFS modules and their interactions. BaseFS makes extensive use of concurrency including processes, threads and an event loop. The FUSE interface runs on the main Python thread, as required by its implementation. The Serf agent runs on a separated Python process. Communication with Serf agent is done using Serf's RPC protocol. We spawn an additional thread for the event loop. Implemented with \textit{asyncio}, the event loop handles all the remaining network communication in a non-blocking fashion. Including the synchronization protocol, receiving of gossip events as well as commands sent by BaseFS CLI utility. The event loop thread shares memory with the main FUSE thread, and only a single instance of the \textit{view} has to be maintained, saving substantial memory and computation time.
 
-The modular design allows for easy module replacement. For example, the filesystem module providing a convenient filesystem API to the \textit{view} can be replaced, or complemented, by other interfaces, like HTTP REST.
+The modular design allows for easy module replacement. For example, the filesystem module providing a convenient filesystem API to the \textit{view} can be replaced, or complemented, by other interfaces, like HTTP REST or XML-RPC.
 
 \begin{figure}
 \centering
