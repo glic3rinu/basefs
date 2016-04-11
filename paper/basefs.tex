@@ -158,7 +158,8 @@ The specifications for the log entry fields are the following:
     \item \texttt{mode}: give or remove executable file permissions
     \end{itemize}
 
-remove operations are implemented with \texttt{delete} and \texttt{link} actions
+Rename operations are implemented with \texttt{delete} and \texttt{link} actions. Notice that version control is provided naturally by the monotonic and immutability properties of BaseFS Merkle DAG. All history is available, \texttt{revert} entries only need to reference a previous entry hash for the path state to be reverted.
+
 \item \textbf{Name} - designates the name of the directory, file, link or key. Name size is limited to 256 characters, like most UNIX filesystems. Paths are constructed using this names.
 \item \textbf{Size} - indicates the size of the content file in bytes. This is a performance optimization that avoids reading the entire file every time an \texttt{ls} operation is performed.
 \item \textbf{Content} - depending on the action this field can contain:
@@ -173,7 +174,6 @@ remove operations are implemented with \texttt{delete} and \texttt{link} actions
 \item \textbf{Signature} - ECDSA (Elliptic Curve Digital Signature Algorithm) signature of the log entry in base64 encoding.
 \end{enumerate}
 
-Notice that version control is provided naturally by the monotonic and immutability properties of BaseFS Merkle DAG. All history is available, \texttt{revert} entries only need to reference a previous entry hash for the path state to be reverted.
 
 \paragraph{Write Permissions}
 
