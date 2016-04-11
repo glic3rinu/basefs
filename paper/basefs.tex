@@ -230,7 +230,7 @@ Replication is asynchronous, changes are performed locally and then sent to the 
 
 \subsubsection{Gossip Protocol}\label{gossip-protocol}
 
-A gossip protocol is a style of computer-to-computer communication protocol inspired by the form of gossip seen in social networks. Provides-weekly consistent knowledge of group membership to all participants as well as probabilistic broadcast of events to all members. BaseFS uses Serf gossip library, which is based on SWIM, Scalable Weakly-consistent Infection-style Process Group Membership Protocol\cite{SWIM}. Unlike traditional heart-beating protocols, SWIM separates the failure detection and membership update dissemination functionalities of the membership protocol. Processes are monitored through an efficient peer-to-peer periodic randomized probing protocol. Both the expected time to first detection of each process failure, and the expected message load per member, do not vary with group size. Information about membership changes, such as process joins, drop-outs and failures, is propagated via piggybacking on ping messages and acknowledgments. This results in a robust and fast infection style of dissemination. 
+A gossip protocol is a style of computer-to-computer communication protocol inspired by the form of gossip seen in social networks. Provides weakly consistent knowledge of group membership to all participants as well as probabilistic broadcast of events to all members. BaseFS uses Serf gossip library, which is based on SWIM, Scalable Weakly-consistent Infection-style Process Group Membership Protocol\cite{SWIM}. Unlike traditional heart-beating protocols, SWIM separates the failure detection and membership update dissemination functionalities of the membership protocol. Processes are monitored through an efficient peer-to-peer periodic randomized probing protocol. Both the expected time to first detection of each process failure, and the expected message load per member, do not vary with group size. Information about membership changes, such as process joins, drop-outs and failures, is propagated via piggybacking on ping messages and acknowledgments. This results in a robust and fast infection style of dissemination. 
 
 
 \begin{figure*}
@@ -278,7 +278,7 @@ In order to make the information exchange during replica synchronization efficie
 The synchronization protocol is a text-based streaming protocol. Using new line character as log entry delimiter, spaces as field delimiter and encodes binary content in base64, avoiding delimiters to appear out of place. Its alphabet is:
 
 \begin{itemize}
-\item \texttt{HASH} - Filesystem root hash. Identifies the filesystem and avoid inter-filesystem synchronizations. 
+\item \texttt{HASH} - Filesystem root hash. Identifies the filesystem and avoids inter-filesystem synchronizations. 
 \item \texttt{LS} - Path list, includes all path entry hashes, sub-paths hashes and the last-block hash of incomplete files.
 \item \texttt{PATH\_REQ} - Path request, indicates a node is missing an entire path and requests all its content to its peer.
 \item \texttt{ENTRY\_REQ} - Entry request, used by a node to request a missing entry to its peer.
