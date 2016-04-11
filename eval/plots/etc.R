@@ -29,8 +29,8 @@ plt <- ggplot(data.msgs, aes(value, color=method, shape=method, linetype=method)
     scale_x_log10() +
     geom_rug(aes(y=0),position="jitter", sides="b") +
     coord_cartesian(ylim=c(0.70, 1)) +
-    labs(y="Probability", x="Messages")
-if ( ! black ) plt <- plt + theme_bw()
+    labs(y="Probability", x="Messages") + theme(legend.key=element_blank())
+if ( ! black ) plt <- plt + theme_bw() + theme(legend.key=element_blank())
 plt
 
 ggsave(paste0(basefspath, "eval/plots/etc_messages", extra, ".png"), dpi=600)
@@ -43,7 +43,8 @@ plt <- ggplot(data.time, aes(y=value*1000, x=method, color=method, )) +
     labs(y="Time in ms", x='') +
     theme(legend.position="none",
         axis.text.y=element_text(vjust=0.5, size=12))
-if ( ! black ) plt <- plt + theme_bw()
+if ( ! black ) plt <- plt + theme_bw() + theme(legend.position="none",
+        axis.text.y=element_text(vjust=0.5, size=12))
 plt
 
 ggsave(paste0(basefspath, "eval/plots/etc_time", extra, ".png"), dpi=600)
