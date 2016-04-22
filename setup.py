@@ -25,7 +25,7 @@ setup(
         'basefs',
         'basefs/management'
     ],
-    version = '0.6',
+    version = '0.7',
     description = 'Basically Available, Soft state, Eventually consistent File System',
     scripts=[
         'basefs/bin/basefs',

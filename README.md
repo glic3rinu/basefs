@@ -1,17 +1,15 @@
 # basefs
-Basically Available, Soft state, Eventually consistent File System
+Basically Available, Soft state, Eventually Consistent File System
 
-
-**Work in progress**
+* [paper](https://github.com/glic3rinu/basefs/raw/master/paper/basefs.pdf)
+* [presentation](http://glic3rinu.github.io/basefs/presentation/)
 
 
 ## Quick start
 
 1. Installation
 ```bash
-$ sudo pip3 install basefs==1-dev \
-    --allow-external basefs \
-    --allow-unverified basefs
+$ sudo pip3 install basefs
 ```
 
 2. Bootstrap and mount
@@ -19,20 +17,20 @@ $ sudo pip3 install basefs==1-dev \
 # Create new key
 $ basefs genkey
 
-# Create new log
-$ basefs bootstrap mylog -i <ip>
+# Createw new filesystem
+$ basefs bootstrap myfs -i <ip>
 
 # Mount
-$ mkdir ~/mylog
-$ basefs mount mylog ~/mylog
+$ mkdir ~/myfs
+$ basefs mount myfs ~/myfs
 ```
 
 3. Distribute
 ```bash
 # Get the log from another machine
-$ basefs get mylog <ip>:<port>
-$ mkdir ~/mylog
-$ basefs mount mylog ~/mylog
+$ basefs get myfs <ip>:<port>
+$ mkdir ~/myfs
+$ basefs mount myfs ~/myfs
 ```
 
 4. See all possibilities
