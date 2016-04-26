@@ -435,7 +435,7 @@ This scalability test has uncovered two caveats of our virtual environment. Firs
 
 \subsubsection{Delay Effects}
 
-Figure \ref{fig:basefs-delay} shows the measured convergence time of operations with different number of log entries and delay distributions on a virtual group of 30 nodes. The delay distributions are created using \textit{TC netem discipline} (e.g. \texttt{netem delay 100ms 20ms distribution normal}). The standard deviation is kept proportional on each case, always 20\% of the mean.
+Figure \ref{fig:basefs-delay} shows the measured convergence time of operations with different number of log entries and delay distributions on a group of 30 nodes. The delay distributions are created using \textit{TC netem discipline} (e.g. \texttt{netem delay 100ms 20ms distribution normal}). The standard deviation is kept proportional on each case, always 20\% of the mean.
 
 \begin{figure}
 \centering
@@ -450,7 +450,7 @@ Serf is configured to use the WAN profile with a \texttt{ProbeTimeout} of 3 seco
 
 \subsubsection{Packet Loss Effects}
 
-Figure \ref{fig:basefs-loss} plots the measured convergence time under different packet loss conditions. Increments of 10\% packet loss with 25\% of constant correlation are emulated with \texttt{TC netem}. For example, \texttt{netem loss 30\% 25\%} causes 30\% of packets to be lost, and each successive probability depends by a quarter on the last one. This probability is formally defined as:
+Figure \ref{fig:basefs-loss-completed} plots the number of converged nodes under different packet loss conditions. Increments of 10\% packet loss with 25\% of constant correlation are emulated with \texttt{TC netem}. For example, \texttt{netem loss 30\% 25\%} causes 30\% of packets to be lost, and each successive probability depends by a quarter on the last one. This probability is formally defined as:
 
 $P_n = .25 * P_n-1 + .75 * Random$
 
@@ -484,7 +484,7 @@ Figure \ref{fig:basefs-bw} shows the measured convergence time of several operat
 \label{fig:basefs-bw}
 \end{figure}
 
-Our measurements are consistent with Serf's analytical bandwidth estimate\footnote{https://www.serfdom.io/docs/internals/simulator.html} of 175 kbps/node per message. Bandwidth limitations up to 256 kbps do not have significant impact on the convergence time. Even a 32 kbps data rate only produces a 20\% time increase respect to baseline.
+Our measurements are consistent with Serf's analytical bandwidth estimate\footnote{https://www.serfdom.io/docs/internals/simulator.html} of 175 kbps/node per message. Bandwidth limitations up to 256 kbps do not have significant impact on the convergence time. Even a 32 kbps data rate only produces a mild 20\% time increase respect to baseline.
 
 \subsubsection{BaseFS Under Community-Lab}
 
@@ -527,7 +527,8 @@ Figure \ref{fig:basefs} shows the measured convergence time of a simulated workl
 \end{figure}
 
 
-An evenly distributed traffic consumption throughout the members is a quality expected from any peer-to-peer system. Figure \ref{fig:basefs-traffic-distribution} shows the outgoing traffic distribution measured during the experiment. The poor traffic contributions of nodes 9 and 29 are due to an error on Community-Lab testbed. Both nodes did not receive a public IP address, but a private one, lagging behind a NAT. Contact initiated by other nodes is not possible, but NATed nodes can still receive log entries by means of the sync protocol. We didn't intend to have NATed nodes, but this brings the opportunity to validate that BaseFS can deal with an small number of them. At this point we can not determine if the differences on performance between Community-Lab and Docker are due to the NATed nodes or other factors.
+An evenly distributed traffic consumption throughout the members is a quality expected from any peer-to-peer system. Figure \ref{fig:basefs-traffic-distribution} shows the outgoing traffic distribution measured during the experiment. The poor traffic contributions of nodes 9 and 29 are due to an error on Community-Lab testbed. Both nodes did not receive a public IP address, but a private one, lagging behind a NAT. Contact initiated by other nodes is not possible, but NATed nodes can still receive log entries by means of the sync protocol. We didn't intend to have NATed nodes, but this brings the opportunity to validate that BaseFS can deal with an small number of them. % TODO remove next line?
+At this point we can not determine if the differences on performance between Community-Lab and Docker are due to the NATed nodes or other factors.
 
 
 
@@ -585,7 +586,7 @@ Existing solutions for dynamic configuration, such as etcd, Zookeeper or Consul,
 Although current design and implementation has proven effective for cloud configuration, the lack of an existing generalized solution with similar characteristics motivates considering what changes are required to make BaseFS a generalized replication service. BaseFS lack of first-class support for \textbf{large content} is a fundamental problem. Important considerations in this regard are:  
 \begin{itemize}
  \item \textbf{Basdiff4 based encoding}. Bsdiff4 is quite memory-hungry, requiring up to $max(17*n,9*n+m)+O(1)$ bytes of memory, where $n$ is the size of the old file and $m$ the size of the new file. \textbf{Multiple encoding methods} should be supported, they can be specified by configuration or perhaps dynamically chosen depending on file characteristics.
- \item \textbf{Hash-linked block list}. Nodes can not know in advance all the block hashes, only the next from the last valid block. An approach that provides the block manifest in advance (figure \ref{fig:infohash}) can make block dissemination more efficient and better tolerant to DDoS attacks. Log entries contain the \textit{roothash}, the root node of a Merkle tree, that expands until their leafs can hold the whole block manifest of a file.
+ \item \textbf{Hash-linked block list}. Nodes can not know in advance all the block hashes, only the next from the last valid block. An approach that provides the block manifest in advance (figure \ref{fig:infohash}) can make block dissemination more efficient and better tolerant to DDoS attacks. Log entries contain the \textit{roothash}, the root node of a Merkle tree, that expands until their leafs can hold the whole file manifest.
   \item \textbf{Block dissemination}. Blocks are replicated by means of the synchronization protocol. The sync protocol assumes nodes are always willing to cooperate, but as files get bigger more resources are required, encouraging free-riding. An \textbf{incentive mechanism} should be in place in order to discourage non-cooperative behavior. Another issue with the sync protocol is that a node must receive the complete file before being able to perform replication with other nodes. A block exchange protocol like BitSwap, with a \textbf{block-market swarm} is a more effective model of replicating large files.
   \item \textbf{Log unbounded growth}. Deleting log entries is complicated and will required coordinated consensus\cite{letia2009crdts}. However, log entries are not a real concern, they are small and they retain value, as they describe history. What, in some cases, can cause problems are blocks. Block garbage collection can be easily implemented just by removing them from deleted or updated files.
 \end{itemize}

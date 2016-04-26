@@ -43,18 +43,21 @@ Basically Available, Soft state, Eventually consistent File System.
 
 Commands:
     mount       Mount an existing filesystem
-    handler     Run as Serf handler
+    run         Run an existing filesystem without mounting it (testing)
     bootstrap   Create a new self-contained filesystem
     genkey      Generate a new EC private key
     keys        List keys and their directories
     grant       Grant key write permission
     revoke      Revoke key write permission
-    log         Show a log file using a tree representation
+    list        List all available logs
+    show        Show a log file using a tree representation
     revert      Revert object to previous state, 'log' command lists all revisions
     blocks      Block state
     members     List cluster members
+    serf        Serf RPC Command proxy
     get         Get log from peer address
-    installserf installserf
+    installserf Download and install Serf
+    resources   Display BaseFS resource consumption in real-time
     help
 
 Run 'basefs COMMAND --help' for more information on a command
