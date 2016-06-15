@@ -97,7 +97,8 @@
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No need for stable quorums</li>
                     <li class="fragment item">High <strong>performance</strong>:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Progress without coordination</li>
-                    <li class="fragment item">Geographic and administrative <strong>scalability</strong></li>
+                    <li class="fragment item">Geographic and administrative <strong>scalability</strong><br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;No latency bottleneck, no trust between nodes</li>
                     <li class="fragment item">Weakly consistent communication channel:<br>
                         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Gossip-style network protocol, <strong><a href="http://writings.quilt.org/2014/05/12/distributed-systems-and-the-end-of-the-api/">NO APIs</a></strong></li>
                     <li class="fragment item">Nodes <strong>don't need to trust</strong> each other: Byzantine<br>
@@ -112,21 +113,24 @@
                     <li class="fragment bw"><a href="https://en.wikipedia.org/wiki/Block_chain_(database)">BlockChain</a>-inspired datastore</li>
                     <li class="fragment bw">Filesystem interface</li>
                 </section>
-                
-                <section id="hood" data-background="imgs/car.jpg">
-                    <h2 class="bw">BaseFS Under The Hood</h2>
-                    <div class="bw">
-                        <ul>
-                            <li><a href="#/log"><strong>Log</strong></a> - <a href="https://bmcorser.github.io/2014/12/22/merkle-dag.html">Merkle DAG</a> of inmutable entries</li>
-                            <li><a href="#/view"><strong>View</strong></a> - Conflict resolved composition of the <i>log</i></li>
-                            <li><a href="#/gossip"><strong>Gossip protocol</strong></a> - Membership and initial dissemination</li>
-                            <li><a href="#/sync"><strong>Synchronization protocol</strong></a> - Full state sync</li>
-                            <li><a href="#/fs"><strong>File system</strong></a> - Provides file system API for the <i>view</i></li>
-                            <li><a href="#/modules"><strong>Modules</strong></a> - Overview of BaseFS components</li>
-                        </ul>
-                    </div>
+                <section>
+                    <section id="hood" data-background="imgs/car.jpg">
+                        <h2 class="bw">BaseFS Under The Hood</h2>
+                        <div class="bw">
+                            <ul>
+                                <li><a href="#/log"><strong>Log</strong></a> - <a href="https://bmcorser.github.io/2014/12/22/merkle-dag.html">Merkle DAG</a> of inmutable entries</li>
+                                <li><a href="#/view"><strong>View</strong></a> - Automatic conflict resolved composition of the <i>log</i></li>
+                                <li><a href="#/gossip"><strong>Gossip protocol</strong></a> - Membership and initial dissemination</li>
+                                <li><a href="#/sync"><strong>Synchronization protocol</strong></a> - Full state sync</li>
+                                <li><a href="#/fs"><strong>File system</strong></a> - Provides file system API for the <i>view</i></li>
+                            </ul>
+                        </div>
+                    </section>
+                    <section id="modules" data-background="imgs/moudle.jpg">
+                        <h2 class="bw">Module Overview</h2>
+                        <img class="stretch image" src="imgs/modules.png"></img>
+                    </section>
                 </section>
-                
                 <section id="log" data-background="imgs/branches.jpg">
                     <div class="bw" style="margin:0 0 20px 0;">
                         <h2>Log</h2>
@@ -200,20 +204,20 @@
                     <h2 class="bw">View Example</h2>
                     <img class="stretch image" src="imgs/view-strike.png"></img>
                 </section>
-                
-                <section id="gossip" data-background="imgs/gossip.jpg">
-                    <h2 class="bw">Gossip Protocol</h2>
-                    <ul class="list">
-                        <li class="fragment item">Implemented using <a href="https://www.serfdom.io/">Serf library</a></li>
-                        <li class="fragment item">Provides <strong>group membership</strong> and <strong>log disemination</strong></li>
-                        <li class="fragment item">Uses Serf custom events payload (512 bytes)</li>
-                    </ul>
-                    <img class="fragment stretch image" src="imgs/payload.png"></img>
-                </section>
-
-                <section id="gossip-etc" data-background="imgs/gossip.jpg">
-                    <h2 class="bw">/etc number of messages</h2>
-                    <img class="stretch image" src="imgs/etc_messages-black.png"></img>
+                <section>
+                    <section id="gossip" data-background="imgs/gossip.jpg">
+                        <h2 class="bw">Gossip Protocol</h2>
+                        <ul class="list">
+                            <li class="fragment item">Implemented using <a href="https://www.serfdom.io/">Serf library</a></li>
+                            <li class="fragment item">Provides <strong>group membership</strong> and <strong>log disemination</strong></li>
+                            <li class="fragment item">Uses Serf custom events payload (512 bytes)</li>
+                        </ul>
+                        <img class="fragment stretch image" src="imgs/payload.png"></img>
+                    </section>
+                    <section id="gossip-etc" data-background="imgs/gossip.jpg">
+                        <h2 class="bw">/etc number of messages</h2>
+                        <img class="stretch image" src="imgs/etc_messages-black.png"></img>
+                    </section>
                 </section>
                 <section id="sync" data-background="imgs/sync.jpg">
                     <h2 class="bw">Synchronization Protocol</h2>
@@ -237,11 +241,57 @@
                     <li class="fragment item">Watchers: react to events, similar to <a href="https://en.wikipedia.org/wiki/Inotify">inotify</a></li>
                     </ul>
                 </section>
-                <section id="modules" data-background="imgs/moudle.jpg">
-                    <h2 class="bw">Module Overview</h2>
-                    <img class="stretch image" src="imgs/modules.png"></img>
+
+                <section id="example">
+                <h2>Example: <br>Replace CONFINE controller and node software with BaseFS</h2>
+                </section>
+                <section id="example-installation">
+                    <h2>Installation</h2>
+                    <code>$ pip3 install basefs</code>
                 </section>
                 
+                <section id="example-bootstrap">
+                    <h2>Bootstrap</h2>
+                    <pre><code data-trim data-noescape>
+# Create new key
+$ basefs genkey
+
+# Createw new filesystem
+$ basefs bootstrap confine -i &lt;ip&gt;
+
+# Mount
+$ mkdir ~/confine
+$ basefs mount confine ~/confine
+</code></pre>
+                </section>
+
+
+                <section id="example-datamodel">
+                    <h2>Build Data model and handlers</h2>
+<p>Model CONFINE system with directories and files, considering that permissions are hierarchical.
+<pre><code data-trim data-noescape>
+/users/user1/info
+/users/user1/auth_keys/key1
+/groups/a/members/user1
+/groups/a/nodes/node1
+/groups/a/slices/slice1/node1</code></pre></p>
+<p>Write handlers that execute on changes, <br><a href="https://github.com/glic3rinu/basefs/blob/master/example/handler.py">~/confine/handlers/confine-node.sh</a> creates CONFINE slivers</p>
+                </section>
+
+                <section id="example-distribute">
+                    <h2>Distribute</h2>
+                    <pre><code data-trim data-noescape># Get the log from another machine
+$ basefs get confine &lt;ip&gt;[:&lt;port&gt;]
+$ mkdir ~/confine
+$ basefs mount confine ~/confine
+
+# CONFINE nodes should define the handler for creating VMs
+$ basefs mount confine ~/confine \
+    --handler ~/confine/handlers/confine-node.sh</code></pre>
+                </section>
+
+
+
                 <section id="evaluation" data-background="imgs/graph.gif">
                     <h2 class="bw">Evaluation</h2>
                     <div class="bw">
@@ -276,6 +326,7 @@
                     <h2 class="bw">Network Evaluation</h2>
                     <div class="bw">
                     <ul>
+                        <li><strong>How network characteristics (latency, packet loss and bandwidth) affect convergence time?</strong></li>
                         <li>Virtual Environment based on:
                             <ul>
                                 <li><a href="https://www.docker.com/">Docker containers</a></li>
@@ -288,15 +339,15 @@
                 </section>
                 
                 <section id="latency" data-background="imgs/switch-room.jpg">
-                    <h2 class="bw">Latency</h2>
+                    <h2 class="bw">Effect of Latency</h2>
                     <img class="stretch image" src="imgs/basefs-delay-black.png"></img>
                 </section>
                 <section id="bw" data-background="imgs/switch-room.jpg">
-                    <h2 class="bw">Bandwidth</h2>
+                    <h2 class="bw">Effect of Bandwidth Limitation</h2>
                     <img class="stretch image" src="imgs/basefs-bw-black.png"></img>
                 </section>
                 <section id="loss" data-background="imgs/switch-room.jpg">
-                    <h2 class="bw">Packet Loss</h2>
+                    <h2 class="bw">Effect of Packet Loss</h2>
                     <img class="stretch image" src="imgs/basefs-loss-completed-black.png"></img>
                 </section>
                 
@@ -337,16 +388,55 @@
                 </section>
                 
                 <section id="future" data-background="imgs/domination.jpg">
-                    <h2 class="bw">Plans for world domination</h2>
+                    <h2 class="bw">Plans for world domination:<br>As it is</h2>
                     <ul class="list">
-                        <li class="fragment item">Generalized filesystem</li>
-                        <li class="fragment item">Distributed Dropbox-like applications</li>
-                        <li class="fragment item">System upgrade on distributed systems</li>
-                        <li class="fragment item">Shared in-memory databse (memcache)</li>
-                        <li class="fragment item">Mutable P2P file-sharing</li>
-                        <li class="fragment item">Self-updatable documents (encycolpedia, discography)</li>
+                        <li class="fragment item">Community cloud configuration management</li>
                         <li class="fragment item">Distributed version control system</li>
+                        <li class="fragment item">Distributed Dropbox-like applications</li>
+                        <li class="fragment item">Self-updatable documents (encyclopedia, discography)</li>
                     </ul>
+                </section>
+                <section id="future2" data-background="imgs/domination.jpg">
+                    <h2 class="bw">Plans for world domination:<br>Better IO performance</h2>
+                    <div style="margin:0 0 20px 0;">
+                        <p class="bw fragment" >BSDIFF4 and cPython are not the fastes</p>
+                    </div>
+                    <div>
+                        <ul class="list">
+                            <li class="fragment item">System upgrade on distributed systems</li>
+                            <li class="fragment item">Shared in-memory database (memcached)</li>
+                        </ul>
+                    </div>
+                </section>
+                <section id="future3" data-background="imgs/domination.jpg">
+                    <h2 class="bw">Plans for world domination:<br>Support for larger files</h2>
+                    <div style="margin:0 0 20px 0;">
+                        <ul class="list">
+                            <li class="fragment item">Multiple encoding methods: BSDiff4 is optimized for small changes on small files</li>
+                            <li class="fragment item">Block manifest instead of block linked-list</li>
+                            <li class="fragment item">Block market with incentive mechanism</li>
+                            <li class="fragment item">Block garbage collection</li>
+                        </ul>
+                    </div>
+                    <ul class="list">
+                        <li class="fragment item">Mutable P2P file-sharing</li>
+                        <li class="fragment item">Generalized filesystem</li>
+                    </ul>
+                </section>
+                <section id="summary">
+                    <h2 class="bw">Summary</h2>
+                    <ol class="list">
+                        <li class="fragment item">Strong consistency imposses strong constrains</li>
+                        <li class="fragment item">We have a lot to gain if we can relax consistency: scalability, availability and simplicity</li>
+                        <li class="fragment item">Cryptographic hashes are awesome!
+                            <ul>
+                                <li class="fragment"><strong>Merkle DAG + CvRDT</strong> is a powerfull data structure with useful guarantees</li>
+                                <li class="fragment"><strong>Merkle trees</strong> allow for efficient synchronization</li>
+                            </ul>
+                        </li>
+                        <li class="fragment item">Gossip protocols are efficient ways for <strong>group membership and state disemination</strong> in large weakly consistent systems</li>
+                        <li class="fragment item">Prototyping distributed filesystems is easy and fun with Python and FUSE</li>
+                    </ol>
                 </section>
 
                 <section style="text-align: left;" data-state="show-github-ribbon">

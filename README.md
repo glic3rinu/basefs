@@ -28,7 +28,7 @@ $ basefs mount myfs ~/myfs
 3. Distribute
 ```bash
 # Get the log from another machine
-$ basefs get myfs <ip>:<port>
+$ basefs get myfs <ip>
 $ mkdir ~/myfs
 $ basefs mount myfs ~/myfs
 ```
