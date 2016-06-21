@@ -1,5 +1,10 @@
 \begin{thebibliography}{10}
 
+\bibitem{zkfuse}
+zkfuse, zookeeper fuse (file system in userspace).
+\newblock
+  \url{https://svn.apache.org/repos/asf/zookeeper/trunk/src/contrib/zkfuse/}.
+
 \bibitem{Wikipedia:CRDT}
 Conflict-free replicated data type - architecture, 2016.
 
@@ -13,15 +18,41 @@ A.~M. Abhinandan~Das, Indranil~Gupta.
 O.~Babaoglu and M.~Marzolla.
 \newblock Peer-to-peer cloud computing.
 
+\bibitem{back2014enabling}
+A.~Back, M.~Corallo, L.~Dashjr, M.~Friedenbach, G.~Maxwell, A.~Miller,
+  A.~Poelstra, J.~Tim{\'o}n, and P.~Wuille.
+\newblock Enabling blockchain innovations with pegged sidechains.
+\newblock 2014.
+
+\bibitem{merkledag}
+J.~Benet.
+\newblock The merkledag, spec for the ipfs merkledag.
+\newblock \url{github.com/ipfs/specs/tree/master/merkledag}.
+
 \bibitem{IPFS}
 J.~Benet.
 \newblock Ipfs - content addressed, versioned, p2p file system (draft 3).
 \newblock 2015.
 
+\bibitem{syncthing}
+J.~Borg.
+\newblock Syncthing, open source continuous file synchronization.
+\newblock \url{https://syncthing.net/}.
+
 \bibitem{brewer2012cap}
 E.~Brewer.
 \newblock Cap twelve years later: How the" rules" have changed.
 \newblock {\em Computer}, 45(2):23--29, 2012.
+
+\bibitem{delaet2010survey}
+T.~Delaet, W.~Joosen, and B.~Van~Brabant.
+\newblock A survey of system configuration tools.
+\newblock In {\em LISA}, volume~10, pages 1--8, 2010.
+
+\bibitem{fusepy}
+T.~Honles.
+\newblock fusepy, simple ctypes bindings for fuse.
+\newblock \url{https://github.com/terencehonles/fusepy}.
 
 \bibitem{Kleppmann:CAP}
 M.~Kleppmann.
@@ -33,15 +64,30 @@ L.~Lamport et~al.
 \newblock Paxos made simple.
 \newblock {\em ACM Sigact News}, 32(4):18--25, 2001.
 
+\bibitem{etcd-fs}
+J.~Leibiusky.
+\newblock etcd-fs. use etcd as a filesystem.
+\newblock \url{https://github.com/xetorthio/etcd-fs}.
+
 \bibitem{letia2009crdts}
 M.~Letia, N.~Pregui{\c{c}}a, and M.~Shapiro.
 \newblock Crdts: Consistency without concurrency control.
 \newblock {\em arXiv preprint arXiv:0907.0929}, 2009.
 
+\bibitem{lev2016modular}
+K.~Lev-Ari, E.~Bortnikov, I.~Keidar, and A.~Shraer.
+\newblock Modular composition of coordination services.
+\newblock In {\em 2016 USENIX Annual Technical Conference (USENIX ATC 16)},
+  2016.
+
 \bibitem{marinos2009community}
 A.~Marinos and G.~Briscoe.
 \newblock Community cloud computing.
 \newblock In {\em Cloud Computing}, pages 472--484. Springer, 2009.
+
+\bibitem{nakamoto2008bitcoin}
+S.~Nakamoto.
+\newblock Bitcoin: A peer-to-peer electronic cash system, 2008.
 
 \bibitem{ongaro2014search}
 D.~Ongaro and J.~Ousterhout.
@@ -69,11 +115,23 @@ M.~Shapiro, N.~Pregui{\c{c}}a, C.~Baquero, and M.~Zawirski.
   data types}.
 \newblock PhD thesis, Inria--Centre Paris-Rocquencourt, 2011.
 
+\bibitem{libfuse}
+M.~Szeredi.
+\newblock libfuse, the reference implementation of the linux fuse (filesystem
+  in userspace) interface.
+\newblock \url{https://github.com/libfuse/libfuse}.
+
 \bibitem{van2008efficient}
 R.~Van~Renesse, D.~Dumitriu, V.~Gough, and C.~Thomas.
 \newblock Efficient reconciliation and flow control for anti-entropy protocols.
 \newblock In {\em proceedings of the 2nd Workshop on Large-Scale Distributed
   Systems and Middleware}, page~6. ACM, 2008.
+
+\bibitem{consulfs}
+B.~Wester.
+\newblock Consulfs, consulfs is a fuse distributed filesystem backed by a
+  consul key-value store.
+\newblock \url{https://github.com/bwester/consulfs}.
 
 \bibitem{Yermolaiev:managing}
 O.~Yermolaiev.

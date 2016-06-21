@@ -408,6 +408,7 @@ class SyncHandler:
         logger.debug('Initiating sync with %s', str(peername))
         receiving = self.get_and_update_receiving()
         writer.write(b's')
+        # TODO replace self.HASH by self.ID
         self.write(writer, self.HASH)
         self.write(writer, self.log.root.hash)
         if receiving:

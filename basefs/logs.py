@@ -311,6 +311,7 @@ class LogEntry:
     ACK = 'ACK'
     ACTIONS = set((MKDIR, WRITE, DELETE, GRANT, REVOKE, LINK, SLINK, REVERT, MODE, ACK))
     HASH_SIZE = 56
+    # TODO ROOT_PARENT_HASH should be a random hash that uniquely identifies the filesystem
     ROOT_PARENT_HASH = '0'*HASH_SIZE
     
     def __str__(self):
