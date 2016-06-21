@@ -82,7 +82,7 @@ Additionally, because these tools are designed with data center conditions in mi
 
 While all this complexity has not been a problem for corporations with in-house teams of well paid, highly skilled, engineers, Community cloud is sometimes build and operated by volunteers, and there is not always good incentives for investing large amounts of effort into solving complex technical problems.
 
-Complexity can be lowered by removing the need for dedicated servers and make the system P2P. The lack of a single point-of-failure and nodes not having to trust each other, are preciesely some of the main attributes that led Bittorrent to achieve massive adoption. On the other hand, a filesystem API is something developers are already familiar with, and all programming languages have libraries for. Several projects exist that satisfy this desire, zkfuse \cite{zkfuse} for ZooKeeper, etcd-fs \cite{etcd-fs} for etcd and consulfs \cite{consulfs} for Consul.
+Complexity can be lowered by removing the need for dedicated servers and make the system P2P. The lack of a single point-of-failure and nodes not having to trust each other, are precisely some of the main attributes that led Bittorrent to achieve massive adoption. On the other hand, a filesystem API is something developers are already familiar with, and all programming languages have libraries for. Several projects exist that satisfy this desire, zkfuse \cite{zkfuse} for ZooKeeper, etcd-fs \cite{etcd-fs} for etcd and consulfs \cite{consulfs} for Consul.
 
 \subsection{Existing P2P Filesystems}
 
@@ -218,7 +218,7 @@ The adopted strategy for conflict resolution is similar to Bitcoin's \textit{pro
 \item If equal, select the branch with a higher root hash. Unambiguous, there are no equal hashes.
 \end{enumerate}
 
-Users with keys higher on the hierarchy have control over greater portions of the filesystem. Key position in this hierachy should match the steaks a user has on the system, its creator being the one with ultimate power.
+Users with keys higher on the hierarchy have control over greater portions of the filesystem. Key position in this hierarchy should match the steaks a user has on the system, its creator being the one with ultimate power.
 
 A consideration when granting higher permissions to an existing key; related conflicting branches may have been resolved by scoring on higher hierarchy, but with an increase on authority this balance may change. Acknowledging the current ``wining'' branch is required for maintaining state.
 
@@ -413,7 +413,7 @@ Root superusers are the only ones allowed to write into the root directory (\tex
  \item \texttt{apps} directory where the user can create applications with required VMs.
 \end{enumerate}
 
-Following is how \texttt{node1} and \texttt{vm1} config files may look like. They are in json format, specifying all required information needed for our service to operate.
+Following is how \texttt{node1} and \texttt{vm1} configuration files may look like. They are in json format, specifying all required information needed for our service to operate.
 
 \begin{figure}[H]
 \centering
@@ -443,7 +443,7 @@ Following is how \texttt{node1} and \texttt{vm1} config files may look like. The
 % \caption{C++ code}
 \end{figure}
 
-BaseFS runs on both, user and host machines. Users create the configuration that hosts machines react upon. BaseFS only requires Python3 and libfuse \cite{libfuse}, and it can be installed on any Linux system with a single command. Once installed, we have to generate an EC key pair, this key will be the root key of the new \texttt{communityvms} filesystem. Filesystems can be refered by their name. For convenience, default TCP and UDP port numbers are based on that name, so they don't need to be explicitly provided. Next, we bootstrap the filesystem providing its name and the public IP address of the first machine that will run the filesystem, so other nodes can connect and retrieve the log. The filesystem can now be mounted and initialized. Following the command sequence that can be used for performing all aforementioned steps.
+BaseFS runs on both, user and host machines. Users create the configuration that hosts machines react upon. BaseFS only requires Python3 and libfuse \cite{libfuse}, and it can be installed on any Linux system with a single command. Once installed, we have to generate an EC key pair, this key will be the root key of the new \texttt{communityvms} filesystem. Filesystems can be referred by their name. For convenience, default TCP and UDP port numbers are based on that name, so they don't need to be explicitly provided. Next, we bootstrap the filesystem providing its name and the public IP address of the first machine that will run the filesystem, so other nodes can connect and retrieve the log. The filesystem can now be mounted and initialized. Following the command sequence that can be used for performing all aforementioned steps.
 
 \begin{figure}[H]
 \centering
@@ -477,7 +477,7 @@ basefs mount communityvms /mnt/communityvms \
 \end{BVerbatim}
 \end{figure}
 
-Handlers are idempotent scripts responsible for maintain the node system on the declared state. The following code snipet shows a high level implementation of \texttt{node.sh} handler, that creates, updates and deletes VMs when needed.
+Handlers are idempotent scripts responsible for maintain the node system on the declared state. The following code snippet shows a high level implementation of \texttt{node.sh} handler, that creates, updates and deletes VMs when needed.
 
 \begin{figure}[H]
 \centering
@@ -515,7 +515,7 @@ The machine used for running virtual experiments is an Intel(R) Core(TM) i7-4500
 
 
 \subsection{Network Evaluation}
-The network evaluation is separated into two phases that determine a) how constrained network characteristics affect BaseFS convergence time and b) how BaseFS behaves in a real Community Network environment. Convergence time is perhaps the most important characteristic to meassure on an eventually consistent datastore, it determines the time it takes for the whole system to be in a consistent state. In this evaluation we want to validate whetert BaseFS tolerates worst case conditions expected for a congested wireless link network and characterize its performance over nominal coditions.
+The network evaluation is separated into two phases that determine a) how constrained network characteristics affect BaseFS convergence time and b) how BaseFS behaves in a real Community Network environment. Convergence time is perhaps the most important characteristic to measure on an eventually consistent datastore, it determines the time it takes for the whole system to be in a consistent state. In this evaluation we want to validate whether BaseFS tolerates worst case conditions expected for a congested wireless link network and characterize its performance over nominal conditions.
 
 Docker containers use virtual Ethernet devices connected to a virtual bridge. All nodes are at one layer 2 hop between each other. TC (Linux Traffic Control) is used for configuring the kernel network scheduler and shape the traffic characteristics of the virtual network. Each experiment is performed on a group of 30 nodes. For each experiment a new BaseFS log is bootstrapped. Nodes get and mount this freshly created BaseFS filesystem. Group members are given a few seconds to find each other. We simulate configuration updates by copying a set of pre-created files into one of the nodes BaseFS mounted partition. Then we measure the time it takes for the configuration file to propagate to the rest of the group. We monitor the number of converged nodes in real time, so the experiment can advance as soon as all nodes have received the updates.
 
@@ -584,7 +584,7 @@ Figure \ref{fig:basefs-delay} shows the measured convergence time of operations 
 \label{fig:basefs-delay}
 \end{figure}
 
-Serf is configured to use the WAN profile with a \texttt{ProbeTimeout} of 3 seconds, causing nodes to be reported as failed under latencies greater than 3 seconds. Because of the probabilistic properties of the normal distribution Serf is reporting failed nodes starting from 1280 ms mean delays, seriously impacting BaseFS convergence time. However, the group is able to converge even with mean delays as large as x ms, given enough time. Remember that we have selected a \textit{maximum gossiped block} of 10, convergence of writes with more than 11 log objects is totally dependent of the sync protocol, hence the pronaunce change in the middle of the plot.
+Serf is configured to use the WAN profile with a \texttt{ProbeTimeout} of 3 seconds, causing nodes to be reported as failed under latencies greater than 3 seconds. Because of the probabilistic properties of the normal distribution Serf is reporting failed nodes starting from 1280 ms mean delays, seriously impacting BaseFS convergence time. However, the group is able to converge even with mean delays as large as x ms, given enough time. Remember that we have selected a \textit{maximum gossiped block} of 10, convergence of writes with more than 11 log objects is totally dependent of the sync protocol, hence the pronounce change in the middle of the plot.
 
 
 \subsubsection{Packet Loss Effects}
@@ -666,8 +666,8 @@ Figure \ref{fig:basefs} shows the measured convergence time of a simulated workl
 \end{figure}
 
 
-An evenly distributed traffic consumption throughout the members is a quality expected from any peer-to-peer system. Figure \ref{fig:basefs-traffic-distribution} shows the outgoing traffic distribution measured during the experiment. The poor traffic contributions of nodes 9 and 29 are due to an error on Community-Lab testbed. Both nodes did not receive a public IP address, but a private one, lagging behind a NAT. Contact initiated by other nodes is not possible, but NATed nodes can still receive log entries by means of the sync protocol. We didn't intend to have NATed nodes, but this brings the opportunity to validate that BaseFS can deal with an small number of them. % TODO remove next line?
-At this point we can not determine if the differences on performance between Community-Lab and Docker are due to the NATed nodes or other factors.
+An evenly distributed traffic consumption throughout the members is a quality expected from any peer-to-peer system. Figure \ref{fig:basefs-traffic-distribution} shows the outgoing traffic distribution measured during the experiment. The poor traffic contributions of nodes 9 and 29 are due to an error on Community-Lab testbed. Both nodes did not receive a public IP address, but a private one, lagging behind a NAT. Contact initiated by other nodes is not possible, but NATed nodes can still receive log entries by means of the sync protocol. We didn't intend to have NATed nodes, but this brings the opportunity to validate that BaseFS can deal with an small number of them. 
+% At this point we can not determine if the differences on performance between Community-Lab and Docker are due to the NATed nodes or other factors.
 
 
 
@@ -722,7 +722,7 @@ We have made the choice of using BSDIFF4 binary deltas on the grounds that write
 
 Existing solutions for dynamic configuration, such as etcd, Zookeeper or Consul, are based on strongly consistent and centralized replication. Making them hard to scale, not available under network partitions and complex to operate. For some situations, eventual consistency is sufficient. With this weaker consistency requirements we devise BaseFS, a new replication system that is peer-to-peer, scalable and simple to deploy and operate. Attributes particularly interesting for community cloud environments.
 
-We have seen how a distributed infrastructure as a service can be built on top of BaseFS. Wile other solutions would have to secure communications and share secrets, BaseFS can work on the open, making deployment remarcably simpler; install, get and mount. Our meassurements also show fast convergence times, typically under a second, and proves it can work under heavily constrained network conditions, with sustained packet loss, large latencies and low bandwidth. Even though we have not shown meassurments specific to group size scalability, we believe that the system has the potential to scale to thousands of nodes, as the main bottleneck would be Serf gossip layer for which there are reports of 20K node deployments. File IO performance meassurements, altohough less compelling, are just good enough for cloud management workloads. Our comparation with a native file system like EXT4 only shows that there is room for improvement.
+We have seen how a distributed infrastructure as a service can be built on top of BaseFS. Wile other solutions would have to secure communications and share secrets, BaseFS can work on the open, making deployment remarkably simpler; install, get and mount. Our measurements also show fast convergence times, typically under a second, and proves it can work under heavily constrained network conditions, with sustained packet loss, large latencies and low bandwidth. Even though we have not shown measurements specific to group size scalability, we believe that the system has the potential to scale to thousands of nodes, as the main bottleneck would be Serf gossip layer for which there are reports of 20K node deployments. File IO performance measurements, although less compelling, are just good enough for cloud management workloads. Our comparative with a native file system like EXT4 only unveils room for improvement.
 
 Although current design and implementation has proven effective for cloud configuration, the lack of an existing generalized solution with similar characteristics motivates considering what changes are required to make BaseFS a generalized replication service. BaseFS lack of first-class support for \textbf{large content} is a fundamental problem. Important considerations in this regard are:  
 \begin{itemize}
