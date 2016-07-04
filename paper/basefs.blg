@@ -5,54 +5,51 @@ The style file: abbrv.bst
 Database file #1: sigproc.bib
 Warning--entry type for "Yermolaiev:managing" isn't style-file defined
 --line 50 of file sigproc.bib
-Warning--entry type for "Wikipedia:CRDT" isn't style-file defined
---line 65 of file sigproc.bib
 Warning--to sort, need author or key in zkfuse
-Warning--to sort, need author or key in Wikipedia:CRDT
 Warning--empty journal in SWIM
 Warning--empty journal in babaoglupeer
 Warning--empty year in babaoglupeer
 Warning--empty journal in back2014enabling
 Warning--empty journal in IPFS
-You've used 26 entries,
+You've used 25 entries,
             2118 wiz_defined-function locations,
-            620 strings with 7431 characters,
-and the built_in function-call counts, 7790 in all, are:
-= -- 731
-> -- 382
+            616 strings with 7247 characters,
+and the built_in function-call counts, 7638 in all, are:
+= -- 718
+> -- 381
 < -- 7
-+ -- 158
++ -- 157
 - -- 128
-* -- 445
-:= -- 1272
-add.period$ -- 76
-call.type$ -- 26
-change.case$ -- 139
+* -- 439
+:= -- 1257
+add.period$ -- 75
+call.type$ -- 25
+change.case$ -- 136
 chr.to.int$ -- 0
-cite$ -- 33
-duplicate$ -- 305
-empty$ -- 646
+cite$ -- 31
+duplicate$ -- 298
+empty$ -- 623
 format.name$ -- 128
-if$ -- 1657
+if$ -- 1619
 int.to.chr$ -- 0
-int.to.str$ -- 26
+int.to.str$ -- 25
 missing$ -- 15
-newline$ -- 127
+newline$ -- 124
 num.names$ -- 48
-pop$ -- 233
+pop$ -- 224
 preamble$ -- 1
-purify$ -- 114
+purify$ -- 112
 quote$ -- 0
-skip$ -- 236
+skip$ -- 228
 stack$ -- 0
-substring$ -- 318
-swap$ -- 72
+substring$ -- 313
+swap$ -- 71
 text.length$ -- 7
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 104
-warning$ -- 7
+type$ -- 100
+warning$ -- 6
 while$ -- 68
-width$ -- 28
-write$ -- 253
-(There were 9 warnings)
+width$ -- 27
+write$ -- 247
+(There were 7 warnings)

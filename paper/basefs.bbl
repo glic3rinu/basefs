@@ -5,9 +5,6 @@ zkfuse, zookeeper fuse (file system in userspace).
 \newblock
   \url{https://svn.apache.org/repos/asf/zookeeper/trunk/src/contrib/zkfuse/}.
 
-\bibitem{Wikipedia:CRDT}
-Conflict-free replicated data type - architecture, 2016.
-
 \bibitem{SWIM}
 A.~M. Abhinandan~Das, Indranil~Gupta.
 \newblock Swim: Scalable weakly-consistent infection-style process group
@@ -77,8 +74,7 @@ M.~Letia, N.~Pregui{\c{c}}a, and M.~Shapiro.
 \bibitem{lev2016modular}
 K.~Lev-Ari, E.~Bortnikov, I.~Keidar, and A.~Shraer.
 \newblock Modular composition of coordination services.
-\newblock In {\em 2016 USENIX Annual Technical Conference (USENIX ATC 16)},
-  2016.
+\newblock In {\em 2016 USENIX Annual Technical Conference}, 2016.
 
 \bibitem{marinos2009community}
 A.~Marinos and G.~Briscoe.
@@ -92,8 +88,8 @@ S.~Nakamoto.
 \bibitem{ongaro2014search}
 D.~Ongaro and J.~Ousterhout.
 \newblock In search of an understandable consensus algorithm.
-\newblock In {\em 2014 USENIX Annual Technical Conference (USENIX ATC 14)},
-  pages 305--319, 2014.
+\newblock In {\em 2014 USENIX Annual Technical Conference}, pages 305--319,
+  2014.
 
 \bibitem{ranjan2010peer}
 R.~Ranjan, L.~Zhao, X.~Wu, A.~Liu, A.~Quiroz, and M.~Parashar.
@@ -106,8 +102,7 @@ M.~Selimi, J.~L. Florit, D.~Vega, R.~Meseguer, E.~Lopez, A.~M. Khan,
   A.~Neumann, F.~Freitag, L.~Navarro, R.~Baig, et~al.
 \newblock Cloud-based extension for community-lab.
 \newblock In {\em Modelling, Analysis \& Simulation of Computer and
-  Telecommunication Systems (MASCOTS), 2014 IEEE 22nd International Symposium
-  on}, pages 502--505. IEEE, 2014.
+  Telecommunication Systems (MASCOTS)}, pages 502--505. IEEE, 2014.
 
 \bibitem{shapiro2011comprehensive}
 M.~Shapiro, N.~Pregui{\c{c}}a, C.~Baquero, and M.~Zawirski.
