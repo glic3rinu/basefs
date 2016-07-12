@@ -111,7 +111,6 @@
                     <li class="fragment bw">Peer-to-peer replication middleware</li>
                     <li class="fragment bw">Gossip-style communication</li>
                     <li class="fragment bw"><a href="https://en.wikipedia.org/wiki/Block_chain_(database)">BlockChain</a>-inspired datastore</li>
-                    <li class="fragment bw">Filesystem interface</li>
                 </section>
                 <section>
                     <section id="hood" data-background="imgs/car.jpg">
@@ -122,7 +121,7 @@
                                 <li><a href="#/view"><strong>View</strong></a> - Automatic conflict resolved composition of the <i>log</i></li>
                                 <li><a href="#/gossip"><strong>Gossip protocol</strong></a> - Membership and initial dissemination</li>
                                 <li><a href="#/sync"><strong>Synchronization protocol</strong></a> - Full state sync</li>
-                                <li><a href="#/fs"><strong>File system</strong></a> - Provides file system API for the <i>view</i></li>
+<!--                                <li><a href="#/fs"><strong>File system</strong></a> - Provides file system API for the <i>view</i></li>-->
                             </ul>
                         </div>
                     </section>
@@ -141,19 +140,30 @@
                     </div>
                 </section>
                 
-                <section id="log-entries" data-background="imgs/branches.jpg">
-                    <h2 class="bw">Log Entries</h2>
-                    <li class="bw">Specialized Merkle tree</a></li>
-                    <img class="stretch image" src="imgs/log.png"></img>
-                    <li class="bw">mkdir, write, delete, revert, grant, <br>
-                       revoke, ack, link, slink, mode</li>
+                <section>
+                    <section id="log-entries" data-background="imgs/branches.jpg">
+                        <h2 class="bw">Log Entries</h2>
+                        <li class="bw">Specialized Merkle tree</a></li>
+                        <img class="stretch image" src="imgs/log.png"></img>
+                        <li class="bw">mkdir, write, delete, revert, grant, <br>
+                           revoke, ack, link, slink, mode</li>
+                    </section>
+                    <section id="log-blocks" data-background="imgs/branches.jpg">
+                        <h2 class="bw">Log Blocks</h2>
+                        <div class="bw">
+                            <ul>
+                            <li>Hashed linked list</li>
+                            <li><a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> patches in 483B chunks</li>
+                            </ul>
+                        </div>
+                        <img class="stretch image" src="imgs/blocs.png"></img>
+                    </section>
                 </section>
-                
                 <section id="log-entries-properties" data-background="imgs/branches.jpg">
                     <h2 class="bw">Log Entries Properties</h2>
                     <div class="bw fragment" style="margin:0 0 20px 0;">
                         <ul>
-                            <li>Specialized Merkle Tree - Link Hashes</a>
+                            <li>Specialized Merkle Tree - Links Cryptographic Hashes</a>
                             <ul>
                                 <li><strong>Content addressing</strong>: uniquely identified by its hash</li>
                                 <li><strong>Tamper resistance</strong>: hash verification</li>
@@ -176,16 +186,7 @@
                     </div>
                 </section>
                 
-                <section id="log-blocks" data-background="imgs/branches.jpg">
-                    <h2 class="bw">Log Blocks</h2>
-                    <div class="bw">
-                        <ul>
-                        <li>Hashed linked list</li>
-                        <li><a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> patches in 483B chunks</li>
-                        </ul>
-                    </div>
-                    <img class="stretch image" src="imgs/blocs.png"></img>
-                </section>
+
                 
                 <section id="view" data-background="imgs/choices.jpg">
                     <h2 class="bw">View</h2>
@@ -233,15 +234,16 @@
                         <li class="fragment item">Efficient divergence detection with <a href="https://en.wikipedia.org/wiki/Merkle_tree">Merkle trees</a></li>
                     </ul>
                 </section>
-                <section id="fs" data-background="imgs/file.jpg">
-                    <h2 class="bw">File System API</h2>
-                    <ul class="list">
-                    <li class="fragment item">Natural way of doing configuration in UNIX</li>
-                    <li class="fragment item">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>
-                    <li class="fragment item">Watchers: react to events, similar to <a href="https://en.wikipedia.org/wiki/Inotify">inotify</a></li>
-                    </ul>
-                </section>
-
+<!--                <section id="fs" data-background="imgs/file.jpg">-->
+<!--                    <h2 class="bw">File System API</h2>-->
+<!--                    <ul class="list">-->
+<!--                    <li class="fragment item">Natural way of doing configuration in UNIX</li>-->
+<!--                    <li class="fragment item">Implemented with <a href="https://en.wikipedia.org/wiki/Filesystem_in_Userspace">FUSE</a> (Filesystem in Userspace)</li>-->
+<!--                    <li class="fragment item">Watchers: react to events, similar to <a href="https://en.wikipedia.org/wiki/Inotify">inotify</a></li>-->
+<!--                    </ul>-->
+<!--                </section>-->
+                
+                <section>
                 <section id="example">
                 <h2>Example: <br>Replace CONFINE controller and node software with BaseFS</h2>
                 </section>
@@ -290,8 +292,9 @@ $ basefs mount confine ~/confine \
     --handler ~/confine/handlers/confine-node.sh</code></pre>
                 </section>
 
-
-
+                </section>
+                
+                <section>
                 <section id="evaluation" data-background="imgs/graph.gif">
                     <h2 class="bw">Evaluation</h2>
                     <div class="bw">
@@ -322,6 +325,7 @@ $ basefs mount confine ~/confine \
                     <img class="stretch image" src="imgs/scalability-black.png"></img>
                 </section>
                 
+
                 <section id="network" data-background="imgs/switch-room.jpg">
                     <h2 class="bw">Network Evaluation</h2>
                     <div class="bw">
@@ -350,6 +354,7 @@ $ basefs mount confine ~/confine \
                     <h2 class="bw">Effect of Packet Loss</h2>
                     <img class="stretch image" src="imgs/basefs-loss-completed-black.png"></img>
                 </section>
+                </section>
                 
                 <section id="cl" data-background="imgs/guifi.jpg">
                     <h2 class="bw">Community-Lab</h2>
@@ -371,23 +376,27 @@ $ basefs mount confine ~/confine \
                     <img class="stretch image" src="imgs/basefs-traffic-distribution-black.png"></img>
                 </section>
                 
-                <section id="io" data-background="imgs/performance.jpg">
-                    <h2 class="bw">File System IO Evaluation</h2>
-                    <li class="bw">Single BaseFS node</li>
-                    <li class="bw">Recursive write of <a href="https://en.wikipedia.org/wiki/Unix_filesystem#Conventional_directory_layout"><tt>/etc</tt> directory</a></li>
-                    <li class="bw">Make <a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> suffer</li>
+                <section>
+                    <section id="io" data-background="imgs/performance.jpg">
+                        <h2 class="bw">File System IO Evaluation</h2>
+                        <li class="bw">Single BaseFS node</li>
+                        <li class="bw">Recursive write of <a href="https://en.wikipedia.org/wiki/Unix_filesystem#Conventional_directory_layout"><tt>/etc</tt> directory</a></li>
+                        <li class="bw">Make <a href="http://www.daemonology.net/bsdiff/">Bsdiff4</a> suffer</li>
+                    </section>
+                    <section id="io-read" data-background="imgs/performance.jpg">
+                        <h2 class="bw">File System Read Performance</h2>
+                        <img class="stretch image" src="imgs/read_performance-black.png"></img>
+                    </section>
+                    <section id="io-write" data-background="imgs/performance.jpg">
+                        <h2 class="bw">File System Write Performance</h2>
+                        <img class="stretch image" src="imgs/write_performance-black.png"></img>
+                    </section>
                 </section>
-                
-                <section id="io-read" data-background="imgs/performance.jpg">
-                    <h2 class="bw">File System Read Performance</h2>
-                    <img class="stretch image" src="imgs/read_performance-black.png"></img>
-                </section>
-                <section id="io-write" data-background="imgs/performance.jpg">
-                    <h2 class="bw">File System Write Performance</h2>
-                    <img class="stretch image" src="imgs/write_performance-black.png"></img>
-                </section>
-                
+                <section>
                 <section id="future" data-background="imgs/domination.jpg">
+                    <h2 class="bw">Plans for world domination</h2>
+                </section>
+                <section id="future1" data-background="imgs/domination.jpg">
                     <h2 class="bw">Plans for world domination:<br>As it is</h2>
                     <ul class="list">
                         <li class="fragment item">Community cloud configuration management</li>
@@ -422,6 +431,7 @@ $ basefs mount confine ~/confine \
                         <li class="fragment item">Mutable P2P file-sharing</li>
                         <li class="fragment item">Generalized filesystem</li>
                     </ul>
+                </section>
                 </section>
                 <section id="summary">
                     <h2 class="bw">Summary</h2>
