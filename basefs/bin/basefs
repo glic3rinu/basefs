@@ -30,9 +30,10 @@ try:
     from basefs.keys import Key
     from basefs.logs import Log
     from basefs.state import BlockState
+    from basefs.utils import reporthook
     from basefs.views import View
 except ImportError:
-    if len(sys.argv) > 1 and sys.argv[1] != 'installserf':
+    if len(sys.argv) != 2 or sys.argv[1] != 'installserf':
         raise
 
 
@@ -317,7 +318,7 @@ def installserf():
     arch = architectures[platform.machine()]
     url = "https://releases.hashicorp.com/serf/0.6.4/serf_0.6.4_linux_%s.zip" % arch
     sys.stdout.write("Donwloading %s ...\n" % url)
-    path, headers = urllib.request.urlretrieve(url)
+    path, headers = urllib.request.urlretrieve(url, reporthook=reporthook)
     try:
         serf_path = os.path.join(args.binpath, 'serf')
         sys.stdout.write("Unpacking into %s ...\n" % serf_path)

@@ -4,6 +4,7 @@ import os
 import socket
 import struct
 import subprocess
+import sys
 
 
 class Candidate:
@@ -248,3 +249,17 @@ def get_ip_address(ifname):
         0x8915,  # SIOCGIFADDR
         struct.pack('256s', ifname[:15].encode())
     )[20:24])
+
+
+def reporthook(blocknum, blocksize, totalsize):
+    readsofar = blocknum * blocksize
+    if totalsize > 0:
+        percent = readsofar * 1e2 / totalsize
+        s = "\r%5.1f%% %*d / %d" % (
+            percent, len(str(totalsize)), readsofar, totalsize)
+        sys.stderr.write(s)
+        if readsofar >= totalsize: # near the end
+            sys.stderr.write("\n")
+    else:
+        # total size is unknown
+        sys.stderr.write("read %d\n" % (readsofar,))
