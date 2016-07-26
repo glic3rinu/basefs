@@ -210,6 +210,7 @@ class FileSystem(Operations):
         return content[offset:offset+length]
 
     def write(self, path, buf, offset, fh):
+        # TODO check write perissions
         try:
             content = self.cache[path]
         except KeyError:
@@ -239,6 +240,7 @@ class FileSystem(Operations):
         content = self.cache.pop(path, None)
         dirty = self.dirty.pop(path, False)
         if content is not None and dirty:
+            # TODO raise permission denied should happen in write() create().... not here
             with ViewToErrno():
                 node = self.view.write(path, content)
                 self.send(node)

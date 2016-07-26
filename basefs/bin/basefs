@@ -26,11 +26,10 @@ try:
     from basefs import exceptions
     from basefs.config import get_or_create_config, defaults, get_port
     from basefs.management import resources, run, mount, bootstrap, get
-    from basefs.management.utils import get_cmd_port
+    from basefs.management.utils import get_cmd_port, reporthook, get_default_name, get_context, get_filesystems
     from basefs.keys import Key
     from basefs.logs import Log
     from basefs.state import BlockState
-    from basefs.utils import reporthook
     from basefs.views import View
 except ImportError:
     if len(sys.argv) != 2 or sys.argv[1] != 'installserf':
@@ -46,6 +45,18 @@ def send_command(cmd, *args, port=None):
     if not data:
         sys.stderr.write("No data received from 127.0.0.1:%i\n" % port)
     return data
+
+
+def unmount():
+    unmount_parser.add_argument('name', help='Name or path')
+    args = unmount_parser.parse_args()
+    context = get_context(args.name, defaults)
+    if not context.mount_info:
+        sys.stderr.write("No mounted filesystem found.\n")
+        sys.exit()
+    unmount = subprocess.Popen(['fusermount', '-u', context.mount_info.mountpoint])
+    unmount.wait(3)
+    sys.exit()
 
 
 def genkey():
@@ -78,118 +89,86 @@ def genkey():
 
 
 def keys():
-    keys_parser.add_argument('logpath', nargs='?', default=default_logpath,
-        help='Path to the basefs log file, uses %s by default.' % default_logpath,
-        type=validators.file_exists(keys_parser, name='logpath'))
-    keys_parser.add_argument('-p', '--path', dest='path', default='/',
-        help='Base path.')
+    keys_parser.add_argument('path', nargs='?',
+        help='Log name:/path or logpath:/path')
     keys_parser.add_argument('-d', '--by-dir', dest='by_dir', action='store_true',
         help='List keys by dir instead of by key.')
+    keys_parser.add_argument('-a', '--ascii', dest='ascii', action='store_true',
+        help='use ASCII line drawing characters')
     args = keys_parser.parse_args()
-    log = Log(args.logpath)
+    context = get_context(args.path, defaults)
+    log = Log(context.fs.logpath)
     log.load()
     view = View(log)
     view.build()
-    keys = view.get_keys(path=args.path, by_dir=args.by_dir)
+    keys = view.get_keys(path=context.path, by_dir=args.by_dir)
+    spaces = ' '*4
     for key, values in keys.items():
-        sys.stdout.write(key + '\n')
-        for value in values:
-            sys.stdout.write('    ' + value + '\n')
+        sys.stdout.write(key +  '\n')
+        values = list(values)
+        sep = '  |-' if args.ascii else '  ├─'
+        for value in values[:-1]:
+            sys.stdout.write(spaces + sep + value +  '\n')
+        sep = '  `-' if args.ascii else '  └─'
+        sys.stdout.write(spaces + sep + values[-1] +  '\n')
 
 
 def list_cmd():
-    config = get_or_create_config(defaults)
     data = [
         ['Name', 'Logpath', 'Def. port', 'Moutpoint', 'Members', 'Logsize', 'Last update'],
         ['----', '-------', '---------', '---------', '-------', '-------', '-----------'],
     ]
-    def get_info(logpath):
-        statinfo = os.stat(logpath)
+    def get_info(fs):
+        statinfo = os.stat(fs.logpath)
         size = utils.sizeof_fmt(statinfo.st_size)
         mtime = datetime.datetime.fromtimestamp(statinfo.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-        minfo, mpoint = utils.get_mountpoint(logpath)
         members = '-'
+        mpoint = 'Not mounted'
+        minfo = utils.get_mount_info(fs.logpath, logpath=True)
         if minfo:
-            mport = int(minfo.split(':')[1])
-            if mport != port:
-                mpoint += ':%i' % mport
-            members = str(len(send_command('MEMBERS', port=mport).splitlines()))
-        else:
-            mpoint = 'Not mounted'
-        return mpoint, members, size, mtime
-    names = []
-    for section, content in config.items():
-        if section != 'DEFAULT':
-            names.append(section)
-            logpath = content['logpath']
-            port = content['port']
+            mpoint = minfo.mountpoint
+            if minfo.port != fs.port:
+                mpoint += ':%i' % minfo.port
             try:
-                mpoint, members, size, mtime = get_info(logpath)
-            except FileNotFoundError:
-                pass
-            else:
-                data.append([section, logpath, port, mpoint, members, size, mtime])
-    for log in os.listdir(defaults.logdir):
-        if log not in names:
-            name = log
-            logpath = os.path.join(defaults.logdir, log)
-            port = str(get_port(name))
-            mpoint, members, size, mtime = get_info(logpath)
-            data.append([name, logpath, port, mpoint, members, size, mtime])
+                members = str(len(send_command('MEMBERS', port=minfo.port).splitlines()))
+            except ConnectionRefusedError:
+                sys.stderr.write("Error: connecting with %s\n" % minfo)
+        return mpoint, members, size, mtime
+    for name, fs in get_filesystems(defaults).items():
+        try:
+            mpoint, members, size, mtime = get_info(fs)
+        except FileNotFoundError:
+            pass
+        else:
+            data.append([name, fs.logpath, fs.port, mpoint, members, size, mtime])
     sys.stdout.write(utils.tabluate(data) + '\n')
 
 
 def show():
-    show_parser.add_argument('logpath',
-        type=validators.name_or_logpath(show_parser, get_or_create_config(defaults), defaults),
-        help='Log name or logpath')
-    show_parser.add_argument('path', nargs='?', default=os.sep,
-        help='Path to the basefs log file, uses / by default.')
+    show_parser.add_argument('path',
+        help='Log name:/path or logpath:/path')
     show_parser.add_argument('-a', '--ascii', dest='ascii', action='store_true',
         help='use ASCII line drawing characters')
     show_parser.add_argument('-c', '--color', dest='color', action='store_true',
         help='use terminal coloring')
     args = show_parser.parse_args()
-    config = get_or_create_config(defaults)
-    logpath = args.logpath
-    if logpath in config:
-        logpath = config[args.logpath]['logpath']
-    elif not os.path.exists(logpath) and os.path.exists(os.path.join(defaults.logdir, logpath)):
-        logpath = os.path.join(defaults.logdir, logpath)
-    log = Log(logpath)
+    context = get_context(args.path, defaults)
+    log = Log(context.fs.logpath)
     log.load()
     view = View(log)
     view.build()
     
-    printed = False
-    def print_tree(entry):
+    try:
+        entry = log.find(context.path)
+    except exceptions.DoesNotExist:
+        sys.stderr.write("Error: '%s' path does not exist on the log.\n" % args.path)
+        sys.exit(2)
+    else:
         tree = log.print_tree(entry=entry, view=view, color=args.color, ascii=args.ascii)
         if args.ascii:
             sys.stdout.buffer.write(tree.encode('ascii', errors='replace'))
         else:
             sys.stdout.write(tree)
-        return True
-    
-    mount_info = utils.get_mount_info()
-    if mount_info:
-        path = os.path.abspath(args.path)
-        path = path.replace(mount_info.mountpoint, '')
-        try:
-            entry = log.find(path)
-        except exceptions.DoesNotExist:
-            entry = log.find(args.path)
-        else:
-            printed = print_tree(entry)
-    else:
-        try:
-            entry = log.find(args.path)
-        except exceptions.DoesNotExist:
-            pass
-        else:
-            printed = print_tree(entry)
-    if not printed:
-        sys.stderr.write("Error: '%s' path does not exist on the log.\n" % args.path)
-        sys.exit(2)
 
 
 def grant():
@@ -197,31 +176,23 @@ def grant():
 #    grant_parser.add_argument('logpath', nargs='?', default=default_logpath,
 #        help='Path to the basefs log file, uses %s by default.' % default_logpath,
 #        type=lambda v: file_exists(grant_parser, v, name='logpath'))
-    grant_parser.add_argument('grantpath',
-        help='Path where the permission should be granted.')
     grant_parser.add_argument('grantkey',
         help='Key fingerprint, if exists on lskeys, or path to a public key.',
         type=validators.key(grant_parser))
+    grant_parser.add_argument('path',
+        help='Path where the permission should be granted.')
 #    grant_parser.add_argument('-k', '--key', dest='key',
 #        default=default_keypath,
 #        help='Path to your EC private key. %s by default.' % default_keypath,
 #        type=lambda v: key(grant_parser, v))
     args = grant_parser.parse_args()
-    mount_info = utils.get_mount_info(os.path.abspath(args.grantpath))
-    if mount_info is None:
-        sys.stderr.write("Error: grantpath '%s' is not a basefs mountpoint subdir\n" % args.grantpath)
+    context = get_context(args.path, defaults)
+    if not context.mount_info:
+        sys.stderr.write("Error: %s doesn't appear to be mounted\n" % args.path)
         sys.exit(2)
-    path = os.path.relpath(args.grantpath, mount_info.mountpoint)
-    if path.startswith('.'):
-        path = path[1:]
-    path = '/' + path
-    context = {
-        'path': path,
-        'grant_key': args.grantkey.oneliner(),
-    }
-    grant_cmd = 'c GRANT %(path)s %(grant_key)s' % context
-    response = utils.netcat('127.0.0.1', mount_info.port, grant_cmd)
-    sys.stdout.write(response)
+    port = context.mount_info.port
+    result = send_command('GRANT', args.grantkey.oneliner(), context.path, port=port)
+    sys.stdout.write(result)
     sys.exit()
 
 
@@ -359,6 +330,9 @@ def help():
     sys.exit()
 
 
+unmount_parser = argparse.ArgumentParser(
+    description="Unmount filesystem",
+    prog='basefs unmount')
 genkey_parser = argparse.ArgumentParser(
     description='Generate a new EC private key',
     prog='basefs genkey')
@@ -402,6 +376,7 @@ if __name__ == '__main__':
     else:
         methods = OrderedDict([
             ('mount', (mount.command, mount.parser)),
+            ('unmount', (unmount, unmount_parser)),
             ('run', (run.command, run.parser)),
             ('bootstrap', (bootstrap.command, bootstrap.parser)),
             ('genkey', (genkey, genkey_parser)),

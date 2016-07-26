@@ -210,8 +210,9 @@ class Log:
         else:
             entry.hash = id(entry)
             entry.fingerprint = key.fingerprint
+        if commit:
+            self.post_create.send(entry)
         self.add_entry(entry)
-        self.post_create.send(entry)
         return entry
     
     def validate(self, entry):
@@ -277,7 +278,7 @@ class Log:
             cfinger = content.fingerprint
             gfinger = grant_key.fingerprint
             raise KeyError("Provided key doesn't match with key %s: %s != %s" % (name, cfinger, gfinger))
-        content = grant_key.oneliner()
+        content = key.oneliner()
         return self.do_action(parent, LogEntry.GRANT, name, key, content, commit=commit)
     
     def revoke(self, parent, name, key, commit=True):
@@ -371,6 +372,10 @@ class LogEntry:
                 else:
                     self._path = os.path.join(self.parent.path, self.name)
         return self._path
+    
+    @property
+    def is_permission(self):
+        return self.action in (self.GRANT, self.REVOKE)
     
     def get_blocks(self):
         next = self.log.blocks[self.content]
@@ -468,7 +473,7 @@ class LogEntry:
         else:
             for child in self.childs:
                 if child.action not in (self.GRANT, self.REVOKE):
-                    if utils.issubdir(child.path, path):
+                    if utils.issubdir(path, child.path):
                         entry = child.find(path)
                         if entry:
                             return entry
@@ -532,7 +537,9 @@ class LogEntry:
         if not vk.verify(self.signature, self.hash.encode()):
             raise ValidationError("Failed hash verification %s %s" % (self.hash, self.fingerprint))
     
-    def save(self):
+    def save(self, create=False):
+        if create:
+            self.log.post_create.send(self)
         self.log.save(self)
     
     def validate(self):

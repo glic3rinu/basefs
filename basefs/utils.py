@@ -4,7 +4,6 @@ import os
 import socket
 import struct
 import subprocess
-import sys
 
 
 class Candidate:
@@ -66,43 +65,29 @@ def netcat(host, port, content):
         yield recv.decode()
 
 
-def get_mountpoint(logpath):
-    mount = subprocess.Popen('mount', stdout=subprocess.PIPE)
-    mount.wait()
-    for line in mount.stdout.readlines():
-        info, __, mountpoint = line.split()[:3]
-        info = info.decode()
-        mlogpath = ':'.join(info.split(':')[:-1])
-        if logpath == mlogpath:
-            return info, mountpoint.decode()
-    return '', ''
-
-
-def get_mount_info(*args):
-    if not args:
-        path = os.getcwd()
-    else:
-        path = args[0]
+def get_mount_info(path, logpath=None):
+    def valid_logpath(logpath):
+        if os.path.isfile(logpath):
+            with open(logpath, 'r') as log:
+                line = log.readline()
+            line = line.split(' ')
+            return len(line) == 8 and line[1].startswith('0'*16) and line[4] == 'MKDIR' and line[5] == os.sep
+        return False
     while path != os.sep:
-        if os.path.ismount(path):
+        if logpath or os.path.ismount(path):
             mount = subprocess.Popen('mount', stdout=subprocess.PIPE)
             mount.wait()
             for line in mount.stdout.readlines():
                 info, __, mountpoint = line.split()[:3]
                 info = info.decode()
-                logpath = ':'.join(info.split(':')[:-1])
-                if path == mountpoint.decode() and os.path.isfile(logpath):
-                    # Validate logfile
-                    with open(logpath, 'r') as log:
-                        line = log.readline()
-                    line = line.split(' ')
-                    if len(line) == 8 and line[1].startswith('0'*16) and line[4] == 'MKDIR' and line[5] == os.sep:
-                        return AttrDict(
-                            logpath=logpath,
-                            port=int(info.split(':')[-1]),
-                            mountpoint=mountpoint.decode(),
-                        )
-            
+                mlogpath = ':'.join(info.split(':')[:-1])
+                mountpoint = mountpoint.decode()
+                if (logpath and path == mlogpath) or (not logpath and path == mountpoint and valid_logpath(mlogpath)):
+                    return AttrDict(
+                        logpath=mlogpath,
+                        port=int(info.split(':')[-1]),
+                        mountpoint=mountpoint,
+                    )
             return
         path = os.path.abspath(os.path.join(path, os.pardir))
 
@@ -224,12 +209,12 @@ def tabluate(data):
             except KeyError:
                 maximmums[ix] = len(row)
     for k, v in maximmums.items():
-        maximmums[k] = int((v+4)/8)+1
+        maximmums[k] = v+2
     ret = []
     for line in data:
         tab_line = ''
         for ix, row in enumerate(line):
-            tab_line += row + '\t'*(maximmums[ix] - int(len(row)/8))
+            tab_line += row + ' '*(maximmums[ix] - len(row))
         ret.append(tab_line)
     return '\n'.join(ret)
 
@@ -249,17 +234,3 @@ def get_ip_address(ifname):
         0x8915,  # SIOCGIFADDR
         struct.pack('256s', ifname[:15].encode())
     )[20:24])
-
-
-def reporthook(blocknum, blocksize, totalsize):
-    readsofar = blocknum * blocksize
-    if totalsize > 0:
-        percent = readsofar * 1e2 / totalsize
-        s = "\r%5.1f%% %*d / %d" % (
-            percent, len(str(totalsize)), readsofar, totalsize)
-        sys.stderr.write(s)
-        if readsofar >= totalsize: # near the end
-            sys.stderr.write("\n")
-    else:
-        # total size is unknown
-        sys.stderr.write("read %d\n" % (readsofar,))

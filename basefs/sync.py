@@ -9,6 +9,7 @@ import traceback
 from collections import defaultdict
 
 from . import exceptions, utils
+from basefs.logs import LogEntry
 
 
 logger = logging.getLogger('basefs.sync')
@@ -17,7 +18,7 @@ logger = logging.getLogger('basefs.sync')
 def get_entries(entry, eq_path=False):
     yield entry
     for child in entry.childs:
-        if not eq_path or entry.action in (entry.GRANT, entry.REVOKE) or child.name == entry.name:
+        if not eq_path or child.is_permission or child.name == entry.name:
             yield from get_entries(child)
 
 
@@ -122,8 +123,9 @@ class SyncHandler:
                 state = yield from self.respond_sync(reader, writer, state)
                 if state:
                     yield from self.data_received(reader, writer)
-        finally:
+        except:
             self.close(writer)
+            raise
     
     def split(self, line):
         """ path aware """
@@ -197,8 +199,8 @@ class SyncHandler:
                     lentries = utils.OrderedSet()
                     try:
                         ls_entry = self.log.find(ls_path)
-                    except exceptions.DoesNotExit:
-                        pass
+                    except exceptions.DoesNotExist:
+                        logger.debug("path not found %s" % ls_path)
                     else:
                         lentries = utils.OrderedSet()
                         for lentry in get_entries(ls_entry, eq_path=True):
@@ -275,7 +277,7 @@ class SyncHandler:
             try:
                 lentry = self.log.find(path)
             except exceptions.DoesNotExist:
-                pass
+                logger.debug("Requested path %s does not exists" % path)
             else:
                 lentries = get_entries(lentry)
                 for entry in lentries:
@@ -316,6 +318,7 @@ class SyncHandler:
                 try:
                     lentry = self.log.find(path)
                 except exceptions.DoesNotExist:
+                    logger.debug("ls path not found %s" % path)
                     ls_entries = []
                 else:
                     ls_entries = list(get_entries(lentry, eq_path=True))
@@ -350,7 +353,10 @@ class SyncHandler:
         if entries_to_send:
             self.write(writer, self.ENTRIES)
             for ehash in entries_to_send:
-                self.write(writer, self.encode_entry(self.log.entries[ehash]))
+                entry = self.log.entries[ehash]
+                self.write(writer, self.encode_entry(entry))
+#                if entry.action == entry.WRITE:
+#                    blocks_to_send.add(entry.content)
                 yield from writer.drain()
         if blocks_to_send:
             self.write(writer, self.BLOCKS)

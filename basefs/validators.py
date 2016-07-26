@@ -1,5 +1,7 @@
 import os
 
+from basefs.keys import Key
+
 
 def file_exists(parser, name='The', exec=None):
     def validator(arg, parser=parser, name=name, exec=exec):
@@ -46,12 +48,12 @@ def fingerprint(parser):
 
 def key(parser):
     def validator(arg, parser=parser):
-        if file_exists(parser, arg, name='keypath'):
+        if os.path.isfile(arg):
             try:
                 return Key.load(arg)
             except Exception as exc:
-                parser.error("%s '%s' %s\n" % (name, arg, str(exc)))
+                parser.error("%s %s\n" % (arg, str(exc)))
         elif arg.count(':') == 15:
             return fingerprint(parser, arg)
-        parser.error("%s %s not a valid key fingerprint nor key path." % (name, arg))
+        parser.error("%s not a valid key fingerprint nor key path." % arg)
     return validator

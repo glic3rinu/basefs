@@ -1,5 +1,10 @@
 import asyncio
 import json
+import logging
+import traceback
+
+
+logger = logging.getLogger('basefs.commands')
 
 
 def dumper(obj):
@@ -26,7 +31,12 @@ class CommandHandler:
         return log.print_tree(view=self.view, color=color, ascii=ascii).encode()
     
     def grant(self, data, *args):
-        pass
+        cmd, key, path = data.split()
+        key = key.decode()
+        path = path.decode()
+        self.view.grant(path, key)
+        response = 'Granted %s into %s' % (key, path)
+        return response.encode()
     
     def revoke(self, data, *args):
         pass
@@ -81,10 +91,17 @@ class CommandHandler:
                 method = getattr(self, cmd.lower())
             except AttributeError:
                 response = cmd.encode()+ b" command not found\n"
+                logger.debug(response)
             else:
+                logger.debug('Received %s' % cmd.lower())
+            try:
                 response = method(data, reader, writer)
+            except Exception as exc:
+                logger.error(traceback.format_exc())
+                response = 'Exception calling %s: %s %s\n' % (cmd.lower(), type(exc).__name__, exc)
+                response = response.encode()
         if response is not None:
             if isinstance(response, str):
                 response = response.encode()
             writer.write(response)
-            writer.close()
+        writer.close()

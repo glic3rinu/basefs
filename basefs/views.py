@@ -210,6 +210,7 @@ class View:
         for npath, node in self.paths.items():
             if node.perm and issubdir(npath, path):
                 branch = []
+                # FIXME access to log entries instead of view nodes? 
                 parent = node.perm
                 while parent.is_permission:
                     branch.insert(0, parent)
@@ -236,6 +237,7 @@ class View:
         return node
     
     def do_action(self, parent, action, path, name, commit=True, **kwargs):
+        # Check if has permissions
         key = self.get_key(path)
         if key is None:
             raise exceptions.PermissionDenied(path)
@@ -319,7 +321,7 @@ class View:
             else:
                 getattr(post, pre_entry.action.lower())(pre_entry.path, pre_entry.content)
         node.entry.sign()
-        node.entry.save()
+        node.entry.save(create=True)
         self.paths = post.paths
         self.root = post.root
         key = node.entry.read_key()

@@ -10,6 +10,7 @@ from basefs.config import get_or_create_config, defaults, get_port
 from basefs.fs import FileSystem
 from basefs.keys import Key
 from basefs.logs import Log
+from basefs.management.utils import get_context
 from basefs.views import View
 
 
@@ -21,7 +22,6 @@ parser = argparse.ArgumentParser(
 def set_parser(parser):
     # TODO make validators.name_or_logpath return (name, logpath) tuple for DRY-ines
     parser.add_argument('logpath',
-        type=validators.name_or_logpath(parser, get_or_create_config(defaults), defaults),
         help='Log name or logpath')
     parser.add_argument('-k', '--keys', dest='keypath',
         default=defaults.keypath,
@@ -48,44 +48,40 @@ def set_parser(parser):
 
 def command(mount=False, arg_parser=None):
     if arg_parser is None:
+        # Invoking from code, not basefs bin
         set_parser(parser)
         arg_parser = parser
     args = arg_parser.parse_args()
+    context = get_context(args.logpath, defaults)
+    logpath = context.fs.logpath
+    if context.mount_info:
+        mountpoint = context.mount_info.mountpoint
+        sys.stderr.write("Error: log %s already mounted in %s\n" % (logpath, mountpoint))
+        sys.exit(4)
     ip, *port = args.bind.split(':')
     if port:
         port = int(port[0])
+    else:
+        port = context.fs.port
     if args.iface:
         iface_ip = utils.get_ip_address(args.iface)
         if ip != '0.0.0.0' and ip != iface_ip:
             sys.stderr.write("-bind and -iface ip addresses do not match %s != %s\n" % (ip, iface_ip))
             sys.exit(9)
         ip = iface_ip
-    logpath = args.logpath
+#    logpath = args.logpath
     config = get_or_create_config(defaults)
-    section = None
     hostname = args.hostname
-    if logpath in config:
-        section = config[args.logpath]
-        logpath = section['logpath']
-        if not port:
-            port = int(section['port'])
-        if not hostname:
-            hostname = section.get('hostname', '')
-    elif not os.path.exists(logpath) and os.path.exists(os.path.join(defaults.logdir, logpath)):
-        if not port:
-            port = get_port(logpath)
-        logpath = os.path.join(defaults.logdir, logpath)
-    elif not port:
-        port = 7372
+    section = config[context.fs.name]
     if not hostname:
-        hostname = defaults.hostname
+        if context.fs.name in config:
+            hostname = section['hostname']
+        else:
+            hostname = defaults.hostname
+    
     rpc_port = port+1
     sync_port = port+2
     logpath = os.path.normpath(logpath)
-    info, point = utils.get_mountpoint(logpath)
-    if info:
-        sys.stderr.write("Error: log %s already mounted in %s\n" % (logpath, point))
-        sys.exit(4)
     keypath = os.path.normpath(args.keypath)
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
