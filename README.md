@@ -5,22 +5,13 @@ Basically Available, Soft state, Eventually Consistent File System
 * [presentation](http://glic3rinu.github.io/basefs/presentation/)
 
 
-BaseFS is a peer-to-peer distributed filesystem for cloud configuration,
-designed to operate under the network conditions
-and administrative requirements commonly found on Wireless
-Community Networks. Nodes do not need to trust each
-other, the core data-structure is an append-only specialized
-Merkle tree with monotonic and cryptographic properties
-that allows for efficient and secure verification of data sent by
-untrusted nodes. Decentralized write permission is achieve
-using a hierarchy-based public key infrastructure built into
-the Merkle tree, allowing for automatic resolution of write
-conflicts based on proof-of-authority. Finally, a gossip layer
-provides scalable change dissemination and group membership,
-with time and load constant relative to group size.
-With no single point-of-failure, BaseFS can provide levels
-of availability and scalability never seen before on a cloud
-configuration tool
+BaseFS is a peer-to-peer distributed filesystem for cloud configuration, designed to operate under the network conditions
+and administrative requirements commonly found on Wireless Community Networks. Nodes do not need to trust each
+other, the core data-structure is an append-only specialized Merkle tree with monotonic and cryptographic properties
+that allows for efficient and secure verification of data sent by untrusted nodes. Decentralized write permission is achieve
+using a hierarchy-based public key infrastructure built into the Merkle tree, allowing for automatic resolution of write
+conflicts based on proof-of-authority. Finally, a gossip layer provides scalable change dissemination and group membership,
+with time and load constant relative to group size. With no single point-of-failure, BaseFS can provide levels of availability and scalability never seen before on a cloud configuration tool
 
 ## Quick start
 
